@@ -114,12 +114,12 @@ get_pums_efa <- function(dyear, span=1){
                                     !is.na(SCHL)                         ~ "Less than a Bachelor's degree")),
                healthcov = factor(case_when(AGEP<25                      ~ NA_character_,
                                     grepl("^With ", PRIVCOV)|grepl("^With ", PUBCOV) ~ "With health insurance",
-                                    grepl("^Without ", PRIVCOV)|grepl("^Without ", PUBCOV) ~ "Without health insurance")))
+                                    grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
 
   hh_df <- get_psrc_pums(span, dyear, "h", hvars)                                                  # Retrieve household data
   hh_df %<>% add_efa_vars() %>% mutate(
-             rent_burden=factor(case_when((TEN=="Rented" & HINCP<=0)     ~"No income",
-                                          GRPIP < 30                     ~"Less than 30 percent",
+             rent_burden=factor(case_when((TEN=="Rented" & HINCP<=0)     ~ "No income",
+                                          GRPIP < 30                     ~ "Less than 30 percent",
                                           between(GRPIP,30,50)           ~ "Between 30 and 50 percent",
                                           GRPIP > 50                     ~ "Greater than 50 percent"),
                                 levels=c("No income",
