@@ -145,7 +145,7 @@ get_pums_efa <- function(dyear, span=1){
                                          "Greater than 50 percent",
                                          "Between 30 and 50 percent",
                                          "Less than 30 percent")),
-               crowding = factor(case_when(is.na(NP)|is.na(BDSP)         ~ NA_character_,
+               crowding = factor(case_when(is.na(NP)|is.na(BDSP)|DBSP==0 ~ NA_character_,
                                            NP/BDSP <= 1                  ~ "One person per bedroom or less",
                                            NP/BDSP <= 1.5                ~ "Between 1 and 1.5 person(s) per bedroom",
                                            NP/BDSP  > 1.5                ~ "More than 1.5 persons per bedroom"),
