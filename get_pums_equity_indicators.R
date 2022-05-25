@@ -20,11 +20,15 @@ pvars <- c("AGEP",                   # used as condition >25yo
 
 # PUMS variables desired at household level
 hvars <- c("ACCESS",                 # Internet access
+           "BDSP",                   # Number of bedrooms
+           "FS",                     # Supplemental Nutrition Assistance Program
+           "GRPIP",                  # Gross rent as percentage of income
            "HDIS",                   # Any member of household disabled
            "HINCP",                  # Household income
            "HRACE",                  # Household race (PSRC categories)
-           "GRPIP",                  # Gross rent as percentage of income
            "LNGI",                   # Limited English speaking household
+           "NP",                     # Number of persons in household
+           "OCPIP",                  # Homeowner costs as percentage of income
            "POVPIP",                 # Income-to-poverty ratio
            "PRACE",                  # Householder race (PSRC categories)
 #           "R18",                    # Presence of persons under 18 years in household
@@ -133,23 +137,32 @@ get_pums_efa <- function(dyear, span=1){
 
   hh_df <- get_psrc_pums(span, dyear, "h", hvars)                                                  # Retrieve household data
   hh_df %<>% add_efa_vars() %>% mutate(
-             rent_burden=factor(case_when((TEN=="Rented" & HINCP<=0)     ~ "No income",            # Define the rent burden subject variable
-                                          GRPIP < 30                     ~ "Less than 30 percent",
-                                          between(GRPIP,30,50)           ~ "Between 30 and 50 percent",
-                                          GRPIP > 50                     ~ "Greater than 50 percent"),
+               housing_burden=factor(case_when((HINCP<=0)                ~ "No income",            # Define the rent burden subject variable
+                                     GRPIP < 30 | OCPIP < 30             ~ "Less than 30 percent",
+                                     between(GRPIP,30,50) | between(GOCPIP,30,50) ~ "Between 30 and 50 percent",
+                                     GRPIP > 50 | GRPIP > 50             ~ "Greater than 50 percent"),
                                 levels=c("No income",                                              # -- the `levels` argument allows ordering of results
                                          "Greater than 50 percent",
                                          "Between 30 and 50 percent",
                                          "Less than 30 percent")),
-             internet = factor(case_when(grepl("^Yes",ACCESS)            ~ "With internet access", # Define the internet access subject variable
+               crowding = factor(case_when(is.na(NP)|is.na(BDSP)         ~ NA_character_,
+                                           NP/BDSP <= 1                  ~ "One person per bedroom or less",
+                                           NP/BDSP <= 1.5                ~ "Between 1 and 1.5 person(s) per bedroom",
+                                           NP/BDSP  > 1.5                ~ "More than 1.5 persons per bedroom"),
+                                 levels=c("More than 1.5 persons per bedroom",
+                                          "Between 1 and 1.5 person(s) per bedroom",
+                                          "One person per bedroom or less")),
+               internet = factor(case_when(grepl("^Yes",ACCESS)          ~ "With internet access", # Define the internet access subject variable
                                          grepl("^No", ACCESS)            ~ "Without internet access")))
 
   deep_pocket      <- list()
-  deep_pocket[[1]] <- bulk_count_efa(pp_df, "edu_simp")                                            # Generate the 1st indicator table
-  deep_pocket[[2]] <- bulk_count_efa(pp_df, "healthcov")                                           # Generate the 2nd indicator table
-  deep_pocket[[3]] <- bulk_stat_efa(hh_df, "median", "HINCP") %>% deflate_2019()                   # Generate the 3rd indicator table
-  deep_pocket[[4]] <- bulk_count_efa(hh_df, "rent_burden")                                         # Generate the 4th indicator table
-  deep_pocket[[5]] <- bulk_count_efa(hh_df, "internet")                                            # Generate the 5th indicator table
+  deep_pocket[[1]] <- bulk_count_efa(pp_df, "edu_simp")                                            # Generate educational attainment table
+  deep_pocket[[2]] <- bulk_count_efa(pp_df, "healthcov")                                           # Generate health insurance coverage table
+  deep_pocket[[3]] <- bulk_stat_efa(hh_df, "median", "HINCP") %>% deflate_2019()                   # Generate median household income table; dollar comparisons require inflation adjustment
+  deep_pocket[[4]] <- bulk_count_efa(hh_df, "housing_burden")                                      # Generate housing cost burden table
+  deep_pocket[[5]] <- bulk_count_efa(hh_df, "crowding")                                            # Generate crowding (persons per bedroom) table
+  deep_pocket[[6]] <- bulk_count_efa(hh_df, "FS")                                                  # Generate food stamp/SNAP table
+  deep_pocket[[7]] <- bulk_count_efa(hh_df, "internet")                                            # Generate internet access table
   ## Add additional indicators here as warranted
 
   return(deep_pocket)
@@ -159,11 +172,13 @@ get_pums_efa <- function(dyear, span=1){
 write_pums_efa_multiyear <- function(dyears){
   rs_master <- lapply(dyears, get_pums_efa) %>%
     as.data.frame(do.call(rbind, lapply(., as.vector))) %>% setDT() %>% lapply(rbindlist)          # Combine matching indicator tables across years
-  fwrite(rs_master[[1]], "edu_simp.csv")                                                           # Write each .csv files to working directory
+  fwrite(rs_master[[1]], "edu_simp.csv")                                                           # Write each .csv file to working directory
   fwrite(rs_master[[2]], "healthcov.csv")
   fwrite(rs_master[[3]], "HINCP.csv")
-  fwrite(rs_master[[4]], "rent_burden.csv")
-  fwrite(rs_master[[5]], "internet.csv")
+  fwrite(rs_master[[4]], "housing_burden.csv")
+  fwrite(rs_master[[5]], "crowding.csv")
+  fwrite(rs_master[[6]], "FS.csv")
+  fwrite(rs_master[[7]], "internet.csv")
   return(rs_master)
 }
 
