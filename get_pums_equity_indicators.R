@@ -185,15 +185,14 @@ get_pums_efa <- function(dyear, span=1){
 write_pums_efa_multiyear <- function(dyears){
   rs_master <- lapply(dyears, get_pums_efa) %>%
     as.data.frame(do.call(rbind, lapply(., as.vector))) %>% setDT() %>% lapply(rbindlist)          # Combine matching indicator tables across years
-  mapply (fwrite, rs_master, paste(names(rs_master), ".csv", sep=""))                              # Write each .csv file to working directory
   return(rs_master)                                                                                # Also return the object
 }
 
 # Example 1: Generate indicators for a single year ------------------
-# equity_2019_5 <- get_pums_efa(2019, 5)                             # Returns all tables as separate items in a list
-# fwrite(equity_2019_5[[1]], "edu_simp.csv")                         # Separate command to save the first subject table as .csv file
+# equity_2019_5 <- get_pums_efa(2019, 5)                                                           # Returns all tables as separate items in a list
+# mapply(fwrite, equity_2019_5, paste(names(equity_2019_5), ".csv", sep=""))                       # Write the tables to .csv
 
 # Example 2 Generate annual indicators for 10 years -----------------
-# equity_trend_2010_19 <- write_pums_efa_multiyear(2010:2019)        # Automatically writes all indicators to .csv
-                                                                     # --as well as returning all tables (as separate items in a list)
+# equity_trend_2010_19 <- write_pums_efa_multiyear(2010:2019)                                      # Returns all tables as separate items in a list
+# mapply(fwrite, equity_trend_2010_19, paste(names(equity_trend_2010_19), ".csv", sep=""))         # Write the tables to .csv                                                                                                   # --as well as returning all tables (as separate items in a list)
 
