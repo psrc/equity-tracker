@@ -143,9 +143,9 @@ get_pums_efa <- function(dyear, span=1){
   hh_df %<>% add_efa_vars() %>% mutate(
                poverty=Income_cat,                                                                 # Identical to Income_cat
                housing_burden=factor(case_when(                                                    # Define the rent burden subject variable
-                                     GRPIP < 30 | OCPIP < 30 | SMOCP==0 | (is.na(GRNTP) & is.na(SMOCP)) ~ "Less than 30 percent",
-                                     between(GRPIP,30,50) | between(OCPIP,30,50) ~ "Between 30 and 50 percent",
-                                     GRPIP > 50 | OCPIP > 50 | is.na(HINCP) ~ "Greater than 50 percent")),
+                                     GRPIP<30|OCPIP<30|SMOCP==0|(is.na(GRNTP) & is.na(SMOCP)) ~ "Less than 30 percent",
+                                     between(GRPIP,30,50)|between(OCPIP,30,50) ~ "Between 30 and 50 percent",
+                                     GRPIP>50|OCPIP>50|is.na(HINCP)      ~ "Greater than 50 percent"),
                                 levels=c("Greater than 50 percent",
                                          "Between 30 and 50 percent",
                                          "Less than 30 percent")),
@@ -159,8 +159,8 @@ get_pums_efa <- function(dyear, span=1){
                internet = factor(case_when(grepl("^Yes", ACCESSINET)     ~ "With internet access", # Define the internet access subject variable
                                          grepl("^No", ACCESSINET)        ~ "Without internet access")))
 
-  deep_pocket      <- vector(mode='list', length=9)
-  names(deep_pocket) <- c("educational_attainment",
+  deep_pocket      <- vector(mode='list', length=9)                                                # Give list a length so empty elements can be named
+  names(deep_pocket) <- c("educational_attainment",                                                # Name the elements; match the bulk_stat functions below
                           "healthcare_coverage",
                           "median_household_income",
                           "household_poverty",
