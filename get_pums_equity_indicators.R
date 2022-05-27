@@ -32,6 +32,7 @@ hvars <- c("ACCESSINET",             # Internet access
            "OCPIP",                  # Homeowner costs as percentage of income
            "POVPIP",                 # Income-to-poverty ratio
            "PRACE",                  # Householder race (PSRC categories)
+           "SMOCP",                  # Homeowner costs
 #           "R18",                    # Presence of persons under 18 years in household
 #           "R65",                    # Presence of persons over 65 years in household
            "TEN")                    # Housing tenure
@@ -141,15 +142,14 @@ get_pums_efa <- function(dyear, span=1){
   if("ACCESS" %in% colnames(hh_df)){hh_df %<>% rename("ACCESSINET"="ACCESS")}                      # Variable changed names w/ 2020 data
   hh_df %<>% add_efa_vars() %>% mutate(
                poverty=Income_cat,                                                                 # Identical to Income_cat
-               housing_burden=factor(case_when((HINCP<=0)                ~ "No income",            # Define the rent burden subject variable
-                                     GRPIP < 30 | OCPIP < 30             ~ "Less than 30 percent",
+               housing_burden=factor(case_when(                                                    # Define the rent burden subject variable
+                                     GRPIP < 30 | OCPIP < 30 | SMOCP==0 | (is.na(GRNTP) & is.na(SMOCP)) ~ "Less than 30 percent",
                                      between(GRPIP,30,50) | between(OCPIP,30,50) ~ "Between 30 and 50 percent",
-                                     GRPIP > 50 | OCPIP > 50             ~ "Greater than 50 percent"),
-                                levels=c("No income",                                              # -- the `levels` argument allows ordering of results
-                                         "Greater than 50 percent",
+                                     GRPIP > 50 | OCPIP > 50 | is.na(HINCP) ~ "Greater than 50 percent")),
+                                levels=c("Greater than 50 percent",
                                          "Between 30 and 50 percent",
                                          "Less than 30 percent")),
-               crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_,
+               crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_,          # Define the crowding subject variable
                                            NP/BDSP <= 1                  ~ "One person per bedroom or less",
                                            NP/BDSP <= 1.5                ~ "Between 1 and 1.5 person(s) per bedroom",
                                            NP/BDSP  > 1.5                ~ "More than 1.5 persons per bedroom"),
