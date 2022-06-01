@@ -107,7 +107,7 @@ deflate_2019 <- function(df){
   colnames(lookup) <-c("DATA_YEAR","PCE_i")
   dt <- setDT(df)
   setkey(dt, "DATA_YEAR")
-  dt %<>% .[lookup, grep("sum|median|mean", colnames(.)):=lapply(.SD, function(x) x * PCE_i),      # Applies the appropriate multiplier
+  dt %<>% .[lookup, grep("sum|median|mean", colnames(.)):=lapply(.SD, function(x) round(x * PCE_i)), # Applies the appropriate multiplier
             .SDcols=grep("sum|median|mean", colnames(.)), on=key(.)] %>%                           # --to any sum/median/mean & their MOE
     setDF()
   return(dt)
