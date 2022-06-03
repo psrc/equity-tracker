@@ -156,7 +156,7 @@ pums_efa_singleyear <- function(dyear, span=1){
                                  levels=c("More than 1.5 persons per bedroom",
                                           "Between 1 and 1.5 person(s) per bedroom",
                                           "One person per bedroom or less")),
-               internet = factor(case_when(grepl("^Yes", ACCESSINET)     ~ "With internet access", # Define the internet access subject variable
+               internet = factor(case_when(grepl("^Yes", ACCESSINET)     ~ "With internet access", # Define the internet access subject variable; began in 2013
                                          grepl("^No", ACCESSINET)        ~ "Without internet access")))
 
   deep_pocket      <- vector(mode='list', length=9)                                                # Give list a length so empty elements can be named
@@ -198,7 +198,7 @@ write_pums_efa <- function(efa_rs_list){
 # equity_2019_5 <- get_pums_efa(2019, 5)                                                           # Returns all tables as separate items in a list
 # write_pums_efa(equity_2019_5)                                                                    # Write the tables to .csv
 
-# Example 2 Generate annual indicators for 10 years -----------------
-# equity_trend_2010_19 <- write_pums_efa_multiyear(2010:2019)                                      # Returns all tables as separate items in a list
-# write_pums_efa(equity_trend_2010_19)                                                             # Write the tables to .csv                                                                                                   # --as well as returning all tables (as separate items in a list)
+# Example 2: Generate annual indicators for 5 years -----------------
+# equity_trend_2015_19 <- write_pums_efa_multiyear(2015:2019)                                      # Returns all tables as separate items in a list
+# write_pums_efa(equity_trend_2015_19)                                                             # Write the tables to .csv                                                                                                   # --as well as returning all tables (as separate items in a list)
 
