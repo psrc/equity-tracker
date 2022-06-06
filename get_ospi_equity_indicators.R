@@ -53,9 +53,12 @@ get_k_readiness <- function(path){
                   County=factor(County, levels=c(unlist(counties),"Region")))]
 
   rs <- list()
-  rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","County","StudentGroup")] # County
-  rs[[2]] <- combined[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","StudentGroup")]          # Region
+  rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","County","StudentGroup")] # EFA - County
+  rs[[2]] <- combined[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","StudentGroup")]          # EFA - Region
   rs[[2]][, County:="Region"]
+  rs[[3]] <- reference[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","County","StudentGroup")] # All students - County
+  rs[[4]] <- reference[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","StudentGroup")]          # All students - Region
+  rs[[4]][, County:="Region"]
   rs %<>% rbindlist(use.names=TRUE)
   rs[, KReadiness:=as.double(Numerator)/Denominator] %>% .[, c("Numerator", "Denominator"):=NULL] %>%                       # Share as total ready dimensions across students x dimensions
     setorder(schoolyear, County, StudentGroup)
