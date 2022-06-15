@@ -2,16 +2,17 @@ library(magrittr)
 library(dplyr)
 library(stringr)
 library(data.table)
+library(RSocrata)
 
 # Setup: List necessary variables and lookups -----------------------
 
 counties        <- c("King","Kitsap","Pierce","Snohomish")
 reported_groups <- c("Non-Low Income", "Non-English Language Learners", "Students without Disabilities", "White")
 target_groups   <- c("Low Income", "English Language Learners", "Students with Disabilities", "POC")
-levels_order    <- rbind(target_groups, reported_groups) %>% recode("White"="Non-POC")
-swap_label      <- data.frame(target_groups=target_groups, StudentGroup=recode(reported_groups,"White"="Non-POC")) %>% setDT()
-keepcols        <- c("schoolyear", "ESDName", "DistrictName", "OrganizationLevel",
-                     "StudentGroup", "Domain", "MeasureValue", "Numerator", "Denominator")
+levels_order    <- rbind(target_groups, reported_groups) %>% unlist() %>% c("All Students") %>% recode("White"="Non-POC")
+swap_label      <- data.frame(target_groups=target_groups, studentgroup=recode(reported_groups,"White"="Non-POC")) %>% setDT()
+keepcols        <- c("schoolyear", "esdname", "districtname", "OrganizationLevel",
+                     "studentgroup", "Domain", "MeasureValue", "numerator", "denominator")
 
 # Create district-to-county regex lookup
 county_lookup <- vector(mode='list', length=4)
@@ -28,44 +29,64 @@ county_lookup[[4]] <- paste("Arlington","Darrington", "Edmonds", "Everett", "Gra
                             "Index", "Lake Stevens", "Lakewood","Marysville", "Monroe",
                             "Mukilteo", "Snohomish", "Stanwood", "Sultan", sep="|")
 
+read.wa.Socrata <- function(URL){
+  x <- read.socrata(url=URL, app_token=Sys.getenv("DATAWAGOV_APPTOKEN"), email=Sys.getenv("MYEMAIL"), password=Sys.getenv("DATAWAGOV_CRED"))
+  return(x)
+}
+
 # Main function -----------------------------------------------------
 
-get_k_readiness <- function(path){
-  reported <- fread(path, select=keepcols)
-  reported %<>% .[grepl("114$|121$|189$", ESDName) & OrganizationLevel=="District" &                                        # Filter geography & level
-                  StudentGroup %in% c("All Students", unlist(reported_groups)) & MeasureValue=="Kindergarten and up" &      # Limit to kindergarten-ready only
-                  Domain!="NumberofDomains" & !is.na(Denominator)]
+get_k_readiness <- function(URL){
+  reported <- list()
+  reported[[1]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Northwest%20Educational%20Service%20District%20189"))
+  reported[[2]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Puget%20Sound%20Educational%20Service%20District%20121"))
+  reported[[3]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Olympic%20Educational%20Service%20District%20114"))
+  reported %<>% rbindlist() %>% .[, c("numerator","denominator"):=lapply(.SD, as.integer), .SDcols=c("numerator","denominator")] %>%
+    .[, County:=fcase(grepl("121$", esdname) & grepl(county_lookup$King, districtname),     "King",
+                      grepl("114$", esdname) & grepl(county_lookup$Kitsap, districtname),   "Kitsap",
+                      grepl("121$", esdname) & grepl(county_lookup$Pierce, districtname),   "Pierce",
+                      grepl("189$", esdname) & grepl(county_lookup$Snohomish, districtname),"Snohomish")] %>%                 # Create County field
+    .[!is.na(County)] %>% .[measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"] %>%                         # Filter to specific 6-for-6 dimensions indicator
+    .[, c("esdname", "organizationlevel"):=NULL]
+  reported[studentgroup=="White", studentgroup:="Non-POC"]
 
-  reported[, County:=fcase(grepl("121$", ESDName) & grepl(county_lookup$King, DistrictName),     "King",
-                           grepl("114$", ESDName) & grepl(county_lookup$Kitsap, DistrictName),   "Kitsap",
-                           grepl("121$", ESDName) & grepl(county_lookup$Pierce, DistrictName),   "Pierce",
-                           grepl("189$", ESDName) & grepl(county_lookup$Snohomish, DistrictName),"Snohomish")]              # Create County field
-  reported %<>% .[!is.na(County)] %>% .[, c("ESDName", "OrganizationLevel","MeasureValue"):=NULL]
-  reported[StudentGroup=="White", StudentGroup:="Non-POC"]
-
-  reference <- reported[StudentGroup=="All Students"]                                                                       # Totals into separate table
-  reported %<>% .[StudentGroup!="All Students"]
-  combined <- copy(reported) %>% .[swap_label, StudentGroup:=target_groups, on=.(StudentGroup)] %>%
-               .[reference, `:=`(Numerator=as.double(i.Numerator-Numerator),                                                # EFA as remainder to dominant groups
-                                 Denominator=as.double(i.Denominator-Denominator)), on=.(DistrictName, Domain)] %>%
-               .[Denominator!=0] %>% rbind(reported)                                                                        # Combine w/ non-EFA (for comparison)
-  combined[, `:=`(StudentGroup=factor(StudentGroup, levels=levels_order),                                                   # Factors for custom ordering
-                  County=factor(County, levels=c(unlist(counties),"Region")))]
+  reference <- reported[studentgroup=="All Students"] %>% .[!is.na(numerator)]                                              # Totals into separate table
+  reported %<>% .[studentgroup %in% swap_label$studentgroup]
+  combined <- copy(reported) %>% .[swap_label, studentgroup:=target_groups, on=.(studentgroup)] %>%
+    .[reference, `:=`(numerator=as.double(i.numerator-numerator),                                                # EFA as remainder to dominant groups
+                      denominator=as.double(i.denominator-denominator)), on=.(districtname)] %>%
+    rbind(reported) %>% .[denominator!=0 & !is.na(numerator)] %>%                                                           # Combine w/ non-EFA (for comparison)
+    .[, `:=`(studentgroup=factor(studentgroup, levels=levels_order),                                                        # Factors for custom ordering
+             County=factor(County, levels=c(unlist(counties),"Region")))]
 
   rs <- list()
-  rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","County","StudentGroup")] # EFA - County
-  rs[[2]] <- combined[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","StudentGroup")]          # EFA - Region
+  rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","studentgroup")] # EFA - County
+  rs[[2]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","studentgroup")]          # EFA - Region
   rs[[2]][, County:="Region"]
-  rs[[3]] <- reference[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","County","StudentGroup")] # All students - County
-  rs[[4]] <- reference[, lapply(.SD, sum), .SDcols=c("Numerator","Denominator"), by=c("schoolyear","StudentGroup")]          # All students - Region
+  rs[[3]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","studentgroup")] # All students - County
+  rs[[4]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","studentgroup")]          # All students - Region
   rs[[4]][, County:="Region"]
   rs %<>% rbindlist(use.names=TRUE)
-  rs[, KReadiness:=as.double(Numerator)/Denominator] %>% .[, c("Numerator", "Denominator"):=NULL] %>%                       # Share as total ready dimensions across students x dimensions
-    setorder(schoolyear, County, StudentGroup)
+  rs[, KReadiness:=as.double(numerator)/denominator] %>% .[, c("numerator", "denominator"):=NULL] %>%                       # Share as ratio of reported district totals
+    setorder(schoolyear, County, studentgroup)
   return(rs)
 }
 
 # Example -----------------------------------------------------------
-# path <- "data/Report_Card_WaKids_2021-22_School_Year.csv"                                                                 # Figure out OSPI API later
-# x <- get_k_readiness(path)
+## Single year
+# url <- "https://data.wa.gov/resource/rzgf-vi75.json"
+# x <- get_k_readiness(url)
 
+## All years
+# urlvector <- c("https://data.wa.gov/resource/rzgf-vi75.json",
+#                "https://data.wa.gov/resource/26rj-f9wn.json",
+#                "https://data.wa.gov/resource/p4sv-js2m.json",
+#                "https://data.wa.gov/resource/huwq-t84x.json",
+#                "https://data.wa.gov/resource/2x4x-bzqs.json",
+#                "https://data.wa.gov/resource/8ewp-xtgm.json",
+#                "https://data.wa.gov/resource/yaag-7vv4.json",
+#                "https://data.wa.gov/resource/rjgh-459t.json",
+#                "https://data.wa.gov/resource/sedr-qag9.json",
+#                "https://data.wa.gov/resource/59cw-kpf6.json")
+# allyrs <- list()
+# allyrs <- lapply(get_k_readiness) %>% rbindlist()
