@@ -3,6 +3,8 @@ library(psrccensus)
 library(dplyr)
 library(srvyr)
 library(data.table)
+library(DBI)
+library(odbc)
 
 # 1. Setup: List necessary direct-PUMS variables --------------------
 
@@ -73,25 +75,28 @@ add_efa_vars <- function(so){
 #  -- at both county and regional levels.
 
 # Specific to counts--subject variable is a categorical variable (i.e. group_var)
-bulk_count_efa <- function(so, anal_var){
-  reglist <- efa_vars %>% lapply(FUN=function(x) c(x, anal_var))
-  ctylist <- efa_vars %>% lapply(FUN=function(x) c(x, "COUNTY", anal_var))
+bulk_count_efa <- function(so, analysis_var){
+  reglist <- efa_vars %>% lapply(FUN=function(x) c(x, analysis_var))
+  ctylist <- efa_vars %>% lapply(FUN=function(x) c(x, "COUNTY", analysis_var))
   rs      <- list()
   rs[[1]] <- pums_bulk_stat(so, "count", group_var_list=reglist, incl_na=FALSE)                    # incl_na=FALSE option for accurate within-subgroup shares
   rs[[2]] <- pums_bulk_stat(so, "count", group_var_list=ctylist, incl_na=FALSE) %>%
                 .[COUNTY!="Region"]                                                                # Remove duplicate total level
-  rs %<>% rbindlist() %>% arrange(DATA_YEAR, var_name, COUNTY)                                     # Combine county & regional results
+  rs %<>% .[, indicator_type:=analysis_var] %>% rbindlist() %>% arrange(DATA_YEAR, var_name, COUNTY) # Combine county & regional results
+  setnames(rs, colnames, tolower(colnames))
+  setnames(rs, analysis_var, "indicator_attribute")
   return(rs)
 }
 
 # For sums, medians or means--statistic is summarizing the subject variable (i.e. stat_var)
-bulk_stat_efa <- function(so, stat_type, anal_var){
+bulk_stat_efa <- function(so, stat_type, analysis_var){
   ctylist  <- efa_vars %>% lapply(FUN=function(x) c(x, "COUNTY"))
   rs       <- list()
-  rs[[1]]  <- pums_bulk_stat(so, stat_type, anal_var, efa_vars, incl_na=FALSE)                     # incl_na=FALSE option for accurate within-subgroup shares
-  rs[[2]]  <- pums_bulk_stat(so, stat_type, anal_var, ctylist, incl_na=FALSE) %>%
+  rs[[1]]  <- pums_bulk_stat(so, stat_type, analysis_var, efa_vars, incl_na=FALSE)                 # incl_na=FALSE option for accurate within-subgroup shares
+  rs[[2]]  <- pums_bulk_stat(so, stat_type, analysis_var, ctylist, incl_na=FALSE) %>%
                  .[COUNTY!="Region"]                                                               # Remove duplicate total level
-  rs %<>% rbindlist() %>% arrange(DATA_YEAR, var_name, COUNTY)                                     # Combine county & regional results
+  rs %<>% .[, indicator_type:=analysis_var] %>% rbindlist() %>%                                    # Combine county & regional results
+    arrange(DATA_YEAR, var_name, COUNTY) %>% .[, indicator_attribute:="N/A"]
   return(rs)
 }
 
@@ -113,12 +118,32 @@ deflate_2019 <- function(df){
   return(dt)
 }
 
-# add_moe_length <- function(rs){    # This kind of helper should be in the visualization side
-#   rs %<>% mutate(                  #   -- there's no additional data
-#             share = round(share, 3),
-#             share_moe = round(share_moe,3),
-#             moe_length = 2 * share_moe)
-# }
+format_for_elmer <- function(x,y){
+  if(TRUE %in% grepl("median",colnames(x))){                                                       # Either median or share (count is dropped)
+    x[,`:=`(fact_type="median")]
+  }else if(TRUE %in% grepl("count",colnames(x))){
+    x[,fact_type:="share"]
+    x[, grep("^count$|^count_moe$", colnames(x)):=NULL]
+  }
+  setnames(x, c("var_name","var_value"), c("focus_type","focus_attribute"))
+  setnames(x, grep("share^|median^", colnames(x)), c("fact_value"))
+  setnames(x, grep("_moe^", colnames(x)), c("margin_of_error"))
+  setnames(x, colnames(x), tolower(colnames(x)))
+  x[, `:=`(indicator_type=y, span=5)]
+  return(x)
+}
+
+elmer_connect <-function(){dbConnect(odbc::odbc(),
+                                     driver = "ODBC Driver 17 for SQL Server",
+                                     server = "AWS-PROD-SQL\\Sockeye",
+                                     database = "Elmer",
+                                     trusted_connection = "yes",
+                                     port = 1433)}
+
+run_query <- function(conn, send_sql){
+  rs <- dbSendQuery(conn, SQL(send_sql))
+  dbClearResult(rs)
+}
 
 # 4. Main functions -------------------------------------------------
 
@@ -159,16 +184,7 @@ pums_efa_singleyear <- function(dyear, span=1){
                internet = factor(case_when(grepl("^Yes", ACCESSINET)     ~ "With internet access", # Define the internet access subject variable; began in 2013
                                          grepl("^No", ACCESSINET)        ~ "Without internet access")))
 
-  deep_pocket      <- vector(mode='list', length=9)                                                # Give list a length so empty elements can be named
-  names(deep_pocket) <- c("educational_attainment",                                                # Name the elements; match the bulk_stat functions below
-                          "healthcare_coverage",
-                          "median_household_income",
-                          "household_poverty",
-                          "housing_cost_burden",
-                          "median_gross_rent",
-                          "crowding",
-                          "SNAP",
-                          "internet_access")
+  deep_pocket      <- list()
   deep_pocket[[1]] <- bulk_count_efa(pp_df, "edu_simp")                                            # Generate educational attainment table
   deep_pocket[[2]] <- bulk_count_efa(pp_df, "healthcov")                                           # Generate health insurance coverage table
   deep_pocket[[3]] <- bulk_stat_efa(hh_df, "median", "HINCP") %>% deflate_2019()                   # Generate median household income table; dollar comparisons require inflation adjustment
@@ -178,6 +194,15 @@ pums_efa_singleyear <- function(dyear, span=1){
   deep_pocket[[7]] <- bulk_count_efa(hh_df, "crowding")                                            # Generate crowding (persons per bedroom) table
   deep_pocket[[8]] <- bulk_count_efa(hh_df, "FS")                                                  # Generate food stamp/SNAP table
   deep_pocket[[9]] <- bulk_count_efa(hh_df, "internet")                                            # Generate internet access table
+  names(deep_pocket) <- c("educational_attainment",                                                # Name the elements; match the bulk_stat functions below
+                          "healthcare_coverage",
+                          "median_household_income",
+                          "household_poverty",
+                          "housing_cost_burden",
+                          "median_gross_rent",
+                          "crowding",
+                          "SNAP",
+                          "internet_access")
   return(deep_pocket)
 }
 
@@ -194,11 +219,37 @@ write_pums_efa <- function(efa_rs_list){
   return(NULL)
 }
 
-# Example 1: Generate indicators for a single year ------------------
+# Example 1: Generate indicators for a single year/span -------------
 # equity_2019_5 <- get_pums_efa(2019, 5)                                                           # Returns all tables as separate items in a list
 # write_pums_efa(equity_2019_5)                                                                    # Write the tables to .csv
 
 # Example 2: Generate annual indicators for 5 years -----------------
 # equity_trend_2015_19 <- write_pums_efa_multiyear(2015:2019)                                      # Returns all tables as separate items in a list
-# write_pums_efa(equity_trend_2015_19)                                                             # Write the tables to .csv                                                                                                   # --as well as returning all tables (as separate items in a list)
+# write_pums_efa(equity_trend_2015_19)                                                             # Write the tables to .csv
 
+# Example 3: ETL to update Elmer with your result -------------------
+# equity_2019_5 <- get_pums_efa(2019, 5)                                                           # Example above
+# equity_2019_5 %<>% mapply(format_for_elmer, ., as.character(names(.)))                           # Rename fields/reshape to fit Elmer.equity schema
+# equity_2019_5 %<>% rbindlist(use.names=TRUE)                                                     # Combine to one data.table
+# sockeye_connection <- elmer_connect()
+# table_id <- Id(schema="stg", table="equity_pums")
+# dbWriteTable(sockeye_connection, table_id, equity_2019_5, overwrite = TRUE)                      # Write staging table
+# merge_sql <- paste("MERGE INTO equity.indicator_facts WITH (HOLDLOCK) AS target",                # This SQL updates existing values and/or inserts any new ones
+#                    "USING stg.equity_pums AS source",
+#                    "ON target.data_year=source.data_year AND ",
+#                    "target.span=source.span AND ",
+#                    "target.county=source.county AND",
+#                    "target.focus_type=source.focus_type AND",
+#                    "target.indicator_type=source.indicator_type AND",
+#                    "target.indicator_attribute=source.indicator_attribute",
+#                    "WHEN MATCHED THEN UPDATE SET target.fact_value=source.fact_value,",
+#                    "target.margin_of_error=source.margin_of_error",
+#                    "WHEN NOT MATCHED BY TARGET THEN INSERT ",
+#                    "(data_year, span, county, focus_type, focus_attribute, indicator_type,",
+#                    "indicator_attribute, fact_type, fact_value, margin_of_error)",
+#                    "VALUES source.data_year, source.span, source.county, source.focus_type,",
+#                    "source.focus_attribute, source.indicator_type, source.indicator_attribute,",
+#                    "source.fact_type, source.fact_value, source.margin_of_error;")
+# run_query(sockeye_connection, merge_sql)                                                         # Execute the query
+# run_query(sockeye_connection, "DROP TABLE stg.equity_pums")                                      # Clean up
+# dbDisconnect(sockeye_connection)
