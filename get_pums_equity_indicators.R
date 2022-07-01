@@ -16,8 +16,8 @@ pvars <- c("AGEP",                   # used as condition >25yo
            "POVPIP",                 # Income-to-poverty ratio (all household members share it)
            "PRIVCOV",                # Private health insurance coverage
            "PUBCOV",                 # Public health insurance coverage
-#           "R18",                    # Presence of persons under 18 years in household
-#           "R65",                    # Presence of persons over 65 years in household
+           "R18",                    # Presence of persons under 18 years in household
+           "R65",                    # Presence of persons over 65 years in household
            "SCHL")                   # Educational attainment
 
 # PUMS variables desired at household level
@@ -35,13 +35,13 @@ hvars <- c("ACCESSINET",             # Internet access
            "POVPIP",                 # Income-to-poverty ratio
            "PRACE",                  # Householder race (PSRC categories)
            "SMOCP",                  # Homeowner costs
-#           "R18",                    # Presence of persons under 18 years in household
-#           "R65",                    # Presence of persons over 65 years in household
+           "R18",                    # Presence of persons under 18 years in household
+           "R65",                    # Presence of persons over 65 years in household
            "TEN")                    # Housing tenure
 
 # 2. Setup: List and define Equity Focus Area (EFA) variables -------
 
-efa_vars <- c("POC_cat", "Income_cat", "Disability_cat", "LEP_cat") # "Youth_cat", "Older_cat",
+efa_vars <- c("POC_cat", "Income_cat", "Disability_cat", "LEP_cat", "Youth_cat", "Older_cat")
 
 # Create the EFA variables from available PUMS variables
 add_efa_vars <- function(so){
@@ -58,12 +58,10 @@ add_efa_vars <- function(so){
                        factor(case_when(grepl("^With ", HDIS)    ~ "Disability",
                                  grepl("^Without ", HDIS)        ~ "No disability"))
                    },
-    # Youth_cat   = factor(case_when(grepl("^1 or more", R18)      ~ "Household with youth",
-    #                         !is.na(R18)                          ~ "Household without youth"),
-    #                      levels=c("Youth","Non-youth")),
-    # Older_cat   = factor(case_when(grepl("^1 or|^2 or", R65)     ~ "Household with older adult",
-    #                         !is.na(R65)                          ~ "Household without older adult"),
-    #                      levels=c("Older adult","Non-older adult")),
+    Youth_cat   = factor(case_when(grepl("^No ", R18)            ~ "Household without youth",
+                            !is.na(R18)                          ~ "Household with youth")),
+    Older_cat   = factor(case_when(grepl("^No ", R65)            ~ "Household without older adult",
+                            !is.na(R65)                          ~ "Household with older adult")),
     LEP_cat     = factor(case_when(grepl("^No one", LNGI)        ~ "Limited English proficiency",
                             !is.na(LNGI)                         ~ "English proficient")))
   return(so_plus)
@@ -82,21 +80,22 @@ bulk_count_efa <- function(so, analysis_var){
   rs[[1]] <- pums_bulk_stat(so, "count", group_var_list=reglist, incl_na=FALSE)                    # incl_na=FALSE option for accurate within-subgroup shares
   rs[[2]] <- pums_bulk_stat(so, "count", group_var_list=ctylist, incl_na=FALSE) %>%
                 .[COUNTY!="Region"]                                                                # Remove duplicate total level
-  rs %<>% .[, indicator_type:=analysis_var] %>% rbindlist() %>% arrange(DATA_YEAR, var_name, COUNTY) # Combine county & regional results
-  setnames(rs, colnames, tolower(colnames))
-  setnames(rs, analysis_var, "indicator_attribute")
+  rs %<>% rbindlist() %>% .[, indicator_type:=analysis_var] %>%                                    # Combine county & regional results
+    setnames(analysis_var, "indicator_attribute") %>%
+    arrange(DATA_YEAR, var_name, COUNTY)
   return(rs)
 }
 
 # For sums, medians or means--statistic is summarizing the subject variable (i.e. stat_var)
 bulk_stat_efa <- function(so, stat_type, analysis_var){
+  reglist  <- efa_vars %>% lapply(FUN=function(x) c(x, analysis_var))
   ctylist  <- efa_vars %>% lapply(FUN=function(x) c(x, "COUNTY"))
   rs       <- list()
   rs[[1]]  <- pums_bulk_stat(so, stat_type, analysis_var, efa_vars, incl_na=FALSE)                 # incl_na=FALSE option for accurate within-subgroup shares
   rs[[2]]  <- pums_bulk_stat(so, stat_type, analysis_var, ctylist, incl_na=FALSE) %>%
                  .[COUNTY!="Region"]                                                               # Remove duplicate total level
-  rs %<>% .[, indicator_type:=analysis_var] %>% rbindlist() %>%                                    # Combine county & regional results
-    arrange(DATA_YEAR, var_name, COUNTY) %>% .[, indicator_attribute:="N/A"]
+  rs %<>% rbindlist() %>% .[, `:=`(indicator_type=analysis_var, indicator_attribute="N/A")] %>%   # Combine county & regional results
+    arrange(DATA_YEAR, var_name, COUNTY)
   return(rs)
 }
 
@@ -109,9 +108,9 @@ deflate_2019 <- function(df){
                          1.148046414, 1.119710706, 1.09922, 1.084535391, 1.068375985,
                          1.066003336, 1.055440335, 1.036501306, 1.01480825, 1,
                          0.988285008, 0.951458496 ))
-  colnames(lookup) <-c("DATA_YEAR","PCE_i")
+  colnames(lookup) <-c("data_year","PCE_i")
   dt <- setDT(df)
-  setkey(dt, "DATA_YEAR")
+  setkey(dt, "data_year")
   dt %<>% .[lookup, grep("sum|median|mean", colnames(.)):=lapply(.SD, function(x) round(x * PCE_i)), # Applies the appropriate multiplier
             .SDcols=grep("sum|median|mean", colnames(.)), on=key(.)] %>%                           # --to any sum/median/mean & their MOE
     setDF()
@@ -119,18 +118,19 @@ deflate_2019 <- function(df){
 }
 
 format_for_elmer <- function(x,y){
-  if(TRUE %in% grepl("median",colnames(x))){                                                       # Either median or share (count is dropped)
-    x[,`:=`(fact_type="median")]
-  }else if(TRUE %in% grepl("count",colnames(x))){
-    x[,fact_type:="share"]
-    x[, grep("^count$|^count_moe$", colnames(x)):=NULL]
+  dt <- setDT(x)
+  if(TRUE %in% grepl("median",colnames(dt))){                                                       # Either median or share (count is dropped)
+    dt[,`:=`(fact_type="median")]
+  }else if(TRUE %in% grepl("count",colnames(dt))){
+    dt[, fact_type:="share"]
+    dt[, grep("^count$|^count_moe$", colnames(dt)):=NULL]
   }
-  setnames(x, c("var_name","var_value"), c("focus_type","focus_attribute"))
-  setnames(x, grep("share^|median^", colnames(x)), c("fact_value"))
-  setnames(x, grep("_moe^", colnames(x)), c("margin_of_error"))
-  setnames(x, colnames(x), tolower(colnames(x)))
-  x[, `:=`(indicator_type=y, span=5)]
-  return(x)
+  setnames(dt, c("var_name","var_value"), c("focus_type","focus_attribute"))
+  setnames(dt, grep("share$|median$", colnames(dt)), c("fact_value"))
+  setnames(dt, grep("_moe$", colnames(dt)), c("margin_of_error"))
+  setnames(dt, colnames(dt), tolower(colnames(dt)))
+  dt[, `:=`(indicator_type=y, span=5)]
+  return(dt)
 }
 
 elmer_connect <-function(){dbConnect(odbc::odbc(),
@@ -220,36 +220,37 @@ write_pums_efa <- function(efa_rs_list){
 }
 
 # Example 1: Generate indicators for a single year/span -------------
-# equity_2019_5 <- get_pums_efa(2019, 5)                                                           # Returns all tables as separate items in a list
+# equity_2019_5 <- pums_efa_singleyear(2019, 5)                                                    # Returns all tables as separate items in a list
 # write_pums_efa(equity_2019_5)                                                                    # Write the tables to .csv
 
 # Example 2: Generate annual indicators for 5 years -----------------
-# equity_trend_2015_19 <- write_pums_efa_multiyear(2015:2019)                                      # Returns all tables as separate items in a list
+# equity_trend_2015_19 <- pums_efa_multiyear(2015:2019)                                            # Returns all tables as separate items in a list
 # write_pums_efa(equity_trend_2015_19)                                                             # Write the tables to .csv
 
 # Example 3: ETL to update Elmer with your result -------------------
-# equity_2019_5 <- get_pums_efa(2019, 5)                                                           # Example above
-# equity_2019_5 %<>% mapply(format_for_elmer, ., as.character(names(.)))                           # Rename fields/reshape to fit Elmer.equity schema
-# equity_2019_5 %<>% rbindlist(use.names=TRUE)                                                     # Combine to one data.table
-# sockeye_connection <- elmer_connect()
-# table_id <- Id(schema="stg", table="equity_pums")
-# dbWriteTable(sockeye_connection, table_id, equity_2019_5, overwrite = TRUE)                      # Write staging table
-# merge_sql <- paste("MERGE INTO equity.indicator_facts WITH (HOLDLOCK) AS target",                # This SQL updates existing values and/or inserts any new ones
-#                    "USING stg.equity_pums AS source",
-#                    "ON target.data_year=source.data_year AND ",
-#                    "target.span=source.span AND ",
-#                    "target.county=source.county AND",
-#                    "target.focus_type=source.focus_type AND",
-#                    "target.indicator_type=source.indicator_type AND",
-#                    "target.indicator_attribute=source.indicator_attribute",
-#                    "WHEN MATCHED THEN UPDATE SET target.fact_value=source.fact_value,",
-#                    "target.margin_of_error=source.margin_of_error",
-#                    "WHEN NOT MATCHED BY TARGET THEN INSERT ",
-#                    "(data_year, span, county, focus_type, focus_attribute, indicator_type,",
-#                    "indicator_attribute, fact_type, fact_value, margin_of_error)",
-#                    "VALUES source.data_year, source.span, source.county, source.focus_type,",
-#                    "source.focus_attribute, source.indicator_type, source.indicator_attribute,",
-#                    "source.fact_type, source.fact_value, source.margin_of_error;")
-# run_query(sockeye_connection, merge_sql)                                                         # Execute the query
-# run_query(sockeye_connection, "DROP TABLE stg.equity_pums")                                      # Clean up
-# dbDisconnect(sockeye_connection)
+equity_2019_5 <- pums_efa_singleyear(2019, 5)                                                      # Example above
+equity_2019_5 %<>% mapply(format_for_elmer, ., as.character(names(.)), USE.NAMES=TRUE, SIMPLIFY=FALSE) # Rename fields/reshape to fit Elmer.equity schema
+equity_2019_5 %<>% rbindlist(use.names=TRUE)                                                       # Combine to one data.table
+sockeye_connection <- elmer_connect()
+table_id <- Id(schema="stg", table="equity_pums")
+dbWriteTable(sockeye_connection, table_id, equity_2019_5, overwrite=TRUE)
+merge_sql <- paste("MERGE INTO equity.indicator_facts WITH (HOLDLOCK) AS target",                  # This SQL updates existing values and/or inserts any new ones
+                   "USING stg.equity_pums AS source",
+                   "ON target.data_year=source.data_year AND",
+                   "target.span=source.span AND",
+                   "target.county=source.county AND",
+                   "target.focus_type=source.focus_type AND",
+                   "target.focus_attribute=source.focus_attribute AND",
+                   "target.indicator_type=source.indicator_type AND",
+                   "target.indicator_attribute=source.indicator_attribute",
+                   "WHEN MATCHED THEN UPDATE SET target.fact_value=source.fact_value,",
+                   "target.margin_of_error=source.margin_of_error",
+                   "WHEN NOT MATCHED BY TARGET THEN INSERT ",
+                   "(data_year, span, county, focus_type, focus_attribute, indicator_type,",
+                   "indicator_attribute, fact_type, fact_value, margin_of_error)",
+                   "VALUES (source.data_year, source.span, source.county, source.focus_type,",
+                   "source.focus_attribute, source.indicator_type, source.indicator_attribute,",
+                   "source.fact_type, source.fact_value, source.margin_of_error);")
+run_query(sockeye_connection, merge_sql)                                                         # Execute the query
+run_query(sockeye_connection, "DROP TABLE stg.equity_pums")                                      # Clean up
+dbDisconnect(sockeye_connection)
