@@ -52,11 +52,11 @@ add_efa_vars <- function(so){
     Income_cat  = factor(case_when(POVPIP<200                    ~ "Low Income",
                             !is.na(POVPIP)                       ~ "Non-Low Income")),
     Disability_cat=if("DIS" %in% colnames(so)){
-                       factor(case_when(grepl("^With ", DIS)     ~ "Disability",
-                                 grepl("^Without ", DIS)         ~ "No disability"))
+                       factor(case_when(grepl("^With ", DIS)     ~ "With disability",
+                                 grepl("^Without ", DIS)         ~ "Without disability"))
                    }else if("HDIS" %in% colnames(so)){
-                       factor(case_when(grepl("^With ", HDIS)    ~ "Disability",
-                                 grepl("^Without ", HDIS)        ~ "No disability"))
+                       factor(case_when(grepl("^With ", HDIS)    ~ "With disability",
+                                 grepl("^Without ", HDIS)        ~ "Without disability"))
                    },
     Youth_cat   = factor(case_when(grepl("^No ", R18)            ~ "Household without youth",
                             !is.na(R18)                          ~ "Household with youth")),
