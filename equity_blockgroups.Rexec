@@ -21,7 +21,7 @@ vars <- c("B02001_001","B02001_002",                                            
 
 label_quintile <- function(var){
   breakpoints <- unique(quantile(var, probs=0:5/5, na.rm=TRUE))                                    # Unique so all-zero quintiles act as one bin
-  rv <- cut(var, breaks=unique(break_vector), labels=1:length(breakpoints),
+  rv <- cut(var, breaks=unique(breakpoints), labels=1:(length(breakpoints)-1),
     include.lowest=TRUE, right=TRUE)
   return(rv)
 }
