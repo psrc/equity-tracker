@@ -1,7 +1,6 @@
-import os, sys
+import os, sys, time
 import numpy as np
 import pandas as pd
-import pandana as pdna
 import geopandas as gpd
 import sqlalchemy
 import pyodbc
@@ -11,6 +10,7 @@ from shapely.geometry import Point
 
 def read_from_sde(connection_string, feature_class_name, version,
                   crs='EPSG:2285', cols=None):
+
     """
     Returns the specified feature class as a geodataframe from ElmerGeo.
     
@@ -26,10 +26,8 @@ def read_from_sde(connection_string, feature_class_name, version,
     """
     engine = sqlalchemy.create_engine(connection_string)
     con=engine.connect()
-
     df = pd.read_sql('select *, Shape.STAsText() as geometry from %s' % 
                 (feature_class_name), con=con)
-    con.close()
 
     df['geometry'] = df['geometry'].apply(wkt.loads)
     gdf = gpd.GeoDataFrame(df, geometry='geometry')
@@ -83,14 +81,8 @@ def weighted_avg(df, val_col, wt_col, agg_col):
 # Calculate average weighted distance to features
 #######################################################
 
-if __name__ == '__main__':
+def main():
      
-    args = sys.argv[0:]
-    assert len(args) == 2, "usage: python weighted_distance.py <output_dir>"
-
-    data_dir = args[0]
-    configs_dir = args[1]
-
     # Define SQL connections for ElmerGeo
     elmergeo_conn_string = 'mssql+pyodbc://AWS-PROD-SQL\Sockeye/ElmerGeo?driver=SQL Server?Trusted_Connection=yes'
     crs = 'EPSG:2285'
@@ -101,22 +93,27 @@ if __name__ == '__main__':
     sql_conn = pyodbc.connect(elmer_conn_string)
 
     # Load parcel data
+    print('Loading parcel points...')
     parcels_gdf = read_from_sde(elmergeo_conn_string, 'parcels_urbansim_2018_pts', version, crs=crs)
     parcels_gdf = parcels_gdf[['parcel_id','geometry']]
 
     # Load HCT location data
+    print('Loading HCT geospatial data...')
     hct_gdf = read_from_sde(elmergeo_conn_string, 'hct_station_areas', version, crs=crs)
     hct_gdf.geometry = hct_gdf.centroid
 
     # Load 2020 Census block groups
     # FIXME: if layers don't load, wait and try again
+    print('Loading Census data...')
     block_grp_gdf = read_from_sde(elmergeo_conn_string, 'blockgrp2020', version, crs=crs)
     block_grp_gdf = block_grp_gdf[['geoid20','geometry']]
+    print('Overlaying parcels on Census data...')
     parcels_gdf = gpd.overlay(parcels_gdf, block_grp_gdf)
 
     # Use households per parcel as a weight
     # FIXME: use Elmer when data is available
     #R:\e2projects_two\SoundCast\Inputs\dev\landuse\2018\v3_RTP
+    print('Loading parcel household data...')
     df_parcel_hh = pd.read_csv(r'Y:\Equity Indicators\access\parcels_urbansim.txt', 
                                sep=' ', usecols=['parcelid','hh_p'])
     parcels_gdf = parcels_gdf.merge(df_parcel_hh, left_on='parcel_id', right_on='parcelid')
@@ -134,6 +131,8 @@ if __name__ == '__main__':
     #######################################################
     # Access to Transit Stations
     #######################################################
+
+    print('Calculating weighted distance...')
 
     # Iterate through submodes
     submode_dict = {'all_hct': hct_gdf,
@@ -158,7 +157,7 @@ if __name__ == '__main__':
             df.rename(columns={agg_col: 'quintile'}, inplace=True)
             df['access_to'] = submode
             df['aggregation'] = agg_col.split('_')[0]
-            full_output_df = full_output_df.append(df.reset_index())
+            full_output_df = pd.concat([full_output_df,df.reset_index()])
 
     # add label for qunitle
     quintile_def = {
@@ -174,3 +173,8 @@ if __name__ == '__main__':
 
     # Write to local dir
     full_output_df.to_csv(r'distance_indicator.csv', index=False)
+
+if __name__ == '__main__':
+    start_time = time.time()
+    main()
+    print("--- %s minutes ---" % ((time.time() - start_time)/60.0))
