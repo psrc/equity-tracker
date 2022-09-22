@@ -22,7 +22,6 @@ sandbox_connect <- function(){DBI::dbConnect(odbc::odbc(),
                                            port = 1433)
 }
 
-
 # Download/unzip precinct geometry
 fetch_zip <- function(dyear){
   temp <- tempfile()
@@ -55,12 +54,16 @@ fetch_blockpop <- function(dyear){
   return(x)
 }
 
+label_quintile <- function(var){
+  breakpoints <- unique(quantile(var, probs=0:5/5, na.rm=TRUE))                                    # Unique so all-zero quintiles act as one bin
+  rv <- cut(var, breaks=unique(breakpoints), labels=1:(length(breakpoints)-1),
+            include.lowest=TRUE, right=TRUE)
+  return(rv)
+}
+
 # Primary function --------------------------------------------------
 
-## Determine tract EFA concentration for each: POC, low income, disability, low English proficiency
-#XXX
-
-precinct_sql <- "SELECT * FROM Mike.block20_to_precinct;"
+precinct_sql <- "SELECT * FROM Mike.block20_to_precinct;"                                          # Spatial join much faster in SQL
 sandbox_connection <- sandbox_connect()
 b2p <- DBI::dbGetQuery(sandbox_connection, DBI::SQL(precinct_sql)) %>% setDT()
 DBI::dbDisconnect(sandbox_connection)
@@ -81,9 +84,12 @@ vt[precinct_pop, `:=`(county=county, voting_age=voting_age, POC=POC),
 vt[, `:=`(POC_voter_share=as.numeric(POC)/voting_age, turnout_share=`Ballots Cast`/voting_age)]    # Create analysis variables
 vt[POC_voter_share>1,POC_voter_share:=1]                                                           # Topcode
 vt[turnout_share>1,turnout_share:=1]                                                               # Topcode
-cor.test(vt$turnout_share, vt$POC_voter_share,                                                     # Run correlation
-         method = "pearson",
-         conf.level = 0.90)
+# cor.test(vt$turnout_share, vt$POC_voter_share,                                                     # Run correlation
+#          method = "pearson",
+#          conf.level = 0.90)
 
 # Display mean turnout by EFA concentration quintile
+vt[,POC_bin:=factor(label_quintile(POC_voter_share), levels=c(1:5))]                               # Add quintile
+rs <- vt[!is.na(POC_bin), .(avg_turnout=mean(turnout_share), .N), by=.(POC_bin)] %>%               # Summarize
+  setorder(POC_bin)
 
