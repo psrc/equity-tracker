@@ -1,4 +1,4 @@
-dyear <- 2020                                                                                      # Editable; ending year of desired 5-yr ACS data
+dyear <- 2020                                                                                    # Editable; ending year of desired 5-yr ACS data
 
 # Functions ----------------------------------------------
 
@@ -50,7 +50,8 @@ blockgroup_shares <- get_acs(geography="block group", variables=vars, state=53,
                          youth_share= B11005_002 / B11005_001,
                          older_share= B11007_002 / B11007_001,
                          lep_share= (C16002_004 + C16002_007 + C16002_010 + C16002_013) / C16002_001)] %>%
-   .[, which(grepl("\\d$", colnames(.))):=NULL] %>% .[complete.cases(.)]                           # Remove original columns & NA rows
+   .[, which(grepl("\\d$", colnames(.))):=NULL] %>%
+   .[, lapply(.SD, function(x) replace(x, is.nan(x), NA))]                                         # Replace NaN
 equity_dims   <- c("poc","income","disability","youth","older","lep")
 share_vars <- paste0(equity_dims,"_share")
 quintile_vars <- paste0(equity_dims,"_quintile")
