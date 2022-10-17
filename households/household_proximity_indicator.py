@@ -11,7 +11,7 @@ from pymssql import connect
 import warnings
 warnings.filterwarnings('ignore')
 
-# Calculate household population within distance of point feature (e.g., HCT station, park centroid)
+# Calculate household population within buffered area
 equity_quintiles_year = 2020
 
 def load_elmer_geo_table(feature_class_name, con, crs):
@@ -48,16 +48,12 @@ def weighted_avg(df, val_col, wt_col, agg_col):
     
     return df_agg[['wt_avg']]
 
-def calculate_buffer(gdf_a, gdf_b, distance, gdf_b_col):
-    """ Create a buffer of *distance* around *gdf_a*
-        Intersect points from gdf_b with buffer of gdf_a
-        Return df of gdf_b within buffer gdf_a.
+def intersect(gdf_a, gdf_b, gdf_b_col):
+    """ Intersect points from gdf_b with polygon of gdf_a
+        Return df of gdf_b within polygon gdf_a.
         *gdf_b_col* is column name for unique point identifier 
     """
     
-    # Buffer the HCT station gdf
-    gdf_a['geometry'] = gdf_a.buffer(distance)
-
     gdf_intersect = gpd.overlay(gdf_a, gdf_b, how="intersection", keep_geom_type=False)
     df = gdf_b[gdf_b[gdf_b_col].isin(gdf_intersect[gdf_b_col].unique())]
 
@@ -94,14 +90,15 @@ def main():
 
     #test = parcels_gdf.merge(parcel_lookup, on='parcel_id')
 
-    # Load HCT location data
+    # Load High Capacity Transit (HCT) Coverage Layer (polygon)
+    # We are using the Vision 2050 definitions: 
+    # 1/4 mi. for BRT, 1/2 mi. for light rail/ferry/commuter rail
+    # Excluding rural areas
     print('Loading HCT geospatial data...')
-    hct_gdf = load_elmer_geo_table('hct_stops', elmergeo_con, crs)
-    hct_gdf.geometry = hct_gdf.centroid    # Should already be a point, but take centroid just in case
+    hct_gdf = load_elmer_geo_table('hct_station_areas', elmergeo_con, crs)
 
     # Load 2020 Census block groups
-    # FIXME: if layers don't load, wait and try again
-    #print('Loading Census data...')
+    print('Loading Census data...')
     block_grp_gdf = load_elmer_geo_table('blockgrp2020', elmergeo_con, crs)
     block_grp_gdf = block_grp_gdf[['geoid20','geometry']]
     print('Overlaying parcels on Census data...')
@@ -127,13 +124,7 @@ def main():
     # Calculate household population within given proximities
     #######################################################
 
-    # Buffer the HCT areas
-    # Half-mile buffer
-
-
-    # FIXME:
-    # Iterate over different types of HCT
-        # Iterate through submodes
+    # Iterate through submodes
     submode_dict = {'all_hct': hct_gdf,
                     'light_rail': hct_gdf[hct_gdf['light_rail'] != 0],
                     'commuter_rail': hct_gdf[hct_gdf['commuter_r'] != 0],
@@ -142,22 +133,21 @@ def main():
                     'brt' : hct_gdf[hct_gdf['brt'] != 0]}
 
     results_dict = {}
-    buffer_dist = 5280/2.0
 
+    # Intersect parcel-level households with HCT coverage 
     for submode, df in submode_dict.items():
-        results_dict[submode] = calculate_buffer(df, parcels_gdf, distance=buffer_dist, gdf_b_col='parcelid')
+        results_dict[submode] = intersect(df, parcels_gdf, gdf_b_col='parcelid')
 
     # Aggregate results by Equity Geography
-
     # Iterate over measures and submodes
     results_df = pd.DataFrame()
     for agg_col in ['poc_quintile', 'income_quintile', 'disability_quintile',
                     'youth_quintile', 'older_quintile', 'lep_quintile']:
         for submode, df in results_dict.items():
-            # Aggregate parcels within buffered area
+            # Aggregate parcels within HCT area
             _df = df.groupby(agg_col).sum()[['hh_p']].reset_index()
             _df.rename(columns={agg_col: 'quintile', 'hh_p': 'households_in_buffer'}, inplace=True)
-            # Aggregate all households and merge with buffered aggregation
+            # Aggregate all households and merge with HCT aggregation
             _df_full = parcels_gdf.groupby(agg_col).sum()[['hh_p']].reset_index()
             _df_full.drop(agg_col, axis=1, inplace=True)
             _df_full.rename(columns={'hh_p': 'total_households'}, inplace=True)
@@ -167,7 +157,7 @@ def main():
             _df['mode'] = submode
             results_df = pd.concat([results_df,_df.reset_index()])
 
-    # Create a column of shares within buffer
+    # Create a column of shares within HCT aera
     results_df['household_shares_in_buffer'] = results_df['households_in_buffer']/results_df['total_households']
 
     # Write to local dir
