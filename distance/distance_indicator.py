@@ -101,6 +101,9 @@ def main():
     hct_gdf = load_elmer_geo_table('hct_stops', elmergeo_con, crs)
     hct_gdf.geometry = hct_gdf.centroid   # Should already be a point, but take centroid just in case
 
+    # Load count of people within each equity definition for all block groups
+    df_equity_counts = pd.read_sql(sql='select * from equity.v_blockgroup_counts WHERE data_year=2020', con=elmer_engine)
+
     # Load 2020 Census block groups
     # FIXME: if layers don't load, wait and try again
     print('Loading Census data...')
@@ -120,6 +123,7 @@ def main():
     parcels_gdf['geoid'] = parcels_gdf['geoid20'].astype('int64')
     equity_shares_df['geoid'] = equity_shares_df['geoid'].astype('int64')
     parcels_gdf = parcels_gdf.merge(equity_shares_df, on='geoid', how='left')
+    parcels_gdf = parcels_gdf.merge(df_equity_counts, left_on='geoid20', right_on='geoid', how='left')
 
     # Drop any null rows
     print("Removed %s null of %d parcels" %(len(parcels_gdf[parcels_gdf['older_quintile'].isnull()]),len(parcels_gdf)))
@@ -146,21 +150,49 @@ def main():
 
     # Iterate over measures and submodes
     full_output_df = pd.DataFrame()
-    for agg_col in ['poc_quintile', 'income_quintile', 'disability_quintile',
-                    'youth_quintile', 'older_quintile', 'lep_quintile']:
+    block_group_avg_df = pd.DataFrame()
+    for agg_col in ['poc', 'income', 'disability','youth', 'older', 'lep']:
         for submode in ['all_hct','light_rail','commuter_rail','ferry','passenger_ferry','brt']:
-            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', agg_col)
+            # Calculate weighted average across all households by equity geographies
+            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', agg_col + '_quintile')
             df = df.reset_index()
-            df.rename(columns={agg_col: 'quintile'}, inplace=True)
+            df.rename(columns={agg_col + '_quintile': 'quintile'}, inplace=True)
             df['access_to'] = submode
-            df['aggregation'] = agg_col.split('_')[0]
+            df['aggregation'] = agg_col
             full_output_df = pd.concat([full_output_df,df.reset_index()])
+
+            # Calculate a weighted average for each block group, weighting by number of people in the equity definition
+            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', 'geoid20')
+            df = df.reset_index()
+            df['access_to'] = submode
+            df['aggregation'] = agg_col
+            block_group_avg_df = pd.concat([block_group_avg_df,df.reset_index()])
 
     #add a label to wt_avg_miles
     full_output_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
+    block_group_avg_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
 
     # Write to local dir
     full_output_df[['aggregation','quintile','access_to','wt_avg_miles']].to_csv(r'distance_indicator.csv', index=False)
+    block_group_avg_df.to_csv(r'block_grp_distance_indicator.csv', index=False)    
+
+    # Calculate average of an average for the region
+    results = {}
+    block_group_avg_df = block_group_avg_df.merge(df_equity_counts, left_on='geoid20', right_on='geoid', how='left')
+    for agg_col in ['poc', 'income', 'disability','youth', 'older', 'lep']:
+        results[agg_col] = {}
+        results['non_'+agg_col] = {}
+        for submode in ['all_hct','light_rail','commuter_rail','ferry','passenger_ferry','brt']:
+            df = block_group_avg_df[(block_group_avg_df['aggregation'] == agg_col) & (block_group_avg_df['access_to'] == submode)]
+            df['non_'+agg_col+'_count'] = df['population_total'] - df[agg_col+'_count']
+            df['wt_avg_non_'+agg_col] = df['non_'+agg_col+'_count']*df['wt_avg_miles']
+            results['non_'+agg_col][submode] = df['wt_avg_non_'+agg_col].sum()/df['non_'+agg_col+'_count'].sum()
+
+            df['wt_avg_'+agg_col] = df[agg_col+'_count']*df['wt_avg_miles']
+            results[agg_col][submode] = df['wt_avg_'+agg_col].sum()/df[agg_col+'_count'].sum()
+
+    results_df = pd.DataFrame.from_dict(results)
+    results_df.to_csv(r'average_distance_indicator.csv')
 
 if __name__ == '__main__':
     start_time = time.time()
