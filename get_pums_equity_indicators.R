@@ -88,33 +88,14 @@ bulk_count_efa <- function(so, analysis_var){
 
 # For sums, medians or means--statistic is summarizing the subject variable (i.e. stat_var)
 bulk_stat_efa <- function(so, stat_type, analysis_var){
-  reglist  <- efa_vars %>% lapply(FUN=function(x) c(x, analysis_var))
   ctylist  <- efa_vars %>% lapply(FUN=function(x) c(x, "COUNTY"))
   rs       <- list()
   rs[[1]]  <- pums_bulk_stat(so, stat_type, analysis_var, efa_vars, incl_na=FALSE)                 # incl_na=FALSE option for accurate within-subgroup shares
   rs[[2]]  <- pums_bulk_stat(so, stat_type, analysis_var, ctylist, incl_na=FALSE) %>%
                  .[COUNTY!="Region"]                                                               # Remove duplicate total level
-  rs %<>% rbindlist() %>% .[, `:=`(indicator_type=analysis_var, indicator_attribute="N/A")] %>%   # Combine county & regional results
+  rs %<>% rbindlist() %>% .[, `:=`(indicator_type=analysis_var, indicator_attribute="N/A")] %>%    # Combine county & regional results
     arrange(DATA_YEAR, var_name, COUNTY)
   return(rs)
-}
-
-# Inflation adjustment to compare dollar amounts between separate surveys (nominal 2019 Dollars)
-# -- Within-survey inflation adjustment is already handled in the package
-deflate_2019 <- function(df){
-  lookup <- data.table(c(2000:2021),
-                       c(1.407632219, 1.379958823, 1.362072811, 1.334037234, 1.301730161,          # Annual PCE deflator from FRED
-                         1.265274644, 1.230626273, 1.199838453, 1.16535383, 1.168612192,           # -- Re-indexed from 2012 to 2019
-                         1.148046414, 1.119710706, 1.09922, 1.084535391, 1.068375985,
-                         1.066003336, 1.055440335, 1.036501306, 1.01480825, 1,
-                         0.988285008, 0.951458496 ))
-  colnames(lookup) <-c("data_year","PCE_i")
-  dt <- setDT(df)
-  setkey(dt, "data_year")
-  dt %<>% .[lookup, grep("sum|median|mean", colnames(.)):=lapply(.SD, function(x) round(x * PCE_i)), # Applies the appropriate multiplier
-            .SDcols=grep("sum|median|mean", colnames(.)), on=key(.)] %>%                           # --to any sum/median/mean & their MOE
-    setDF()
-  return(dt)
 }
 
 format_for_elmer <- function(x,y){
@@ -152,9 +133,9 @@ run_query <- function(conn, send_sql){
 
 # Generate all indicators for a single survey
 pums_efa_singleyear <- function(dyear, span=1){
-
+  refyear <- 2020                                                                                  # Dollar year for inflation-adjusted comparisons
   pp_df <- get_psrc_pums(span, dyear, "p", pvars)                                                  # Retrieve persons data
-  pp_df %<>% add_efa_vars() %>% mutate(
+  pp_df %<>% real_dollars(refyear) %>% add_efa_vars() %>% mutate(
                edu_simp = factor(case_when(AGEP<25                       ~ NA_character_,          # Define the educational attainment subject variable
                                     grepl("(Bach|Mast|Prof|Doct)", SCHL) ~ "Bachelor's degree or higher",
                                     !is.na(SCHL)                         ~ "Less than a Bachelor's degree")),
@@ -182,15 +163,15 @@ pums_efa_singleyear <- function(dyear, span=1){
                                           "Between 1 and 1.5 person(s) per bedroom",
                                           "One person per bedroom or less")),
                internet = factor(case_when(grepl("^Yes", ACCESSINET)     ~ "With internet access", # Define the internet access subject variable; began in 2013
-                                         grepl("^No", ACCESSINET)        ~ "Without internet access")))
+                                         grepl("^No", ACCESSINET)        ~ "Without internet access"))) %>%
 
   deep_pocket      <- list()
   deep_pocket[[1]] <- bulk_count_efa(pp_df, "edu_simp")                                            # Generate educational attainment table
   deep_pocket[[2]] <- bulk_count_efa(pp_df, "healthcov")                                           # Generate health insurance coverage table
-  deep_pocket[[3]] <- bulk_stat_efa(hh_df, "median", "HINCP") %>% deflate_2019()                   # Generate median household income table; dollar comparisons require inflation adjustment
+  deep_pocket[[3]] <- bulk_stat_efa(hh_df, "median", "HINCP2020")                                  # Generate median household income table; dollar comparisons require inflation adjustment
   deep_pocket[[4]] <- bulk_count_efa(hh_df, "poverty")                                             # Generate median household income table
   deep_pocket[[5]] <- bulk_count_efa(hh_df, "housing_burden")                                      # Generate housing cost burden table
-  deep_pocket[[6]] <- bulk_stat_efa(hh_df, "median", "GRNTP") %>% deflate_2019()                   # Generate gross rent table
+  deep_pocket[[6]] <- bulk_stat_efa(hh_df, "median", "GRNTP2020")                                  # Generate gross rent table
   deep_pocket[[7]] <- bulk_count_efa(hh_df, "crowding")                                            # Generate crowding (persons per bedroom) table
   deep_pocket[[8]] <- bulk_count_efa(hh_df, "FS")                                                  # Generate food stamp/SNAP table
   deep_pocket[[9]] <- bulk_count_efa(hh_df, "internet")                                            # Generate internet access table
@@ -208,6 +189,7 @@ pums_efa_singleyear <- function(dyear, span=1){
 
 # Generate trend data, i.e. all indicators across multiple years
 pums_efa_multiyear <- function(dyears){
+  refyear <- max(dyears)
   rs_master <- lapply(dyears, pums_efa_singleyear) %>%
     as.data.frame(do.call(rbind, lapply(., as.vector))) %>% setDT() %>% lapply(rbindlist)          # Combine matching indicator tables across years
   return(rs_master)                                                                                # Also return the object
