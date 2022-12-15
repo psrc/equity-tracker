@@ -20,12 +20,19 @@ cfpb_api_gofer <- function(url){
   return(result)
 }
 
-cfpb_url_builder <- function(dyear, actions_taken, races=NULL){
+cfpb_url_builder <- function(dyear, actions_taken, races=NULL, ethnicities=NULL,
+                             sexes=NULL, dwelling_categories=NULL){
   url <- paste0("https://ffiec.cfpb.gov/v2/data-browser-api/view/aggregations?counties=",
           paste0("530",c("33","35","53","61"), collapse=","), "&years=", dyear,
           "&actions_taken=", actions_taken)
+  if(!is.null(dwelling_categories)){
+    url %<>% paste0("&dwelling_categories=", paste0(races, collapse=","))}
+  if(!is.null(ethnicities)){
+    url %<>% paste0("&ethnicities=", paste0(races, collapse=","))}
   if(!is.null(races)){
     url %<>% paste0("&races=", paste0(races, collapse=","))}
+  if(!is.null(sexes)){
+    url %<>% paste0("&sexes=", paste0(races, collapse=","))}
   return(url)
 }
 
@@ -33,3 +40,6 @@ mixr <- expand.grid(dyear=2015:2020, action_taken=1:6, race=races)              
 ls1 <- list()
 ls1 <- mapply(cfpb_url_builder, mixr$action_taken, mixr$race) %>%                                  # So years, details must be called individually
   lapply(cfpb_api_gofer) %>% rbindlist()
+
+
+#url <- paste0("https://ffiec.cfpb.gov/v2/data-browser-api/view/csv?counties=",counties,"&years=2018")
