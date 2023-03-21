@@ -64,16 +64,16 @@ merge_sql <- paste("MERGE INTO equity.indicator_facts WITH (HOLDLOCK) AS target"
                    "target.county=source.county AND",
                    "target.focus_type=source.focus_type AND",
                    "target.focus_attribute=source.focus_attribute AND",
-                   "target.indicator_type=source.indicator_type AND",
-                   "target.indicator_attribute=source.indicator_attribute",
+                   "target.indicator_type='Kindergarten readiness' AND",
+                   "target.indicator_attribute='6 for 6 dimensions'",
                    "WHEN MATCHED THEN UPDATE SET target.fact_value=source.fact_value,",
                    "target.margin_of_error=0",
                    "WHEN NOT MATCHED BY TARGET THEN INSERT ",
                    "(data_year, span, county, focus_type, focus_attribute, indicator_type,",
                    "indicator_attribute, fact_type, fact_value, margin_of_error)",
-                   "VALUES (source.data_year, source.span, source.county, source.focus_type,",
-                   "source.focus_attribute, source.indicator_type, source.indicator_attribute,",
-                   "source.fact_type, source.fact_value, 0);")
+                   "VALUES (source.data_year, 1, source.county, source.focus_type,",
+                   "source.focus_attribute, 'Kindergarten readiness', '6 for 6 dimensions',",
+                   "'share', source.fact_value, 0);")
 
 # Main function -----------------------------------------------------
 
@@ -82,7 +82,7 @@ get_k_readiness <- function(URL){
   reported[[1]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Northwest%20Educational%20Service%20District%20189"))
   reported[[2]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Puget%20Sound%20Educational%20Service%20District%20121"))
   reported[[3]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Olympic%20Educational%20Service%20District%20114"))
-  reported %<>% rbindlist() %>% .[, c("numerator","denominator"):=lapply(.SD, as.integer), .SDcols=c("numerator","denominator")] %>%
+  reported %<>% rbindlist(use.names=TRUE) %>% .[, c("numerator","denominator"):=lapply(.SD, as.integer), .SDcols=c("numerator","denominator")] %>%
     .[, County:=fcase(grepl("121$", esdname) & grepl(county_lookup$King, districtname),     "King",
                       grepl("114$", esdname) & grepl(county_lookup$Kitsap, districtname),   "Kitsap",
                       grepl("121$", esdname) & grepl(county_lookup$Pierce, districtname),   "Pierce",
@@ -120,11 +120,10 @@ get_k_readiness <- function(URL){
                              grepl("disabilit",focus_attribute, ignore.case=TRUE),"Disability_cat",
                              grepl("POC",      focus_attribute, ignore.case=TRUE),"POC_cat",
                              grepl("english",  focus_attribute, ignore.case=TRUE),"LEP_cat",
-                             focus_attribute=="All Students","Total"),
-           margin_of_error=0,
-           indicator_type="Kindergarten readiness",
-           indicator_attribute="6 for 6 dimensions")]
+                             focus_attribute=="All Students","Total"))]
   rs[label_lookup, focus_attribute:=to_psrc_labels, on=.(focus_attribute=chg_ospi_labels)]
+  rs[, data_year:=as.integer(str_sub(schoolyear,1L,4L))]                                                                    # Schoolyear start - integer format in Elmer
+  rs[,schoolyear:=NULL]
   return(rs)
 }
 
@@ -133,21 +132,21 @@ get_k_readiness <- function(URL){
 # url <- "https://data.wa.gov/resource/rzgf-vi75.json"
 # kready <- get_k_readiness(url)
 
-## All years
-# urlvector <- c("https://data.wa.gov/resource/rzgf-vi75.json",
-#                "https://data.wa.gov/resource/26rj-f9wn.json",
-#                "https://data.wa.gov/resource/p4sv-js2m.json",
-#                "https://data.wa.gov/resource/huwq-t84x.json",
-#                "https://data.wa.gov/resource/2x4x-bzqs.json",
-#                "https://data.wa.gov/resource/8ewp-xtgm.json",
-#                "https://data.wa.gov/resource/yaag-7vv4.json",
-#                "https://data.wa.gov/resource/rjgh-459t.json",
-#                "https://data.wa.gov/resource/sedr-qag9.json",
-#                "https://data.wa.gov/resource/59cw-kpf6.json")
+# All years
+# urlvector <- c("https://data.wa.gov/resource/3ji8-ykgj.json",  # 2022-23
+#                "https://data.wa.gov/resource/rzgf-vi75.json",  # 2021-22
+#                "https://data.wa.gov/resource/26rj-f9wn.json",  # 2019-20
+#                "https://data.wa.gov/resource/p4sv-js2m.json",  # 2018-19
+#                "https://data.wa.gov/resource/huwq-t84x.json",  # 2017-18
+#                "https://data.wa.gov/resource/2x4x-bzqs.json",  # 2016-17
+#                "https://data.wa.gov/resource/8ewp-xtgm.json",  # 2015-16
+#                "https://data.wa.gov/resource/yaag-7vv4.json",  # 2014-15
+#                "https://data.wa.gov/resource/rjgh-459t.json",  # 2013-14
+#                "https://data.wa.gov/resource/sedr-qag9.json",  # 2012-13
+#                "https://data.wa.gov/resource/59cw-kpf6.json")  # 2011-12 first year available via API)
 # kready <- list()
-# kready <- lapply(get_k_readiness) %>% rbindlist()
-
-
+# kready <- lapply(urlvector, get_k_readiness) %>% rbindlist(use.names=TRUE)
+#
 # sockeye_connection <- elmer_connect()
 # table_id <- Id(schema="stg", table="equity_ospi")
 # dbWriteTable(sockeye_connection, table_id, kready, overwrite = TRUE)
