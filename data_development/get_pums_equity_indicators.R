@@ -132,7 +132,7 @@ run_query <- function(conn, send_sql){
 #  -- but this could be separated into additional setup functions, if preferred
 
 # Generate all indicators for a single survey
-pums_efa_singleyear <- function(dyear, span=1){
+pums_efa_singleyear <- function(dyear, span=5){
   refyear <- 2020                                                                                  # Dollar year for inflation-adjusted comparisons
   pp_df <- get_psrc_pums(span, dyear, "p", pvars)                                                  # Retrieve persons data
   pp_df %<>% real_dollars(refyear) %>% add_efa_vars() %>% mutate(
@@ -144,13 +144,13 @@ pums_efa_singleyear <- function(dyear, span=1){
                                     grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
 
   if(dyear<2020){hvars %<>% replace(hvars=="ACCESSINET","ACCESS")}                                 # Variable changed names w/ 2020 data
-  hh_df <- get_psrc_pums(span, dyear, "h", hvars)                                                  # Retrieve household data
+  hh_df <- get_psrc_pums(span, dyear, "h", hvars) %>% real_dollars(refyear)                        # Retrieve household data
   if("ACCESS" %in% colnames(hh_df)){hh_df %<>% rename("ACCESSINET"="ACCESS")}                      # Variable changed names w/ 2020 data
   hh_df %<>% add_efa_vars() %>% mutate(
                poverty=Income_cat,                                                                 # Identical to Income_cat
                housing_burden=factor(case_when(                                                    # Define the rent burden subject variable
                                      GRPIP<30|OCPIP<30|SMOCP==0|(is.na(GRNTP) & is.na(SMOCP)) ~ "Less than 30 percent",
-                                     between(GRPIP,30,50)|between(OCPIP,30,50) ~ "Between 30 and 50 percent",
+                                     dplyr::between(GRPIP,30,50)|dplyr::between(OCPIP,30,50) ~ "Between 30 and 50 percent",
                                      GRPIP>50|OCPIP>50|is.na(HINCP)      ~ "Greater than 50 percent"),
                                 levels=c("Greater than 50 percent",
                                          "Between 30 and 50 percent",
@@ -163,7 +163,7 @@ pums_efa_singleyear <- function(dyear, span=1){
                                           "Between 1 and 1.5 person(s) per bedroom",
                                           "One person per bedroom or less")),
                internet = factor(case_when(grepl("^Yes", ACCESSINET)     ~ "With internet access", # Define the internet access subject variable; began in 2013
-                                         grepl("^No", ACCESSINET)        ~ "Without internet access"))) %>%
+                                         grepl("^No", ACCESSINET)        ~ "Without internet access")))
 
   deep_pocket      <- list()
   deep_pocket[[1]] <- bulk_count_efa(pp_df, "edu_simp")                                            # Generate educational attainment table
@@ -210,12 +210,12 @@ write_pums_efa <- function(efa_rs_list){
 # write_pums_efa(equity_trend_2015_19)                                                             # Write the tables to .csv
 
 # Example 3: ETL to update Elmer with your result -------------------
-equity_2019_5 <- pums_efa_singleyear(2019, 5)                                                      # Example above
-equity_2019_5 %<>% mapply(format_for_elmer, ., as.character(names(.)), USE.NAMES=TRUE, SIMPLIFY=FALSE) # Rename fields/reshape to fit Elmer.equity schema
-equity_2019_5 %<>% rbindlist(use.names=TRUE)                                                       # Combine to one data.table
+equity_2021_5 <- pums_efa_singleyear(2021, 5)                                                      # Example above
+equity_2021_5 %<>% mapply(format_for_elmer, ., as.character(names(.)), USE.NAMES=TRUE, SIMPLIFY=FALSE) # Rename fields/reshape to fit Elmer.equity schema
+equity_2021_5 %<>% rbindlist(use.names=TRUE)                                                       # Combine to one data.table
 sockeye_connection <- elmer_connect()
 table_id <- Id(schema="stg", table="equity_pums")
-dbWriteTable(sockeye_connection, table_id, equity_2019_5, overwrite=TRUE)
+dbWriteTable(sockeye_connection, table_id, equity_2021_5, overwrite=TRUE)
 merge_sql <- paste("MERGE INTO equity.indicator_facts WITH (HOLDLOCK) AS target",                  # This SQL updates existing values and/or inserts any new ones
                    "USING stg.equity_pums AS source",
                    "ON target.data_year=source.data_year AND",
