@@ -35,9 +35,10 @@ county_lookup[[4]] <- paste("Arlington","Darrington", "Edmonds", "Everett", "Gra
                             "Mukilteo", "Snohomish", "Stanwood", "Sultan", sep="|")
 
 # Create OSPI to PSRC label lookup
-chg_ospi_labels <- t(swap_label[2:3,1:2]) %>% unlist %>% c("All Students")
-to_psrc_labels  <- c("With disability","Without disability","English proficient","Limited English proficiency","Total")
-label_lookup <- data.frame(chg_ospi_labels, to_psrc_labels) %>% setDT()
+label_lookup <- data.frame(
+  chg_ospi_labels=t(swap_label[2:3,1:2]) %>% unlist %>% c("All Students"),
+  to_psrc_labels=c("Limited English proficiency","English proficient","With disability","Without disability","Total")
+  ) %>% setDT()
 
 read.wa.Socrata <- function(URL){
   x <- read.socrata(url=URL, app_token=Sys.getenv("DATAWAGOV_APPTOKEN"), email=Sys.getenv("MYEMAIL"), password=Sys.getenv("DATAWAGOV_CRED"))
@@ -90,11 +91,11 @@ get_k_readiness <- function(URL){
     .[!is.na(County)] %>% .[measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"] %>%                         # Filter to specific 6-for-6 dimensions indicator
     .[, c("esdname", "organizationlevel"):=NULL] %>%
   setnames(c("studentgrouptype","studentgroup"),c("focus_type","focus_attribute"))
-  reported[focus_attribute=="White", focus_attribute:="Non-POC"] %>%
-    .[, focus_type:=fcase(focus_type=="FederalRaceEthnicity","POC_cat",
-                          focus_type=="SpecialEd","Disability_cat",
-                          focus_type=="Bilingual","LEP_cat",
-                          focus_type=="FreeLunch","Income_cat")]
+  reported[focus_attribute=="White", focus_attribute:="Non-POC"]
+  reported %<>% .[, focus_type:=fcase(focus_type=="FederalRaceEthnicity","POC_cat",
+                                      focus_type=="SpecialEd","Disability_cat",
+                                      focus_type=="Bilingual","LEP_cat",
+                                      focus_type=="FreeLunch","Income_cat")]
 
   reference <- reported[focus_attribute=="All Students"] %>% .[!is.na(numerator)]                                           # Totals into separate table
   reported %<>% .[focus_attribute %in% swap_label$focus_attribute]
@@ -106,24 +107,20 @@ get_k_readiness <- function(URL){
              County=factor(County, levels=c(unlist(counties),"Region")))]
 
   rs <- list()
-  rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","focus_attribute")] # EFA - County
-  rs[[2]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","focus_attribute")]          # EFA - Region
+  rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","focus_attribute","focus_type")] # EFA - County
+  rs[[2]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","focus_attribute","focus_type")]          # EFA - Region
   rs[[2]][, County:="Region"]
-  rs[[3]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","focus_attribute")] # All students - County
-  rs[[4]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","focus_attribute")]          # All students - Region
+  rs[[3]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","focus_attribute","focus_type")] # All students - County
+  rs[[4]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","focus_attribute","focus_type")]          # All students - Region
   rs[[4]][, County:="Region"]
   rs %<>% rbindlist(use.names=TRUE)
   rs[, `:=`(indicator_type="Kindergarten readiness", fact_value=as.double(numerator)/denominator)] %>%
     .[, c("numerator", "denominator"):=NULL] %>%                                                                            # Share as ratio of reported district totals
     setorder(schoolyear, County, focus_attribute)
-  rs[,`:=`(focus_type=fcase(grepl("income",   focus_attribute, ignore.case=TRUE),"Income_cat",
-                             grepl("disabilit",focus_attribute, ignore.case=TRUE),"Disability_cat",
-                             grepl("POC",      focus_attribute, ignore.case=TRUE),"POC_cat",
-                             grepl("english",  focus_attribute, ignore.case=TRUE),"LEP_cat",
-                             focus_attribute=="All Students","Total"))]
+  rs[focus_attribute=="All Students", focus_type:="Total"]
   rs[label_lookup, focus_attribute:=to_psrc_labels, on=.(focus_attribute=chg_ospi_labels)]
   rs[, data_year:=as.integer(str_sub(schoolyear,1L,4L))]                                                                    # Schoolyear start - integer format in Elmer
-  rs[,schoolyear:=NULL]
+  rs[, schoolyear:=NULL]
   return(rs)
 }
 
@@ -133,23 +130,24 @@ get_k_readiness <- function(URL){
 # kready <- get_k_readiness(url)
 
 # All years
-# urlvector <- c("https://data.wa.gov/resource/3ji8-ykgj.json",  # 2022-23
-#                "https://data.wa.gov/resource/rzgf-vi75.json",  # 2021-22
-#                "https://data.wa.gov/resource/26rj-f9wn.json",  # 2019-20
-#                "https://data.wa.gov/resource/p4sv-js2m.json",  # 2018-19
-#                "https://data.wa.gov/resource/huwq-t84x.json",  # 2017-18
-#                "https://data.wa.gov/resource/2x4x-bzqs.json",  # 2016-17
-#                "https://data.wa.gov/resource/8ewp-xtgm.json",  # 2015-16
-#                "https://data.wa.gov/resource/yaag-7vv4.json",  # 2014-15
-#                "https://data.wa.gov/resource/rjgh-459t.json",  # 2013-14
-#                "https://data.wa.gov/resource/sedr-qag9.json",  # 2012-13
-#                "https://data.wa.gov/resource/59cw-kpf6.json")  # 2011-12 first year available via API)
-# kready <- list()
-# kready <- lapply(urlvector, get_k_readiness) %>% rbindlist(use.names=TRUE)
-#
-# sockeye_connection <- elmer_connect()
-# table_id <- Id(schema="stg", table="equity_ospi")
-# dbWriteTable(sockeye_connection, table_id, kready, overwrite = TRUE)
-# run_query(sockeye_connection, merge_sql)                                                         # Execute the query
-# run_query(sockeye_connection, "DROP TABLE stg.equity_ospi")                                      # Clean up
-# dbDisconnect(sockeye_connection)
+urlvector <- c("https://data.wa.gov/resource/3ji8-ykgj.json",  # 2022-23
+               "https://data.wa.gov/resource/rzgf-vi75.json",  # 2021-22
+               "https://data.wa.gov/resource/26rj-f9wn.json",  # 2019-20
+               "https://data.wa.gov/resource/p4sv-js2m.json",  # 2018-19
+               "https://data.wa.gov/resource/huwq-t84x.json",  # 2017-18
+               "https://data.wa.gov/resource/2x4x-bzqs.json",  # 2016-17
+               "https://data.wa.gov/resource/8ewp-xtgm.json",  # 2015-16
+               "https://data.wa.gov/resource/yaag-7vv4.json",  # 2014-15
+               "https://data.wa.gov/resource/rjgh-459t.json",  # 2013-14
+               "https://data.wa.gov/resource/sedr-qag9.json",  # 2012-13
+               "https://data.wa.gov/resource/59cw-kpf6.json")  # 2011-12 first year available via API)
+kready <- list()
+kready <- lapply(urlvector, get_k_readiness) %>% rbindlist(use.names=TRUE)
+
+# Merge data to Elmer
+sockeye_connection <- elmer_connect()
+table_id <- Id(schema="stg", table="equity_ospi")
+dbWriteTable(sockeye_connection, table_id, kready, overwrite = TRUE)
+run_query(sockeye_connection, merge_sql)                                                         # Execute the query
+run_query(sockeye_connection, "DROP TABLE stg.equity_ospi")                                      # Clean up
+dbDisconnect(sockeye_connection)
