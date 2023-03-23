@@ -114,16 +114,31 @@ format_for_elmer <- function(x,y){
   return(dt)
 }
 
-elmer_connect <-function(){dbConnect(odbc::odbc(),
-                                     driver = "ODBC Driver 17 for SQL Server",
-                                     server = "AWS-PROD-SQL\\Sockeye",
-                                     database = "Elmer",
-                                     trusted_connection = "yes",
-                                     port = 1433)}
+efa_to_elmer <- function(efa_result){
+  merge_sql <- paste("MERGE INTO equity.indicator_facts WITH (HOLDLOCK) AS target",                # This SQL updates existing values and/or inserts any new ones
+                     "USING stg.equity_pums AS source",
+                     "ON target.data_year=source.data_year AND",
+                     "target.span=source.span AND",
+                     "target.county=source.county AND",
+                     "target.focus_type=source.focus_type AND",
+                     "target.focus_attribute=source.focus_attribute AND",
+                     "target.indicator_type=source.indicator_type AND",
+                     "target.indicator_attribute=source.indicator_attribute",
+                     "WHEN MATCHED THEN UPDATE SET target.fact_value=source.fact_value,",
+                     "target.margin_of_error=source.margin_of_error",
+                     "WHEN NOT MATCHED BY TARGET THEN INSERT ",
+                     "(data_year, span, county, focus_type, focus_attribute, indicator_type,",
+                     "indicator_attribute, fact_type, fact_value, margin_of_error)",
+                     "VALUES (source.data_year, source.span, source.county, source.focus_type,",
+                     "source.focus_attribute, source.indicator_type, source.indicator_attribute,",
+                     "source.fact_type, source.fact_value, source.margin_of_error);")
 
-run_query <- function(conn, send_sql){
-  rs <- dbSendQuery(conn, SQL(send_sql))
-  dbClearResult(rs)
+  efa_result %<>% mapply(format_for_elmer, ., as.character(names(.)), USE.NAMES=TRUE, SIMPLIFY=FALSE) # Rename fields/reshape to fit Elmer.equity schema
+  efa_result %<>% rbindlist(use.names=TRUE)                                                       # Combine to one data.table
+  psrcelmer::stage_table(efa_result, "equity_pums")
+  psrcelmer::send_query(merge_sql)                                                                 # Execute the query
+  psrcelmer::send_query("DROP TABLE stg.equity_pums")                                              # Clean up
+  return(invisible(NULL))
 }
 
 # 4. Main functions -------------------------------------------------
@@ -187,12 +202,12 @@ pums_efa_singleyear <- function(dyear, span=5){
   return(deep_pocket)
 }
 
-# Generate trend data, i.e. all indicators across multiple years
-pums_efa_multiyear <- function(dyears){
+# Generate trend data, i.e. all indicators across multiple years                                   # This can be problematic if variables change name, format, etc;
+pums_efa_multiyear <- function(dyears){                                                            # -- verify in PUMS data dictionaries for each survey
   refyear <- max(dyears)
   rs_master <- lapply(dyears, pums_efa_singleyear) %>%
     as.data.frame(do.call(rbind, lapply(., as.vector))) %>% setDT() %>% lapply(rbindlist)          # Combine matching indicator tables across years
-  return(rs_master)                                                                                # Also return the object
+  return(rs_master)                                                                                # Return the object
 }
 
 # Write all tables to file
@@ -204,35 +219,4 @@ write_pums_efa <- function(efa_rs_list){
 # Example 1: Generate indicators for a single year/span -------------
 # equity_2019_5 <- pums_efa_singleyear(2019, 5)                                                    # Returns all tables as separate items in a list
 # write_pums_efa(equity_2019_5)                                                                    # Write the tables to .csv
-
-# Example 2: Generate annual indicators for 5 years -----------------
-# equity_trend_2015_19 <- pums_efa_multiyear(2015:2019)                                            # Returns all tables as separate items in a list
-# write_pums_efa(equity_trend_2015_19)                                                             # Write the tables to .csv
-
-# Example 3: ETL to update Elmer with your result -------------------
-equity_2021_5 <- pums_efa_singleyear(2021, 5)                                                      # Example above
-equity_2021_5 %<>% mapply(format_for_elmer, ., as.character(names(.)), USE.NAMES=TRUE, SIMPLIFY=FALSE) # Rename fields/reshape to fit Elmer.equity schema
-equity_2021_5 %<>% rbindlist(use.names=TRUE)                                                       # Combine to one data.table
-sockeye_connection <- elmer_connect()
-table_id <- Id(schema="stg", table="equity_pums")
-dbWriteTable(sockeye_connection, table_id, equity_2021_5, overwrite=TRUE)
-merge_sql <- paste("MERGE INTO equity.indicator_facts WITH (HOLDLOCK) AS target",                  # This SQL updates existing values and/or inserts any new ones
-                   "USING stg.equity_pums AS source",
-                   "ON target.data_year=source.data_year AND",
-                   "target.span=source.span AND",
-                   "target.county=source.county AND",
-                   "target.focus_type=source.focus_type AND",
-                   "target.focus_attribute=source.focus_attribute AND",
-                   "target.indicator_type=source.indicator_type AND",
-                   "target.indicator_attribute=source.indicator_attribute",
-                   "WHEN MATCHED THEN UPDATE SET target.fact_value=source.fact_value,",
-                   "target.margin_of_error=source.margin_of_error",
-                   "WHEN NOT MATCHED BY TARGET THEN INSERT ",
-                   "(data_year, span, county, focus_type, focus_attribute, indicator_type,",
-                   "indicator_attribute, fact_type, fact_value, margin_of_error)",
-                   "VALUES (source.data_year, source.span, source.county, source.focus_type,",
-                   "source.focus_attribute, source.indicator_type, source.indicator_attribute,",
-                   "source.fact_type, source.fact_value, source.margin_of_error);")
-run_query(sockeye_connection, merge_sql)                                                         # Execute the query
-run_query(sockeye_connection, "DROP TABLE stg.equity_pums")                                      # Clean up
-dbDisconnect(sockeye_connection)
+# efa_to_elmer(equity_2019_5)
