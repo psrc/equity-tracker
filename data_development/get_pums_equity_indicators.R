@@ -3,8 +3,6 @@ library(psrccensus)
 library(dplyr)
 library(srvyr)
 library(data.table)
-library(DBI)
-library(odbc)
 
 # 1. Setup: List necessary direct-PUMS variables --------------------
 
