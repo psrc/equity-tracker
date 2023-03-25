@@ -1,0 +1,6 @@
+aggregation,quintile,access_to,wt_avg_miles
+poc,High,all_hct,0.5942408104555787
+poc,Low,all_hct,4.476227233802442
+poc,Low Medium,all_hct,1.7689154889170688
+poc,Medium,all_hct,1.0612006287677018
+poc,Medium High,all_hct,0.773684139253413
