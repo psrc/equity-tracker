@@ -69,6 +69,30 @@ def weighted_avg(df, val_col, wt_col, agg_col):
     
     return df_agg[['wt_avg']]
 
+def aggregate_results(results_dict, geog_level):
+
+    # Iterate over measures and submodes
+    full_output_df = pd.DataFrame()
+    block_group_avg_df = pd.DataFrame()
+    for agg_col in ['poc', 'income', 'disability','youth', 'older', 'lep']:
+        for submode in ['all_hct','light_rail','commuter_rail','ferry','passenger_ferry','brt']:
+            # Calculate weighted average across all households by equity geographies
+            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', agg_col + '_quintile')
+            df = df.reset_index()
+            df.rename(columns={agg_col + '_quintile': 'quintile'}, inplace=True)
+            df['access_to'] = submode
+            df['aggregation'] = agg_col
+            full_output_df = pd.concat([full_output_df,df.reset_index()])
+
+            # Calculate a weighted average for each block group, weighting by number of people in the equity definition
+            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', geog_level)
+            df = df.reset_index()
+            df['access_to'] = submode
+            df['aggregation'] = agg_col
+            block_group_avg_df = pd.concat([block_group_avg_df,df.reset_index()])
+
+            return full_output_df, block_group_avg_df
+
 #######################################################
 # Calculate average weighted distance to features
 #######################################################
@@ -85,10 +109,11 @@ def main():
     connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": elmer_conn_string})
     elmer_engine = sqlalchemy.create_engine(connection_url)
 
-    # Load equity quintiles definitions and join to block groups
-    equity_shares_df = pd.read_sql(sql='select * from equity.v_blockgroup_shares', con=elmer_engine)
-    equity_shares_df = equity_shares_df[equity_shares_df['data_year'] == equity_quintiles_year]
-    #equity_shares_df = pd.read_csv(r'Y:\Equity Indicators\access\equity_shares.csv')
+    # Load equity quintiles definitions and join to block groups/tracts
+    equity_shares_blockgroup_df = pd.read_sql(sql='select * from equity.v_blockgroup_shares', con=elmer_engine)
+    equity_shares_blockgroup_df = equity_shares_blockgroup_df[equity_shares_blockgroup_df['data_year'] == equity_quintiles_year]
+    equity_shares_tract_df = pd.read_sql(sql='select * from equity.v_tract_shares', con=elmer_engine)
+    equity_shares_tract_df = equity_shares_tract_df[equity_shares_tract_df['data_year'] == equity_quintiles_year]
 
     # Load parcel data
     print('Loading parcel points...')
@@ -101,16 +126,20 @@ def main():
     hct_gdf = load_elmer_geo_table('hct_stops', elmergeo_con, crs)
     hct_gdf.geometry = hct_gdf.centroid   # Should already be a point, but take centroid just in case
 
-    # Load count of people within each equity definition for all block groups
-    df_equity_counts = pd.read_sql(sql='select * from equity.v_blockgroup_counts WHERE data_year=2020', con=elmer_engine)
+    # Load count of people within each equity definition for all block groups and tracts
+    equity_counts_blockgroup_df = pd.read_sql(sql='select * from equity.v_blockgroup_counts WHERE data_year=2020', con=elmer_engine)
+    equity_counts_tract_df = pd.read_sql(sql='select * from equity.v_tract_counts WHERE data_year=2020', con=elmer_engine)
+
 
     # Load 2020 Census block groups
     # FIXME: if layers don't load, wait and try again
     print('Loading Census data...')
     block_grp_gdf = load_elmer_geo_table('blockgrp2020', elmergeo_con, crs)
-    block_grp_gdf = block_grp_gdf[['geoid20','geometry']]
+    block_grp_gdf = block_grp_gdf[['geoid20','tractce20','blkgrpce20','geometry']]
+
     print('Overlaying parcels on Census data...')
     parcels_gdf = gpd.overlay(parcels_gdf, block_grp_gdf)
+    parcels_gdf['tract_geoid'] = parcels_gdf['geoid20'].apply(lambda x: str(x)[:-1])
 
     # Use households per parcel as a weight
     # FIXME: use Elmer when data is available
@@ -119,15 +148,27 @@ def main():
                                sep=' ', usecols=['parcelid','hh_p'])
     parcels_gdf = parcels_gdf.merge(df_parcel_hh, left_on='parcel_id', right_on='parcelid')
 
-    # Merge equity share geographies
-    parcels_gdf['geoid'] = parcels_gdf['geoid20'].astype('int64')
-    equity_shares_df['geoid'] = equity_shares_df['geoid'].astype('int64')
-    parcels_gdf = parcels_gdf.merge(equity_shares_df, on='geoid', how='left')
-    parcels_gdf = parcels_gdf.merge(df_equity_counts, left_on='geoid20', right_on='geoid', how='left')
+    # Merge equity share and counts to geographies
+    # parcels_gdf['geoid'] = parcels_gdf['geoid20'].astype('int64')
+    # equity_shares_blockgroup_df['geoid'] = equity_shares_blockgroup_df['geoid'].astype('int64')
+    # parcels_gdf = parcels_gdf.merge(equity_shares_blockgroup_df, on='geoid', how='left')
+    # parcels_gdf = parcels_gdf.merge(equity_counts_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
+
+    parcels_gdf['geoid20'] = parcels_gdf['geoid20'].astype('int64')
+    parcels_gdf['tract_geoid'] = parcels_gdf['tract_geoid'].astype('int64')
+    equity_shares_blockgroup_df['geoid'] = equity_shares_blockgroup_df['geoid'].astype('int64')
+    equity_shares_tract_df['geoid'] = equity_shares_tract_df['geoid'].astype('int64')
+    equity_counts_blockgroup_df['geoid'] = equity_counts_blockgroup_df['geoid'].astype('int64')
+    equity_counts_tract_df['geoid'] = equity_counts_tract_df['geoid'].astype('int64')
+    parcels_gdf_blockgroup = parcels_gdf.merge(equity_shares_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
+    parcels_gdf_blockgroup = parcels_gdf_blockgroup.merge(equity_counts_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
+    parcels_gdf_tract = parcels_gdf.merge(equity_shares_tract_df, left_on='tract_geoid', right_on='geoid', how='left')
+    parcels_gdf_tract = parcels_gdf_tract.merge(equity_counts_tract_df, left_on='tract_geoid', right_on='geoid', how='left')
 
     # Drop any null rows
-    print("Removed %s null of %d parcels" %(len(parcels_gdf[parcels_gdf['older_quintile'].isnull()]),len(parcels_gdf)))
-    parcels_gdf = parcels_gdf[~parcels_gdf['older_quintile'].isnull()]
+    print("Removed %s null of %d parcels" %(len(parcels_gdf_tract[parcels_gdf_tract['older_quintile'].isnull()]),len(parcels_gdf_tract)))
+    parcels_gdf_tract = parcels_gdf_tract[~parcels_gdf_tract['older_quintile'].isnull()]
+    parcels_gdf_blockgroup = parcels_gdf_blockgroup[~parcels_gdf_blockgroup['older_quintile'].isnull()]
 
     #######################################################
     # Access to Transit Stations
@@ -143,42 +184,32 @@ def main():
                     'passenger_ferry': hct_gdf[hct_gdf['passenger_'] != 0],
                     'brt' : hct_gdf[hct_gdf['brt'] != 0]}
 
-    results_dict = {}
+    results_dict_blockgroup = {}
+    results_dict_tract = {}
     for submode, df in submode_dict.items():
-        results_dict[submode] = find_nearest(parcels_gdf, df)
-        results_dict[submode]['miles'] = results_dict[submode]['dist']/5280.0
+        results_dict_blockgroup[submode] = find_nearest(parcels_gdf_blockgroup, df)
+        results_dict_blockgroup[submode]['miles'] = results_dict_blockgroup[submode]['dist']/5280.0
+        results_dict_tract[submode] = find_nearest(parcels_gdf_tract, df)
+        results_dict_tract[submode]['miles'] = results_dict_tract[submode]['dist']/5280.0
 
-    # Iterate over measures and submodes
-    full_output_df = pd.DataFrame()
-    block_group_avg_df = pd.DataFrame()
-    for agg_col in ['poc', 'income', 'disability','youth', 'older', 'lep']:
-        for submode in ['all_hct','light_rail','commuter_rail','ferry','passenger_ferry','brt']:
-            # Calculate weighted average across all households by equity geographies
-            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', agg_col + '_quintile')
-            df = df.reset_index()
-            df.rename(columns={agg_col + '_quintile': 'quintile'}, inplace=True)
-            df['access_to'] = submode
-            df['aggregation'] = agg_col
-            full_output_df = pd.concat([full_output_df,df.reset_index()])
+    full_output_block_group, block_group_avg_df = aggregate_results(results_dict_blockgroup, 'geoid20')
+    full_output_tract, tract_group_avg_df = aggregate_results(results_dict_tract, 'tract_geoid')
 
-            # Calculate a weighted average for each block group, weighting by number of people in the equity definition
-            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', 'geoid20')
-            df = df.reset_index()
-            df['access_to'] = submode
-            df['aggregation'] = agg_col
-            block_group_avg_df = pd.concat([block_group_avg_df,df.reset_index()])
-
-    #add a label to wt_avg_miles
-    full_output_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
+    # add a label to wt_avg_miles
+    full_output_block_group.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
     block_group_avg_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
+    full_output_tract.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
+    tract_group_avg_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
 
     # Write to local dir
-    full_output_df[['aggregation','quintile','access_to','wt_avg_miles']].to_csv(r'distance_indicator.csv', index=False)
-    block_group_avg_df.to_csv(r'block_grp_distance_indicator.csv', index=False)    
+    full_output_block_group[['aggregation','quintile','access_to','wt_avg_miles']].to_csv(r'distance_indicator_blockgroup.csv', index=False)
+    full_output_tract[['aggregation','quintile','access_to','wt_avg_miles']].to_csv(r'distance_indicator_tract.csv', index=False)
+    block_group_avg_df.to_csv(r'blockgroup_distance_indicator.csv', index=False) 
+    tract_group_avg_df.to_csv(r'tract_distance_indicator.csv', index=False)    
 
     # Calculate average of an average for the region
     results = {}
-    block_group_avg_df = block_group_avg_df.merge(df_equity_counts, left_on='geoid20', right_on='geoid', how='left')
+    block_group_avg_df = block_group_avg_df.merge(equity_counts_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
     for agg_col in ['poc', 'income', 'disability','youth', 'older', 'lep']:
         results[agg_col] = {}
         results['non_'+agg_col] = {}

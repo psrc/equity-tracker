@@ -59,88 +59,10 @@ def intersect(gdf_a, gdf_b, gdf_b_col):
 
     return df
 
-#######################################################
-# Calculate average weighted distance to features
-#######################################################
-
-def main():
-     
-    # Define SQL connections for ElmerGeo
-    crs = 'EPSG:2285'    # NAD83 / Washington North (ftUS)
-    elmergeo_conn_string = 'AWS-Prod-SQL\Sockeye'
-    elmergeo_con = connect('AWS-Prod-SQL\Sockeye', database="ElmerGeo")
-
-    # Connections to Elmer
-    elmer_conn_string = "DRIVER={ODBC Driver 17 for SQL Server}; SERVER=AWS-PROD-SQL\Sockeye; DATABASE=Elmer; trusted_connection=yes"
-    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": elmer_conn_string})
-    elmer_engine = sqlalchemy.create_engine(connection_url)
-
-    # Load equity quintiles definitions and join to block groups
-    equity_shares_df = pd.read_sql(sql='select * from equity.v_blockgroup_shares', con=elmer_engine)
-    equity_shares_df = equity_shares_df[equity_shares_df['data_year'] == equity_quintiles_year]
-
-    # Load parcel data
-    print('Loading parcel points...')
-    parcels_gdf = load_elmer_geo_table('parcels_urbansim_2018_pts', elmergeo_con, crs)
-    parcels_gdf = parcels_gdf[['parcel_id','geometry']]
-
-    # Elmer table provides lookup between parcel ID and block group
-    # FIXME: use this a table lookup instead of using geographic joins below
-    parcel_lookup_df = pd.read_sql(sql='select parcel_id, block_group_geoid10 from small_areas.parcel_dim', con=elmer_engine)
-
-    #test = parcels_gdf.merge(parcel_lookup, on='parcel_id')
-
-    # Load High Capacity Transit (HCT) Coverage Layer (polygon)
-    # We are using the Vision 2050 definitions: 
-    # 1/4 mi. for BRT, 1/2 mi. for light rail/ferry/commuter rail
-    # Excluding rural areas
-    print('Loading HCT geospatial data...')
-    hct_gdf = load_elmer_geo_table('hct_station_areas', elmergeo_con, crs)
-
-    # Load 2020 Census block groups
-    print('Loading Census data...')
-    block_grp_gdf = load_elmer_geo_table('blockgrp2020', elmergeo_con, crs)
-    block_grp_gdf = block_grp_gdf[['geoid20','geometry']]
-    print('Overlaying parcels on Census data...')
-    parcels_gdf = gpd.overlay(parcels_gdf, block_grp_gdf)
-
-    # Use households per parcel as a weight
-    # FIXME: use Elmer when data is available
-    print('Loading parcel household data...')
-    df_parcel_hh = pd.read_csv(r'Y:\Equity Indicators\access\parcels_urbansim.txt', 
-                               sep=' ', usecols=['parcelid','hh_p'])
-    parcels_gdf = parcels_gdf.merge(df_parcel_hh, left_on='parcel_id', right_on='parcelid')
-
-    # Merge equity share geographies
-    parcels_gdf['geoid'] = parcels_gdf['geoid20'].astype('int64')
-    equity_shares_df['geoid'] = equity_shares_df['geoid'].astype('int64')
-    parcels_gdf = parcels_gdf.merge(equity_shares_df, on='geoid', how='left')
-
-    # Drop any null rows
-    print("Removed %s null of %d parcels" %(len(parcels_gdf[parcels_gdf['older_quintile'].isnull()]),len(parcels_gdf)))
-    parcels_gdf = parcels_gdf[~parcels_gdf['older_quintile'].isnull()]
-
-    #######################################################
-    # Calculate household population within given proximities
-    #######################################################
-
-    # Iterate through submodes
-    submode_dict = {'all_hct': hct_gdf,
-                    'light_rail': hct_gdf[hct_gdf['light_rail'] != 0],
-                    'commuter_rail': hct_gdf[hct_gdf['commuter_r'] != 0],
-                    'ferry': hct_gdf[hct_gdf['ferry'] != 0],
-                    'passenger_ferry': hct_gdf[hct_gdf['passenger_'] != 0],
-                    'brt' : hct_gdf[hct_gdf['brt'] != 0]}
-
-    results_dict = {}
-
-    # Intersect parcel-level households with HCT coverage 
-    for submode, df in submode_dict.items():
-        results_dict[submode] = intersect(df, parcels_gdf, gdf_b_col='parcelid')
-
-    # Aggregate results by Equity Geography
-    # Iterate over measures and submodes
+def aggregate_results(parcels_gdf, results_dict, filename):
+    
     results_df = pd.DataFrame()
+
     for agg_col in ['poc_quintile', 'income_quintile', 'disability_quintile',
                     'youth_quintile', 'older_quintile', 'lep_quintile']:
         for submode, df in results_dict.items():
@@ -161,7 +83,100 @@ def main():
     results_df['household_shares_in_buffer'] = results_df['households_in_buffer']/results_df['total_households']
 
     # Write to local dir
-    results_df[['aggregation','quintile','mode','households_in_buffer','total_households','household_shares_in_buffer']].to_csv(r'hct_proximity_households.csv', index=False)
+    results_df[['aggregation','quintile','mode','households_in_buffer','total_households','household_shares_in_buffer']].to_csv(filename, index=False)
+
+#######################################################
+# Calculate average weighted distance to features
+#######################################################
+
+def main():
+     
+    # Define SQL connections for ElmerGeo
+    crs = 'EPSG:2285'    # NAD83 / Washington North (ftUS)
+    elmergeo_conn_string = 'AWS-Prod-SQL\Sockeye'
+    elmergeo_con = connect('AWS-Prod-SQL\Sockeye', database="ElmerGeo")
+
+    # Connections to Elmer
+    elmer_conn_string = "DRIVER={ODBC Driver 17 for SQL Server}; SERVER=AWS-PROD-SQL\Sockeye; DATABASE=Elmer; trusted_connection=yes"
+    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": elmer_conn_string})
+    elmer_engine = sqlalchemy.create_engine(connection_url)
+
+    # Load equity quintiles definitions and join to block groups
+    equity_shares_blockgroup_df = pd.read_sql(sql='select * from equity.v_blockgroup_shares', con=elmer_engine)
+    equity_shares_blockgroup_df = equity_shares_blockgroup_df[equity_shares_blockgroup_df['data_year'] == equity_quintiles_year]
+    equity_shares_tract_df = pd.read_sql(sql='select * from equity.v_tract_shares', con=elmer_engine)
+    equity_shares_tract_df = equity_shares_tract_df[equity_shares_tract_df['data_year'] == equity_quintiles_year]
+
+    # Load parcel data
+    print('Loading parcel points...')
+    parcels_gdf = load_elmer_geo_table('parcels_urbansim_2018_pts', elmergeo_con, crs)
+    parcels_gdf = parcels_gdf[['parcel_id','geometry']]
+
+    # Elmer table provides lookup between parcel ID and block group
+    # FIXME: use this table lookup instead of using geographic joins below
+    parcel_lookup_df = pd.read_sql(sql='select parcel_id, block_group_geoid10 from small_areas.parcel_dim', con=elmer_engine)
+
+    # Load High Capacity Transit (HCT) Coverage Layer (polygon)
+    # We are using the Vision 2050 definitions: 
+    # 1/4 mi. for BRT, 1/2 mi. for light rail/ferry/commuter rail
+    # Excluding rural areas
+    print('Loading HCT geospatial data...')
+    hct_gdf = load_elmer_geo_table('hct_station_areas', elmergeo_con, crs)
+
+    # Load 2020 Census block groups
+    print('Loading Census data...')
+    block_grp_gdf = load_elmer_geo_table('blockgrp2020', elmergeo_con, crs)
+    block_grp_gdf = block_grp_gdf[['geoid20','tractce20','blkgrpce20','geometry']]
+    print('Overlaying parcels on Census data...')
+    
+    parcels_gdf = gpd.overlay(parcels_gdf, block_grp_gdf)
+    parcels_gdf['tract_geoid'] = parcels_gdf['geoid20'].apply(lambda x: str(x)[:-1])
+
+    # Use households per parcel as a weight
+    # FIXME: use Elmer when data is available
+    print('Loading parcel household data...')
+    df_parcel_hh = pd.read_csv(r'Y:\Equity Indicators\access\parcels_urbansim.txt', 
+                               sep=' ', usecols=['parcelid','hh_p'])
+    parcels_gdf = parcels_gdf.merge(df_parcel_hh, left_on='parcel_id', right_on='parcelid')
+
+    # Merge equity share geographies
+    parcels_gdf['geoid20'] = parcels_gdf['geoid20'].astype('int64')
+    parcels_gdf['tract_geoid'] = parcels_gdf['tract_geoid'].astype('int64')
+    equity_shares_blockgroup_df['geoid'] = equity_shares_blockgroup_df['geoid'].astype('int64')
+    equity_shares_tract_df['geoid'] = equity_shares_tract_df['geoid'].astype('int64')
+    parcels_gdf_blockgroup = parcels_gdf.merge(equity_shares_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
+    parcels_gdf_tract = parcels_gdf.merge(equity_shares_tract_df, left_on='tract_geoid', right_on='geoid', how='left')
+
+    # Drop any null rows
+    print("Removed %s null of %d parcels" %(len(parcels_gdf_blockgroup[parcels_gdf_blockgroup['older_quintile'].isnull()]),len(parcels_gdf_blockgroup)))
+    parcels_gdf_blockgroup = parcels_gdf_blockgroup[~parcels_gdf_blockgroup['older_quintile'].isnull()]
+    parcels_gdf_tract = parcels_gdf_tract[~parcels_gdf_tract['older_quintile'].isnull()]
+
+    #######################################################
+    # Calculate household population within given proximities
+    #######################################################
+
+    # Iterate through submodes
+    submode_dict = {'all_hct': hct_gdf,
+                    'light_rail': hct_gdf[hct_gdf['light_rail'] != 0],
+                    'commuter_rail': hct_gdf[hct_gdf['commuter_r'] != 0],
+                    'ferry': hct_gdf[hct_gdf['ferry'] != 0],
+                    'passenger_ferry': hct_gdf[hct_gdf['passenger_'] != 0],
+                    'brt' : hct_gdf[hct_gdf['brt'] != 0]}
+
+    results_dict_blockgroup = {}
+    results_dict_tract = {}
+
+    # Intersect parcel-level households with HCT coverage 
+    for submode, df in submode_dict.items():
+        results_dict_blockgroup[submode] = intersect(df, parcels_gdf_blockgroup, gdf_b_col='parcelid')
+        results_dict_tract[submode] = intersect(df, parcels_gdf_tract, gdf_b_col='parcelid')
+
+    # Aggregate results by Equity Geography
+    # Iterate over measures and submodes
+
+    aggregate_results(parcels_gdf_blockgroup, results_dict_blockgroup, 'hct_proximity_households_blockgroup.csv')
+    aggregate_results(parcels_gdf_tract, results_dict_tract, 'hct_proximity_households_tract.csv')
 
 if __name__ == '__main__':
     start_time = time.time()
