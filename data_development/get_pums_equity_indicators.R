@@ -134,8 +134,8 @@ efa_to_elmer <- function(efa_result){
   efa_result %<>% mapply(format_for_elmer, ., as.character(names(.)), USE.NAMES=TRUE, SIMPLIFY=FALSE) # Rename fields/reshape to fit Elmer.equity schema
   efa_result %<>% rbindlist(use.names=TRUE)                                                       # Combine to one data.table
   psrcelmer::stage_table(efa_result, "equity_pums")
-  psrcelmer::send_query(merge_sql)                                                                 # Execute the query
-  psrcelmer::send_query("DROP TABLE stg.equity_pums")                                              # Clean up
+  psrcelmer::sql_execute(sql=merge_sql)                                                           # Execute the query
+  psrcelmer::sql_execute(sql="DROP TABLE stg.equity_pums")                                        # Clean up
   return(invisible(NULL))
 }
 

@@ -64,8 +64,8 @@ ospi_efa_to_elmer <- function(rs_kready){
                      "'share', source.fact_value, 0);")
 
   psrcelmer::stage_table(rs_kready, "equity_ospi")                                                 # Stage table first
-  psrcelmer::send_query(merge_sql)                                                                 # -- then merge
-  psrcelmer::send_query("DROP TABLE stg.equity_ospi")                                              # Clean up
+  psrcelmer::sql_execute(sql=merge_sql)                                                            # -- then merge
+  psrcelmer::sql_execute(sql="DROP TABLE stg.equity_ospi")                                         # Clean up
   return(invisible(NULL))                                                                          # (Return object unapplicable)
 }
 
