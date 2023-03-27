@@ -4,3 +4,166 @@ poc,Low,all_hct,4.114516267206678
 poc,Low Medium,all_hct,1.952669857214311
 poc,Medium,all_hct,1.214029175547878
 poc,Medium High,all_hct,0.8363214050453556
+poc,High,light_rail,2.4919517497592483
+poc,Low,light_rail,8.010808994030697
+poc,Low Medium,light_rail,5.2528033356479975
+poc,Medium,light_rail,3.8755377113622433
+poc,Medium High,light_rail,3.0879439430696998
+poc,High,commuter_rail,4.5999128554093485
+poc,Low,commuter_rail,9.060778764100698
+poc,Low Medium,commuter_rail,7.118545585723734
+poc,Medium,commuter_rail,5.963321383302532
+poc,Medium High,commuter_rail,5.461257678503219
+poc,High,ferry,7.336856439737137
+poc,Low,ferry,11.809909213583323
+poc,Low Medium,ferry,8.485452547735598
+poc,Medium,ferry,7.313963089621072
+poc,Medium High,ferry,7.096043307741971
+poc,High,passenger_ferry,11.748117027291048
+poc,Low,passenger_ferry,17.35412651951062
+poc,Low Medium,passenger_ferry,13.988111934879157
+poc,Medium,passenger_ferry,12.778781489187226
+poc,Medium High,passenger_ferry,12.291769516070213
+poc,High,brt,0.7134002654194134
+poc,Low,brt,4.412838702908117
+poc,Low Medium,brt,2.12949406762967
+poc,Medium,brt,1.351337461056207
+poc,Medium High,brt,0.9753798741689204
+income,High,all_hct,1.0299729731536802
+income,Low,all_hct,2.225388339008915
+income,Low Medium,all_hct,1.9284543924746735
+income,Medium,all_hct,1.7525720894081729
+income,Medium High,all_hct,1.713030903800688
+income,High,light_rail,3.9202819980975767
+income,Low,light_rail,4.551772810933029
+income,Low Medium,light_rail,4.782420043744728
+income,Medium,light_rail,4.502599809292335
+income,Medium High,light_rail,4.732017107204267
+income,High,commuter_rail,4.697531161492977
+income,Low,commuter_rail,7.8252807815215615
+income,Low Medium,commuter_rail,7.184462456170959
+income,Medium,commuter_rail,6.391794288914735
+income,Medium High,commuter_rail,6.057222170625775
+income,High,ferry,8.466150122580059
+income,Low,ferry,8.312935983790068
+income,Low Medium,ferry,7.910736347351734
+income,Medium,ferry,8.363016984486526
+income,Medium High,ferry,8.760994448799554
+income,High,passenger_ferry,14.182847668878557
+income,Low,passenger_ferry,13.276554328529214
+income,Low Medium,passenger_ferry,13.090118456903976
+income,Medium,passenger_ferry,13.294088893004172
+income,Medium High,passenger_ferry,14.047381157088378
+income,High,brt,1.056960635891308
+income,Low,brt,2.5556685432447757
+income,Low Medium,brt,2.121390318108062
+income,Medium,brt,1.9204738811230897
+income,Medium High,brt,1.8238665242623955
+disability,High,all_hct,2.22429824971083
+disability,Low,all_hct,1.1020293367349792
+disability,Low Medium,all_hct,1.5251792744847705
+disability,Medium,all_hct,1.8092329975825205
+disability,Medium High,all_hct,1.9939521793836543
+disability,High,light_rail,6.198526412409196
+disability,Low,light_rail,2.6094522961959323
+disability,Low Medium,light_rail,3.7535940241870343
+disability,Medium,light_rail,4.533207541051406
+disability,Medium High,light_rail,5.542702268544586
+disability,High,commuter_rail,6.747897193682258
+disability,Low,commuter_rail,6.247304436590512
+disability,Low Medium,commuter_rail,6.320926105570237
+disability,Medium,commuter_rail,6.296845006015031
+disability,Medium High,commuter_rail,6.434507641628481
+disability,High,ferry,10.631688338925404
+disability,Low,ferry,5.891018028754737
+disability,Low Medium,ferry,7.473378916965451
+disability,Medium,ferry,8.483221315189516
+disability,Medium High,ferry,9.540272891229828
+disability,High,passenger_ferry,16.695645361701125
+disability,Low,passenger_ferry,9.908139600091621
+disability,Low Medium,passenger_ferry,12.317213203078692
+disability,Medium,passenger_ferry,14.009736304176107
+disability,Medium High,passenger_ferry,15.266126946659009
+disability,High,brt,2.3336951271263597
+disability,Low,brt,1.3357730088923037
+disability,Low Medium,brt,1.689663935939525
+disability,Medium,brt,1.9730059267390485
+disability,Medium High,brt,2.131508070101239
+youth,High,all_hct,2.141681571956752
+youth,Low,all_hct,0.888352717102002
+youth,Low Medium,all_hct,1.8686651080023626
+youth,Medium,all_hct,1.9179961632047284
+youth,Medium High,all_hct,1.9966783426676924
+youth,High,light_rail,5.39026222221615
+youth,Low,light_rail,2.6568219511225184
+youth,Low Medium,light_rail,4.738556554569595
+youth,Medium,light_rail,5.042563600298858
+youth,Medium High,light_rail,5.11302554285281
+youth,High,commuter_rail,7.420509951625062
+youth,Low,commuter_rail,4.820892127418312
+youth,Low Medium,commuter_rail,6.489751925066115
+youth,Medium,commuter_rail,6.878740253287464
+youth,Medium High,commuter_rail,6.828067687781023
+youth,High,ferry,10.602061566113372
+youth,Low,ferry,5.173883884630915
+youth,Low Medium,ferry,8.21607860321013
+youth,Medium,ferry,9.045175257920663
+youth,Medium High,ferry,9.658652832289352
+youth,High,passenger_ferry,16.559807408694528
+youth,Low,passenger_ferry,9.009915279748194
+youth,Low Medium,passenger_ferry,13.766836496112758
+youth,Medium,passenger_ferry,14.422352513808857
+youth,Medium High,passenger_ferry,15.373139321408246
+youth,High,brt,2.3555006368831646
+youth,Low,brt,1.0356561095339154
+youth,Low Medium,brt,2.024122978647023
+youth,Medium,brt,2.067659744204888
+youth,Medium High,brt,2.151939413411095
+older,High,all_hct,2.238843322287295
+older,Low,all_hct,1.0338471957959436
+older,Low Medium,all_hct,1.5505258753086633
+older,Medium,all_hct,1.7298032492544173
+older,Medium High,all_hct,2.0985644514855304
+older,High,light_rail,5.5036967879823475
+older,Low,light_rail,3.0133725548749455
+older,Low Medium,light_rail,4.167778805855492
+older,Medium,light_rail,4.63013770948967
+older,Medium High,light_rail,5.26913963713118
+older,High,commuter_rail,6.9352110117246655
+older,Low,commuter_rail,5.493945806808852
+older,Low Medium,commuter_rail,6.0794324970044284
+older,Medium,commuter_rail,6.411086532076267
+older,Medium High,commuter_rail,7.170461423423617
+older,High,ferry,8.722995755713468
+older,Low,ferry,6.887617133330605
+older,Low Medium,ferry,8.573884539655046
+older,Medium,ferry,8.836938042602274
+older,Medium High,ferry,8.903086395723228
+older,High,passenger_ferry,14.12098456967971
+older,Low,passenger_ferry,11.530898061579876
+older,Low Medium,passenger_ferry,14.10653082694679
+older,Medium,passenger_ferry,14.107156767090764
+older,Medium High,passenger_ferry,14.186369329903163
+older,High,brt,2.4866156704059796
+older,Low,brt,1.2278878050574198
+older,Low Medium,brt,1.630147392377382
+older,Medium,brt,1.8669229962386207
+older,Medium High,brt,2.251370677352874
+lep,High,all_hct,0.70035790795061
+lep,Low,all_hct,2.311833610618909
+lep,Medium High,all_hct,1.0601368586957471
+lep,High,light_rail,2.459139209453114
+lep,Low,light_rail,5.643790003677343
+lep,Medium High,light_rail,3.271550938993746
+lep,High,commuter_rail,4.95569633479533
+lep,Low,commuter_rail,7.135915065369432
+lep,Medium High,commuter_rail,5.779457666781792
+lep,High,ferry,7.016953392451728
+lep,Low,ferry,9.191781798570402
+lep,Medium High,ferry,7.357239748693495
+lep,High,passenger_ferry,11.534024172450104
+lep,Low,passenger_ferry,14.725347963821989
+lep,Medium High,passenger_ferry,12.382799103553616
+lep,High,brt,0.7653156560663478
+lep,Low,brt,2.5040317276678774
+lep,Medium High,brt,1.2381037361561202

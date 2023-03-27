@@ -91,7 +91,7 @@ def aggregate_results(results_dict, geog_level):
             df['aggregation'] = agg_col
             block_group_avg_df = pd.concat([block_group_avg_df,df.reset_index()])
 
-            return full_output_df, block_group_avg_df
+    return full_output_df, block_group_avg_df
 
 #######################################################
 # Calculate average weighted distance to features
