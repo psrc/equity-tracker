@@ -161,7 +161,7 @@ nrow(data_full) #170
 num_yr_geo <- num_group*2*num_indatt #12
 ```
 If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
-```{r}
+```{r, include=FALSE, eval=FALSE}
 table(data_full$data_year,
       data_full$county)
 ```
@@ -466,7 +466,7 @@ facet_line_by_geography(data_clean, "Snohomish", ": Snohomish County")
 \
 \
 
-#### First/last years
+#### First / last years
 ```{r}
 data_clean_2yr <- data_clean %>% 
   filter(data_year=="2011" | 
@@ -486,31 +486,28 @@ facet_line_by_geography(data_clean_2yr, "Snohomish", ": Snohomish County")
 #### calculated difference b/t
 The 5 geographies are all included in the facets by geography, but they could be separated out to create 5 individual charts - one for each geography.
 ```{r}
-dif_groups <- function(geography, group, category){
+dif_groups <- function(group, category){
   
-  region_btgrp_dif <- data_clean %>% 
-    # dplyr::filter(county==geography) %>% 
+  region_btgrp_dif <- data_clean %>%
     dplyr::filter(focus_type==group) %>% 
-    group_by(data_year) %>% 
+    group_by(data_year_yr) %>% 
     mutate(dif = ifelse(focus_attribute!=category, fact_value - fact_value[focus_attribute == category], 0)) %>% 
     dplyr::filter(dif!=0)
 }
 
-poc <- dif_groups("Region", "POC_cat", 'POC')
-dis <- dif_groups("Region", "Disability_cat", 'With disability')
-income <- dif_groups("Region", "Income_cat", 'Low Income')
-youth <- dif_groups("Region", "Youth_cat", 'Household with youth')
-older <- dif_groups("Region", "Older_cat", 'Household with older adult')
-lep <- dif_groups("Region", "LEP_cat", 'Limited English proficiency')
+poc <- dif_groups("POC_cat", 'POC')
+dis <- dif_groups("Disability_cat", 'With disability')
+income <- dif_groups("Income_cat", 'Low Income')
+youth <- dif_groups("Youth_cat", 'Household with youth')
+older <- dif_groups("Older_cat", 'Household with older adult')
+lep <- dif_groups("LEP_cat", 'Limited English proficiency')
 
 dif_equity_groups <- rbind(poc, 
                            dis, 
                            income,
                            youth,
                            older,
-                           lep) %>% 
-  dplyr::group_by(focus_type) # without this, colors were off
-
+                           lep)
 # facet line chart option
 dif_equity <- static_facet_line_chart(t=dif_equity_groups,
                                       x="data_year_yr", y="dif",
@@ -561,7 +558,7 @@ equity_group_facet_line(data_clean, "LEP_cat", " (limited English proficiency)")
 \
 \
 
-#### First/last years
+#### First / last years
 ```{r}
 data_clean_2yr <- data_clean %>% 
   filter(data_year=="2011" | 
@@ -733,7 +730,7 @@ cleveland_dot
 
 ### Copy files from Y drive > website folder
 ```{r, include=FALSE, eval=FALSE}
-# current.folder <- "Y:/Equity Indicators/tracker-webpage-content/economy"
+# current.folder <- "Y:/Equity Indicators/tracker-webpage-content/economy/candidates/"
 # new.folder <- "//WEB/website_data/equity-tracker-webpages/economy"
 # 
 # list.of.files <- list.files(current.folder, full.names = T)
@@ -751,7 +748,7 @@ cleveland_dot
 *This section includes visuals that were determined to be less useful. We didn't want to lose the work, but didn't want to include it in the main workflow. Feel free to comment out if you don't want to adjust the arguments to fit the indicator of interest.*
 
 ### Line chart: all categories
-```{r}
+```{r, include=FALSE, eval=FALSE}
 data_clean_region <- data_clean %>% 
   dplyr::filter(county=="Region")
 
@@ -782,7 +779,7 @@ line_chart <- interactive_line_chart(t=data_clean_region,
 line_chart
 ```
 ### Line chart: by vulnerability
-```{r}
+```{r, include=FALSE, eval=FALSE}
 static_facet_line_chart(t=data_clean_region,
                         x="data_year_yr", y="fact_value",
                         fill="focus_type_ord", facet="vulnerability",
@@ -798,7 +795,7 @@ static_facet_line_chart(t=data_clean_region,
 \
 \
 
-# 3 visuals
+# 3 visuals for webpage
 ## 1. Map of most recent data
 ```{r, include=FALSE}
 # Connecting to ElmerGeo for census geographies through Portal----
@@ -1157,7 +1154,7 @@ calc <- data_clean %>%
 ##### First/last years
 There are 5 charts for the different geographies: Region and the 4 counties.
 ```{r, line-region-half, fig.width=7.29, fig.height=5.17}
-facet_line_by_geography(data_clean_2yr, "Region", ": Region")
+facet_line_by_geography(data_clean_2yr, "Region", ": Region") + coord_cartesian(ylim = c(10000, 160000))
 ```
 
 #### By equity group
@@ -1175,15 +1172,15 @@ equity_group_facet_line(data_clean_2yr, "POC_cat", " (race/ethnicity)")
 ```
 
 ### Cleveland dot plot
-```{r}
+```{r, include=FALSE, eval=FALSE}
 cleveland_dot
 ```
 
-```{r}
+```{r, include=FALSE, eval=FALSE}
 cleveland_dot
 ```
 
-```{r}
+```{r, include=FALSE, eval=FALSE}
 data <- dplyr::select(data_clean_df, c(data_year_yr, fact_value, focus_attribute_ord))
 viz <- cleveland_dot_chart(t=data, 
                            x="fact_value", 
@@ -1196,21 +1193,21 @@ viz <- cleveland_dot_chart(t=data,
                            subtitle = "values are adjusted to 2021 dollars",
                            source=paste("U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)", "2011 disability data not available", sep = "\n"))
 
-viz +
+# viz +
   # geom_point(aes(color = data_year_yr, shape=data_year_yr), size = 1.5, alpha=0.3)+
-  geom_line(data=highlight, aes(group = focus_attribute_ord), size=0.9) +
+  # geom_line(data=highlight, aes(group = focus_attribute_ord), size=0.9) +
   # geom_point(data=highlight, aes(color = data_year_yr, shape=data_year_yr), size = 2.1) +
-  scale_shape_manual(values = c(15, 16)) +
-  # scale_color_manual(values=c("#00A7A0","#F05A28")) +
-  labs(colour= "Year",
-       shape="Year") +
-  theme(plot.title = element_text(face="bold", size=16),
-        axis.text.y = element_text(face = c('plain','bold', 'plain', 'bold',
-                                            'plain','bold', 'plain', 'bold')))
+  # scale_shape_manual(values = c(15, 16)) +
+  # labs(colour= "Year",
+  #      shape="Year") +
+  # theme(plot.title = element_text(face="bold", size=16),
+  #       axis.text.y = element_text(face = c('plain','bold', 'plain', 'bold',
+  #                                           'plain','bold', 'plain', 'bold')))
+viz
   
-# psrcplot::cleveland_dot_chart(t=data_clean_df, 
-#                               x="fact_value", 
-#                               y="focus_attribute_ord", 
+# psrcplot::cleveland_dot_chart(t=data_clean_df,
+#                               x="fact_value",
+#                               y="focus_attribute_ord",
 #                               fill="data_year_yr")
 # save(data_clean_df, file = "T:/2023April/Mary/EquityTracker/data/data_clean_df.rda")
 ```
