@@ -1,0 +1,1220 @@
+---
+title: "Median household income"
+subtitle: "Data source(s): ACS, PUMS"
+author: "Mary Richards"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+library(tidyverse)
+library(psrcelmer)
+library(psrccensus)
+library(psrcplot)
+library(psrctrends)
+library(rlang) #required for psrccensus
+library(emmeans) #required for rlang
+library(magrittr)
+library(kableExtra)
+library(ggplot2)
+
+library(summarytools) #freq
+library(vtable) #summary stats
+library(table1)  #nice descriptive summary table
+library(scales) #number formatting
+library(ggpubr) #graphing - ggarrange fx
+library(forcats) #for factor re-leveling
+library(plotly) #for interactive charts
+
+library(odbc) #connect to ElmerGeo
+library(DBI) #connect to ElmerGeo
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+library(raster)
+library(ggspatial)
+library(lubridate) #year formatting
+library(stringr) #add leading zero's
+library(reshape2) #formatting data
+library(readxl)
+library(RColorBrewer)
+library(gridExtra)
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+```
+
+# Introduction
+The data set referenced in this script is generated from the American Community Survey (ACS) and the Washington Office of Superintendent of Public Instruction [(OSPI)](https://www.k12.wa.us/data-reporting/data-portal). These data sets provide data at the **person-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
+
+# Access data
+## PUMS and OSPI data (Elmer)
+This data set was compiled from PUMS data. 
+```{r equity quintiles in Elmer}
+# PUMS/OSPI data set
+pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
+```
+Looking at the fields in the data set
+```{r}
+# explore the data
+head(pums_ospi_elmer)
+# view the equity demographic groups
+unique(pums_ospi_elmer$focus_type)
+# view the different indicators available within the data set
+unique(pums_ospi_elmer$indicator_type)
+# view the different data years available within the data set
+unique(pums_ospi_elmer$data_year)
+```
+
+# Median household income
+```{r indicator specific information, include=FALSE}
+indicator_measure <- 'median_household_income'
+indicator_title <- 'Median household income'
+```
+
+## 1. Explore data
+*In this section we make sure that the data set makes sense.*  
+```{r}
+# clean data set
+data_full <- pums_ospi_elmer %>% 
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>%
+  dplyr::filter(indicator_type==indicator_measure) %>% 
+  dplyr::filter(focus_type!="Total") %>% 
+  filter(focus_attribute!="Total") %>%
+  filter(indicator_attribute!="Total") %>%
+  dplyr::mutate(data_year_yr=format(data_year,format="%Y"))
+```
+
+### Data fields
+#### *consistent base data*
+
+* There should be 5 geographies - the 4 counties and the Region. 
+* There should be 6 equity focus categories - POC, income, disability, youth, older adult, and LEP
+    + 2 sub-categories per focus group (e.g. people of color, non-people of color)
+```{r}
+# geographies
+num_county <- length(unique(data_full$county)) #5
+unique(data_full$county)
+
+# equity focus groups
+num_group <- length(unique(data_full$focus_type)) #6
+unique(data_full$focus_type)
+```
+\
+\
+
+#### *indicator-specific data*
+These fields will vary by indicator:
+
+* Type of metric - this will determine how the data are visualized *(est ="percent" or "currency" or "number")*
+* Number of years (5-year span) - this can vary depending on data availability
+* Number of indicator-specific categories - this can vary depending on the indicator of interest, ranging from N/A (*median income*) to multiple levels (*crowding, housing cost burden*)
+```{r}
+# metric
+unique(data_full$fact_type) #median
+
+# years
+num_yr <- length(unique(data_full$data_year)) #3
+unique(data_full$data_year)
+time_period <- '2011, 2016, 2021'
+
+# indicator attributes
+num_indatt <- length(unique(data_full$indicator_attribute)) #1
+unique(data_full$indicator_attribute) #N/A
+
+# calculate expected no. rows
+num_row <- num_yr*num_county*num_group*2*num_indatt #180
+```
+
+There are **`r num_county`** geographies and **`r num_group`** equity focus groups (each with **2** subgroups). There are **`r num_yr`** years in the data set and the indicator specific field has **`r num_indatt`** attribute(s), which means there should be a total of **`r num_row`** rows.
+```{r}
+# count number of rows
+nrow(data_full) #170
+```
+<span style="color: #00A7A0">There are some missing data.</span> 
+\
+\
+
+#### *checking for missing data*
+##### Year / geography
+```{r}
+num_yr_geo <- num_group*2*num_indatt #12
+```
+If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
+```{r}
+table(data_full$data_year,
+      data_full$county)
+```
+<span style="color: #00A7A0">
+2011 is missing some data for all geographies.
+</span> 
+\
+\
+
+##### Year / equity focus group
+```{r}
+num_yr_grp <- num_county*2*num_indatt #10
+```
+If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
+```{r}
+table(data_full$data_year,
+      data_full$focus_type)
+```
+<span style="color: #00A7A0">
+The disability category is missing all data in 2011.
+</span> 
+\
+\
+
+##### Year / equity focus sub-group
+```{r}
+num_yr_subgrp <- num_county*num_indatt #5
+```
+If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
+```{r}
+table(data_full$data_year,
+      data_full$focus_attribute)
+```
+\
+\
+
+##### Year / indicator attribute
+```{r}
+num_yr_ind <- num_county*num_group*2 #60
+```
+If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
+```{r}
+table(data_full$data_year,
+      data_full$indicator_attribute)
+```
+\
+\
+
+### Numeric data
+To check for *0*s and *NULL*s
+```{r}
+# checking for NULL
+summary(data_full$fact_value)
+```
+<span style="color: #00A7A0">
+There are no 0s or nulls.
+</span> 
+\
+\
+
+To look at distribution of all data - not the most useful visual, but provides a sense of the range of values at a high level in one plot. 
+\
+```{r}
+qplot(data_year_yr, fact_value, 
+      colour = county, shape = focus_type, 
+      data = data_full, 
+      main = indicator_title) + theme(axis.title.x = element_blank(),
+                                               axis.title.y = element_blank())
+```
+\
+This table includes a lot of information about the data set and helps to show the different levels of each field. It provides another way to check if data are available for all counties and all years, or where there may be gaps in the data set. 
+```{r}
+data_refined <- data_full %>% 
+  dplyr::select(data_year_yr, county, vulnerability, focus_type, focus_attribute,
+                indicator_type, indicator_attribute, fact_value)
+
+sumtable(data_refined,
+         add.median=TRUE,
+         group="county",
+         out="return")
+```
+
+```{r}
+# renaming labels ----
+data_clean <- data_full %>% 
+  mutate(focus_type_edit = case_when(focus_type=="POC_cat"~"Race/Ethnicity",
+                                     focus_type=="Disability_cat"~"Disability Status",
+                                     focus_type=="LEP_cat"~"English Proficiency",
+                                     focus_type=="Income_cat"~"Low Income",
+                                     focus_type=="Youth_cat"~"Households with Youth <18",
+                                     focus_type=="Older_cat"~"Households with Older Adults 65+"))
+
+# re-ordering variables ----
+data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute,
+                                         levels = c("POC",
+                                                    "Non-POC",
+                                                    "Low Income",
+                                                    "Non-Low Income",
+                                                    "With disability",
+                                                    "Without disability",
+                                                    "Limited English proficiency",
+                                                    "English proficient",
+                                                    "Household with youth",
+                                                    "Household without youth", 
+                                                    "Household with older adult",
+                                                    "Household without older adult",
+                                                    "Total"))
+data_clean$county_ord <- factor(data_clean$county,
+                                levels = c("King",
+                                           "Kitsap",
+                                           "Pierce",
+                                           "Snohomish",
+                                           "Region"))
+data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
+                                    levels = c("Race/Ethnicity",
+                                               "Low Income",
+                                               "Disability Status",
+                                               "English Proficiency",
+                                               "Households with Youth <18",
+                                               "Households with Older Adults 65+"))
+```
+
+```{r}
+# indicator specific re-ordering - median income is N/A so this step is unnecessary
+# data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
+#                                     levels = c("Less than a Bachelor's degree",
+#                                                "Bachelor's degree or higher"))
+```
+\
+
+### Data labels, shares
+These charts were generated to ensure the labels across years are consistent/make sense. There had been an issue with misassigned labels because tidycensus::pums_variables, i.e. the only digital data dictionary available to associate labels with codes, exists only from 2017 forward. Most variables have had consistent codes, but in cases where the codes have shifted over time, using the 2017 lookup winds up mischaracterizing categories.
+\
+\
+These charts also help to confirm that the shares add up to 100% - only relevant when *indicator_attribute* has more than one category. The *indicator_attribute* for median household income is NA.
+\
+\
+*The colors of the charts may not be consistent between the years depending on missing data.* 
+\
+```{r}
+just_region_11 <- data_clean %>% 
+  filter(county=="Region") %>% 
+  filter(data_year==2011) %>% 
+  arrange(focus_attribute_ord)
+just_region_16 <- data_clean %>% 
+  filter(county=="Region") %>% 
+  filter(data_year==2016)%>% 
+  arrange(focus_attribute_ord)
+just_region_21 <- data_clean %>% 
+  filter(county=="Region") %>% 
+  filter(data_year==2021)%>% 
+  arrange(focus_attribute_ord)
+
+# check est type
+bar_chart <- static_bar_chart(t=just_region_11,
+                               x="fact_value", y="focus_attribute_ord",
+                               fill="focus_attribute_ord",
+                               est = "currency",
+                               pos= "stack",
+                               color = "psrc_pairs", 
+                               title = paste0(indicator_title, ": Region (2011)"),
+                               subtitle = "by equity focus group",
+                               source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+bar_chart
+
+bar_chart <- static_bar_chart(t=just_region_16,
+                               x="fact_value", y="focus_attribute_ord",
+                               fill="focus_attribute_ord",
+                               est = "currency",
+                               pos= "stack",
+                               color = "psrc_pairs",
+                               title = paste0(indicator_title, ": Region (2016)"),
+                               subtitle = "by equity focus group",
+                               source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+bar_chart
+
+bar_chart <- static_bar_chart(t=just_region_21,
+                               x="fact_value", y="focus_attribute_ord",
+                               fill="focus_attribute_ord",
+                               est = "currency",
+                               pos= "stack",
+                               color = "psrc_pairs",
+                               title = paste0(indicator_title, ": Region (2021)"),
+                               subtitle = "by equity focus group",
+                               source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+
+bar_chart
+```
+
+## 2. Visually explore data
+### 2a. Scatter plots
+*In this section we start to explore the data visually - distribution by the different dimensions within the data set. These plots are helpful to check for outliers and get a higher level understanding of the data in one visual, before slicing the data by geography and equity focus group in the following sections.* 
+\
+\
+The following code will need to be adjusted to fit the fields specific to the data indicator. For educational attainment, we focus on those with a Bachelor's degree or higher. The following code establishes the data frame that the rest of the analysis uses. If there are fewer than 2 *indicator attributes*, this section can be skipped/commented out, but the code will need to be adjusted throughout. 
+\
+\
+
+#### By *indicator_attribute*
+This section isn't relevant for this specific indicator because there aren't unique indicator attributes. 
+
+#### By Year
+```{r}
+# separating by year ----
+data_clean11 <- data_clean %>% 
+  filter(data_year==2011)
+data_clean16 <- data_clean %>% 
+  filter(data_year==2016)
+data_clean21 <- data_clean %>% 
+  filter(data_year==2021)
+```
+
+```{r}
+# plot data, adjust y limits based on data set
+qplot(focus_type_ord, fact_value, 
+      colour = county, shape = vulnerability, 
+      data = data_clean11, 
+      main = paste0(indicator_title, ": 2011")) + theme(axis.title.x = element_blank(),
+                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+
+qplot(focus_type_ord, fact_value, 
+      colour = county, shape = vulnerability, 
+      data = data_clean16,
+      main = paste0(indicator_title, ": 2016")) + theme(axis.title.x = element_blank(),
+                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+
+qplot(focus_type_ord, fact_value, 
+      colour = county, shape = vulnerability, 
+      data = data_clean21, 
+      main = paste0(indicator_title, ": 2021")) + theme(axis.title.x = element_blank(),
+                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+```
+\
+
+### 2b. Facets by geography
+*In this section we explore trends by different groups with MOEs. These charts help to show any missing data by geography, year, or focus group/subgroup.*
+```{r, include=FALSE}
+facet_by_geography <- function(df, geography, focus.text){
+  # filter data
+  data_clean_geo <- df %>% 
+    filter(county==geography)
+  
+  # make chart, adjust estimate type, subtitle
+  static_facet_column_chart(t=data_clean_geo,
+                            x="data_year_yr", y="fact_value",
+                            fill="vulnerability", facet="focus_type_ord",
+                            color="psrc_light",
+                            est ="currency",
+                            # moe = "margin_of_error",
+                            dec=2,
+                            scales="fixed",
+                            ncol=3,
+                            title=paste0(indicator_title, focus.text),
+                            subtitle="values are adjusted to 2021 dollars",
+                            source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+}
+```
+
+```{r}
+facet_by_geography(data_clean, "Region", ": Region")
+facet_by_geography(data_clean, "King", ": King County")
+facet_by_geography(data_clean, "Kitsap", ": Kitsap County")
+facet_by_geography(data_clean, "Pierce", ": Pierce County")
+facet_by_geography(data_clean, "Snohomish", ": Snohomish County")
+```
+\
+\
+
+## 3. Developing visuals
+*In this section we further develop the draft visuals for communicating the results and supporting the narrative for the Equity Tracker webpages. These charts are slightly more refined by slicing the data by geography and equity focus group. The line charts don't include MOEs, but they help make connections between the same groups over time.* 
+
+### Line charts by geography
+#### High / low vulnerability groups
+```{r, include=FALSE}
+facet_line_by_geography <- function(df, geography, focus.text){
+  # filter data
+  data_clean_geo <- df %>% 
+    filter(county==geography)
+  
+  # make chart, adjust estimate type, subtitle
+  static_facet_line_chart(t=data_clean_geo,
+                          x="data_year_yr", y="fact_value",
+                          fill="vulnerability", facet="focus_type_ord",
+                          color="psrc_light",
+                          est ="currency",
+                          dec=2,
+                          scales="fixed",
+                          ncol=3,
+                          title=paste0(indicator_title, focus.text),
+                          subtitle="values are adjusted to 2021 dollars",
+                          source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+}
+```
+
+```{r}
+facet_line_by_geography(data_clean, "Region", ": Region")
+facet_line_by_geography(data_clean, "King", ": King County")
+facet_line_by_geography(data_clean, "Kitsap", ": Kitsap County")
+facet_line_by_geography(data_clean, "Pierce", ": Pierce County")
+facet_line_by_geography(data_clean, "Snohomish", ": Snohomish County")
+```
+\
+\
+
+#### First/last years
+```{r}
+data_clean_2yr <- data_clean %>% 
+  filter(data_year=="2011" | 
+             data_year =="2021")
+```
+
+```{r}
+facet_line_by_geography(data_clean_2yr, "Region", ": Region")
+facet_line_by_geography(data_clean_2yr, "King", ": King County")
+facet_line_by_geography(data_clean_2yr, "Kitsap", ": Kitsap County")
+facet_line_by_geography(data_clean_2yr, "Pierce", ": Pierce County")
+facet_line_by_geography(data_clean_2yr, "Snohomish", ": Snohomish County")
+```
+\
+\
+
+#### calculated difference b/t
+The 5 geographies are all included in the facets by geography, but they could be separated out to create 5 individual charts - one for each geography.
+```{r}
+dif_groups <- function(geography, group, category){
+  
+  region_btgrp_dif <- data_clean %>% 
+    # dplyr::filter(county==geography) %>% 
+    dplyr::filter(focus_type==group) %>% 
+    group_by(data_year) %>% 
+    mutate(dif = ifelse(focus_attribute!=category, fact_value - fact_value[focus_attribute == category], 0)) %>% 
+    dplyr::filter(dif!=0)
+}
+
+poc <- dif_groups("Region", "POC_cat", 'POC')
+dis <- dif_groups("Region", "Disability_cat", 'With disability')
+income <- dif_groups("Region", "Income_cat", 'Low Income')
+youth <- dif_groups("Region", "Youth_cat", 'Household with youth')
+older <- dif_groups("Region", "Older_cat", 'Household with older adult')
+lep <- dif_groups("Region", "LEP_cat", 'Limited English proficiency')
+
+dif_equity_groups <- rbind(poc, 
+                           dis, 
+                           income,
+                           youth,
+                           older,
+                           lep) %>% 
+  dplyr::group_by(focus_type) # without this, colors were off
+
+# facet line chart option
+dif_equity <- static_facet_line_chart(t=dif_equity_groups,
+                                      x="data_year_yr", y="dif",
+                                      fill="county_ord", facet="focus_type_ord",
+                                      color="psrc_light",
+                                      est ="currency",
+                                      dec=2,
+                                      scales="fixed",
+                                      ncol=3,
+                                      title=paste0(indicator_title),
+                                      subtitle="values are adjusted to 2021 dollars",
+                          source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)") #+ theme(legend.position = "none")
+
+dif_equity
+```
+
+### Line charts by equity group
+#### High / low vulnerability groups
+```{r, include=FALSE}
+equity_group_facet_line <- function(df, focus.type, focus.text){
+  # filter data
+  data_clean_filter <- df %>% 
+    filter(focus_type==focus.type)
+  
+  # make chart, adjust estimate type, subtitle, and y limits 
+  static_facet_line_chart(t=data_clean_filter,
+                          x="data_year_yr", y="fact_value",
+                          fill="focus_attribute", facet="county",
+                          color="psrc_light",
+                          est ="currency",
+                          dec=2,
+                          scales="fixed",
+                          ncol=3,
+                          title=paste0(indicator_title, focus.text),
+                          subtitle="values are adjusted to 2021 dollars",
+                          source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+}
+```
+
+```{r}
+equity_group_facet_line(data_clean, "POC_cat", " (race/ethnicity)")
+equity_group_facet_line(data_clean, "Income_cat", " (income)")
+equity_group_facet_line(data_clean, "Disability_cat", " (disability)")
+equity_group_facet_line(data_clean, "Youth_cat", " (youth <18)")
+equity_group_facet_line(data_clean, "Older_cat", " (adults 65+)")
+equity_group_facet_line(data_clean, "LEP_cat", " (limited English proficiency)")
+```
+\
+\
+
+#### First/last years
+```{r}
+data_clean_2yr <- data_clean %>% 
+  filter(data_year=="2011" | 
+             data_year =="2021")
+```
+
+```{r}
+equity_group_facet_line(data_clean_2yr, "POC_cat", " (race/ethnicity)")
+equity_group_facet_line(data_clean_2yr, "Income_cat", " (income)")
+equity_group_facet_line(data_clean_2yr, "Disability_cat", " (disability)")
+equity_group_facet_line(data_clean_2yr, "Youth_cat", " (youth <18)")
+equity_group_facet_line(data_clean_2yr, "Older_cat", " (adults 65+)")
+equity_group_facet_line(data_clean_2yr, "LEP_cat", " (limited English proficiency)")
+```
+\
+\
+
+#### calculated difference b/t
+The 6 equity focus groups are all included in the facets by geography, but they could be separated out to create 6 individual charts - one for each focus group.
+```{r}
+dif_groups <- function(group, category){
+ 
+  btgrp_dif <- data_clean %>% 
+    dplyr::filter(focus_type==group) %>% 
+    group_by(data_year) %>% 
+    mutate(dif = ifelse(focus_attribute!=category, fact_value - fact_value[focus_attribute == category], 0)) %>% 
+    dplyr::filter(dif!=0)
+}
+
+poc <- dif_groups("POC_cat", 'POC')
+dis <- dif_groups("Disability_cat", 'With disability')
+income <- dif_groups("Income_cat", 'Low Income')
+youth <- dif_groups("Youth_cat", 'Household with youth')
+older <- dif_groups("Older_cat", 'Household with older adult')
+lep <- dif_groups("LEP_cat", 'Limited English proficiency')
+
+dif_equity_groups <- rbind(poc, 
+                           dis, 
+                           income,
+                           youth,
+                           older,
+                           lep) %>% 
+  dplyr::group_by(focus_type) # without this, colors were off
+
+# facet line chart option
+dif_equity <- static_facet_line_chart(t=dif_equity_groups,
+                                      x="data_year_yr", y="dif",
+                                      fill="focus_type_edit", facet="county_ord",
+                                      color="psrc_light",
+                                      est ="currency",
+                                      dec=2,
+                                      scales="fixed",
+                                      ncol=3,
+                                      title=paste0(indicator_title),
+                                      subtitle="values are adjusted to 2021 dollars",
+                                      source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)") #+ theme(legend.position = "none")
+
+dif_equity
+```
+\
+
+### Cleveland dot plot
+[*Resource for visual*](https://uc-r.github.io/cleveland-dot-plots)
+\
+The code to make this is type of visual is long - adjust to indicator as needed (*scale_x_continuous*, *labs*, *label*, etc).
+\
+```{r cleveland-figwidth-9.5, fig.width=9.5}
+# get first and most recent years
+data_clean_df <- data_clean %>% 
+  dplyr::filter(data_year_yr==2011 |
+                  data_year_yr==2021) %>% 
+  dplyr::filter(county=="Region")
+
+# order of y-axis
+data_clean_df$focus_attribute_ord <- factor(data_clean_df$focus_attribute,
+                                          levels = c("POC",
+                                                     "Non-POC",
+                                                     "Low Income",
+                                                     "Non-Low Income",
+                                                     "With disability",
+                                                     "Without disability",
+                                                     "Household with youth",
+                                                     "Household without youth",
+                                                     "Household with older adult",
+                                                     "Household without older adult",
+                                                     "Limited English proficiency",
+                                                     "English proficient"))
+
+# generate labels for data points - doesn't need to be adjusted
+right_label <- data_clean_df %>%
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  group_by(focus_attribute_ord) %>%
+  arrange(desc(fact_value)) %>% 
+  slice(1)
+
+left_label <- data_clean_df %>%
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  group_by(focus_attribute_ord) %>%
+  arrange(desc(fact_value)) %>%
+  slice(2)
+
+# filter vulnerable groups of interest
+highlight <- data_clean_df %>% 
+  dplyr::filter(focus_attribute_ord=="Low Income" |
+                  focus_attribute_ord=="Limited English proficiency" |
+                  focus_attribute_ord=="With disability" |
+                  focus_attribute_ord=="Household with youth" |
+                  focus_attribute_ord=="Household with older adult" |
+                  focus_attribute_ord=="POC")
+
+# plot
+cleveland_dot <- ggplot(data_clean_df, aes(fact_value, focus_attribute_ord)) +
+  geom_line(aes(group = focus_attribute_ord), alpha=0.3) +
+  geom_point(aes(color = data_year_yr, shape=data_year_yr), size = 1.5, alpha=0.3)+
+  scale_shape_manual(values = c(15, 16)) +
+  scale_color_manual(values=c("#00A7A0","#F05A28")) +
+  geom_line(data=highlight, aes(group = focus_attribute_ord), size=0.9) +
+  geom_point(data=highlight, aes(color = data_year_yr, shape=data_year_yr), size = 2.1) +
+  scale_shape_manual(values = c(15, 16)) +
+  geom_text(data = right_label, aes(label = dollar(fact_value, #adjust: percent or dollar
+                                                   accuracy = 100)), #adjust to round
+            size = 4, hjust = -.5) +
+  geom_text(data = left_label, aes(label = dollar(fact_value, #adjust: percent or dollar
+                                                  accuracy = 100)), #adjust to round
+            size = 4, hjust = 1.5) +
+  scale_x_continuous(labels = scales::dollar, #adjust: percent or dollar
+                     limits = c(0, 175000)) + #these values depend on the indicator
+  scale_y_discrete(limits=rev,
+                   labels = function(focus_attribute_ord) stringr::str_wrap(focus_attribute_ord, width = 18))+
+  theme_minimal() +
+  theme(text=element_text(family="Poppins")) +
+  labs(x=NULL, #following labs will need to be adjusted for indicator
+       y=NULL,
+       colour= "Year",
+       shape="Year",
+       title = paste0(indicator_title, ": Region"),
+       subtitle = "values are adjusted to 2021 dollars",
+       caption=paste("U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)", "2011 disability data not available", sep = "\n")) +
+  theme(plot.title = element_text(face="bold", size=16),
+        axis.text.y = element_text(face = c('plain','bold', 'plain', 'bold',
+                                            'plain','bold', 'plain', 'bold')))
+        
+
+cleveland_dot
+```
+\
+\
+
+## 4. Save files
+*This section needs to be edited. Keep the code chunks commented out for now as we draft and refine the visuals.*
+
+### PNG
+```{r}
+# folder <- "Y:/Equity Indicators/experimenting/R-scripts/PUMS/output-visuals/"
+# chart <- "kg-readiness.png"
+# 
+# ggsave(filename=paste0(folder,chart),
+#        plot=p,
+#        device='png',
+#        width=5, height = 3, dpi = 300)
+```
+
+### HTML
+```{r}
+# interactive webpage output process
+# htmlwidgets::saveWidget(healthrisk_quintile,
+#                         file=paste0(website_dev_folder, data_nm,'.html'))
+```
+
+### Copy files from Y drive > website folder
+```{r, include=FALSE, eval=FALSE}
+# current.folder <- "Y:/Equity Indicators/tracker-webpage-content/economy"
+# new.folder <- "//WEB/website_data/equity-tracker-webpages/economy"
+# 
+# list.of.files <- list.files(current.folder, full.names = T)
+# list.of.files
+# 
+# # copy the files to the new folder
+# file.copy(list.of.files,
+#           new.folder,
+#           overwrite = T)
+```
+\
+\
+
+## 5. Archive
+*This section includes visuals that were determined to be less useful. We didn't want to lose the work, but didn't want to include it in the main workflow. Feel free to comment out if you don't want to adjust the arguments to fit the indicator of interest.*
+
+### Line chart: all categories
+```{r}
+data_clean_region <- data_clean %>% 
+  dplyr::filter(county=="Region")
+
+line_chart <- static_line_chart(t=data_clean_region,
+                                x="data_year_yr", y="fact_value",
+                                fill="focus_attribute_ord",
+                                est = "currency",
+                                breaks = NULL,
+                                lwidth = 1,
+                                color = "psrc_pairs",
+                                title = paste0(indicator_title, ": Region"),
+                                subtitle = "values are adjusted to 2021 dollars",
+                                source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)") + ylim(0, 175000)
+
+line_chart
+
+line_chart <- interactive_line_chart(t=data_clean_region,
+                                     x="data_year_yr", y="fact_value",
+                                     fill="focus_attribute_ord",
+                                     est = "currency",
+                                     breaks = NULL,
+                                     lwidth = 1,
+                                     color = "psrc_pairs",
+                                     title = paste0(indicator_title, ": Region"),
+                                     subtitle = "values are adjusted to 2021 dollars",
+                                     source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+
+line_chart
+```
+### Line chart: by vulnerability
+```{r}
+static_facet_line_chart(t=data_clean_region,
+                        x="data_year_yr", y="fact_value",
+                        fill="focus_type_ord", facet="vulnerability",
+                        color="psrc_light",
+                        est ="currency",
+                        dec=2,
+                        scales="fixed",
+                        ncol=3,
+                        title=paste0(indicator_title,": Region"),
+                        subtitle="values are adjusted to 2021 dollars",
+                        source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+```
+\
+\
+
+# 3 visuals
+## 1. Map of most recent data
+```{r, include=FALSE}
+# Connecting to ElmerGeo for census geographies through Portal----
+tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+
+tracts20.lyr<-st_read(tracts20.url)
+
+nrow(tracts20.lyr) #919
+```
+
+```{r}
+x <- tidycensus::load_variables(2021,"acs5") %>% 
+  dplyr::filter(grepl("MEDIAN HOUSEHOLD INCOME", concept) & (geography=="tract"))
+
+# getting household median income data by tract
+medinc21 <- get_acs_recs(geography ='tract', 
+                         table.names = 'B19013',
+                         years = c(2021),
+                         acs.type = 'acs5')
+
+# getting population data by tract
+pop21 <- get_acs_recs(geography ='tract',
+                      table.names = 'B01003',
+                      years = c(2021),
+                      acs.type = 'acs5') %>% 
+  dplyr::rename(pop21=estimate)
+
+# merge median income data with population data
+income_population_21 <- merge(medinc21, pop21,
+                              by.x = "GEOID",
+                              by.y = "GEOID")
+
+# merge to 2020 census tract spatial file
+medinc_tract20 <- merge(tracts20.lyr, income_population_21,
+                             by.x="geoid20",
+                             by.y="GEOID", 
+                             all.x=TRUE) %>% 
+  dplyr::mutate(pop_density = pop21/(Shape__Area*3.861e-7))
+```
+```{r, include=FALSE}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - to get legend high-low with correct color order
+addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
+			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
+		  title = NULL, className = "info legend", layerId = NULL, 
+		  group = NULL, data = getMapData(map), decreasing = FALSE) {
+	position <- match.arg(position)
+	type <- "unknown"
+	na.color <- NULL
+	extra <- NULL
+	if (!missing(pal)) {
+		if (!missing(colors)) 
+			stop("You must provide either 'pal' or 'colors' (not both)")
+		if (missing(title) && inherits(values, "formula")) 
+			title <- deparse(values[[2]])
+		values <- evalFormula(values, data)
+		type <- attr(pal, "colorType", exact = TRUE)
+		args <- attr(pal, "colorArgs", exact = TRUE)
+		na.color <- args$na.color
+		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
+		    0) {
+			na.color <- NULL
+		}
+		if (type != "numeric" && !missing(bins)) 
+			warning("'bins' is ignored because the palette type is not numeric")
+		if (type == "numeric") {
+			cuts <- if (length(bins) == 1) 
+				pretty(values, bins)
+			else bins	
+			
+			if (length(bins) > 2) 
+				if (!all(abs(diff(bins, differences = 2)) <= 
+				         sqrt(.Machine$double.eps))) 
+					stop("The vector of breaks 'bins' must be equally spaced")
+			n <- length(cuts)
+			r <- range(values, na.rm = TRUE)
+			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+			n <- length(cuts)
+			p <- (cuts - r[1])/(r[2] - r[1])
+			extra <- list(p_1 = p[1], p_n = p[n])
+			p <- c("", paste0(100 * p, "%"), "")
+			if (decreasing == TRUE){
+				colors <- pal(rev(c(r[1], cuts, r[2])))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}else{
+				colors <- pal(c(r[1], cuts, r[2]))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}
+			colors <- paste(colors, p, sep = " ", collapse = ", ")
+			
+		}
+		else if (type == "bin") {
+			cuts <- args$bins
+			n <- length(cuts)
+			mids <- (cuts[-1] + cuts[-n])/2
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "bin", cuts))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "bin", cuts)
+			}
+			
+		}
+		else if (type == "quantile") {
+			p <- args$probs
+			n <- length(p)
+			cuts <- quantile(values, probs = p, na.rm = TRUE)
+			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
+				 na.rm = TRUE)
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "quantile", cuts, p))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "quantile", cuts, p)
+			}
+		}
+		else if (type == "factor") {
+			v <- sort(unique(na.omit(values)))
+			colors <- pal(v)
+			labels <- labFormat(type = "factor", v)
+			if (decreasing == TRUE){
+				colors <- pal(rev(v))
+				labels <- rev(labFormat(type = "factor", v))
+			}else{
+				colors <- pal(v)
+				labels <- labFormat(type = "factor", v)
+			}
+		}
+		else stop("Palette function not supported")
+		if (!any(is.na(values))) 
+			na.color <- NULL
+	}
+	else {
+		if (length(colors) != length(labels)) 
+			stop("'colors' and 'labels' must be of the same length")
+	}
+	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
+	               na_color = na.color, na_label = na.label, opacity = opacity, 
+	               position = position, type = type, title = title, extra = extra, 
+	               layerId = layerId, className = className, group = group)
+	invokeMethod(map, data, "addLegend", legend)
+}
+```
+
+```{r map-1y}
+# head(health_risk_tract20)
+
+# set map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.15
+
+# set up palettes
+# display.brewer.all()
+
+health_pal <- leaflet::colorNumeric(palette=colorRampPalette(brewer.pal(name="YlGn", n = 9))(15),
+                                    domain = medinc_tract20$estimate)
+
+# health_pal <- leaflet::colorNumeric(palette="Greens",
+#                                     domain = medinc_tract20$estimate)
+
+# popdens_pal <- leaflet::colorNumeric(palette=colorRampPalette(brewer.pal(name="Blues", n = 10))(20),
+#                                      domain = medinc_tract20$pop_density)
+
+# popdens_pal <- leaflet::colorNumeric(palette = "Purples", 
+#                                      domain =  medinc_tract20$pop_density)
+
+# set the variable
+var_name <- "Median Household <br> Income (2021 USD)"
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong>",
+  medinc_tract20$geoid20, paste("$",prettyNum((round(medinc_tract20$estimate, digits=-2)), big.mark = ","))) %>% 
+  lapply(htmltools::HTML)
+
+# map settings
+medinc_map <- leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  # addLayersControl(baseGroups = var_name,
+  #                  # overlayGroups = c(var_name,
+  #                  #                   Population density),
+  #                  options = layersControlOptions(collapsed = FALSE)) %>%
+
+  # polygon layers
+  # addPolygons(data=medinc_tract20,
+  #             color = popdens_pal(health_risk_tract20$pop_density),
+  #             stroke=FALSE, 
+  #             smoothFactor = 0.2,
+  #             fillOpacity = 1.0,
+  #             group = "Population density",
+  #             label = ~pop_density) %>%
+  addPolygons(data=medinc_tract20,
+              fillColor = health_pal(medinc_tract20$estimate),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.8,
+              group = var_name,
+              # label = paste("$",prettyNum((round(medinc_tract20$estimate, digits=-2)), big.mark = ",")),
+              label = labels) %>% 
+
+  # legends
+  addLegend_decreasing(pal = health_pal,
+                     values = medinc_tract20$estimate,
+                     position = "bottomright",
+                     title = var_name,
+                     group = var_name,
+                     opacity = 0.8,
+                     labFormat = labelFormat(prefix = "$"),
+                     decreasing = TRUE) %>% #to get legend high-low with correct color order
+  # leaflet::addLegend(pal = popdens_pal,
+  #                    values = medinc_tract20$pop_density,
+  #                    position = "bottomleft",
+  #                    title = "Population density",
+  #                    group="Population density",
+  #                    opacity = 1.0) %>%
+  
+  #default hide overlap groups
+  # hideGroup("Life Expectancy") %>%
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon="fa-globe", title="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.15); }"))) #%>%
+  # addEasyButton(easyButton(
+  #   icon = "fa-crosshairs", title = "My Location",
+  #   onClick = JS("function(btn, map){map.locate({setView: true});}")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+medinc_map %<>% htmlwidgets::prependContent(html_fix)      # Insert into leaflet HTML code
+
+# print map
+medinc_map
+
+website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy","/")
+
+# interactive webpage output process
+htmlwidgets::saveWidget(medinc_map,
+                        file=paste0(website_dev_folder, 'medinc20.html'))
+```
+
+```{r}
+# create_tract_map(tract.tbl=medinc21,
+#   tract.lyr=tracts20.lyr,
+#   map.title = "Median household income",
+#   map.subtitle = "2021 data",
+#   map.title.position = "topleft",
+#   legend.title = "Median income",
+#   legend.subtitle = "2020 $USD")
+```
+
+```{r}
+# calculate call out information
+calc <- income_population_21 %>% 
+  dplyr::mutate(inc_wt_pop = pop21*estimate) %>% 
+  dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(pop21, na.rm=TRUE))
+
+# regional median income: 104506.3
+
+sort <- income_population_21 %>% 
+  dplyr::arrange(desc(estimate))
+
+# 53033004101 (Seattle), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+
+sort <- income_population_21 %>% 
+  dplyr::arrange(estimate)
+
+# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
+# 53033030501 (Auburn, around 167)
+```
+
+## 2. Facet chart of most recent
+There are five charts for the different geographies: Region and the 4 counties.
+```{r, facet-1y-full, fig.width=14.58,fig.height=10.35}
+data_clean21 <- data_clean %>% 
+  filter(data_year==2021)
+
+facet_1y <- facet_by_geography(data_clean21, "Region", ": Region") 
+facet_1y + theme(axis.text.x = element_blank())
+```
+
+```{r}
+# calculate call out information
+filter <- data_clean21 %>% 
+  filter(county=="Region",
+         focus_type=="Income_cat",
+         vulnerability=="high vulnerability")
+
+# region low income households: $22555.19
+
+filter <- data_clean21 %>% 
+  filter(county=="Region",
+         focus_type=="LEP_cat")
+
+# region lep households (low vuln-high vuln): 103566.97 - 51737.43 = 51829.54
+
+filter <- data_clean21 %>% 
+  filter(county=="Region",
+         focus_type=="Youth_cat")
+
+# region youth households (high vuln-low vuln): 125506.87 - 90627.96 = 34878.91
+```
+
+## 3. Time series
+### Line chart
+#### By geography
+There are 5 charts for the different geographies: Region and the 4 counties.
+
+##### All years
+```{r, line-3y-full, fig.width=14.58,fig.height=10.35}
+facet_line_by_geography(data_clean, "Region", ": Region")
+# save(data_clean, file = "T:/2023April/Mary/EquityTracker/data/data_clean.rda")
+``` 
+
+```{r, line-3y-twothirds, fig.width=9.71, fig.height=6.89}
+facet_line_by_geography(data_clean, "Region", ": Region")
+# save(data_clean, file = "T:/2023April/Mary/EquityTracker/data/data_clean.rda")
+```
+
+```{r}
+# calculate call out information
+calc <- data_clean %>% 
+  filter(county=="Region",
+         focus_type=="Income_cat",
+         data_year==2011 | 
+           data_year==2021)
+
+# dif in 2011: 94495.76- 22040.56 = 72455.2
+# dif in 2021: 120333.12- 22555.19 = 97777.93
+# %gap over 10 years: ((97777.93-72455.2)/72455.2)*100 >>> 34.9495% increase, 
+# 25.8982% decrease
+
+calc <- data_clean %>% 
+  filter(county=="Region",
+         focus_type=="POC_cat",
+         data_year==2011 | 
+           data_year==2021)
+
+# dif in 2011: 80454.51- 66565.02 = 13889.49
+# dif in 2021: 104791.96- 90969.10 = 13822.86
+
+calc <- data_clean %>% 
+  filter(county=="Region",
+         focus_type=="Older_cat",
+         data_year==2011 | 
+           data_year==2021)
+
+# dif in 2011 (without older adult-with older adult): 83463.88- 55308.85 = 28155.03
+# dif in 2021 (without older adult-with older adult): 110527.45- 73948.37 = 36579.08
+# %gap over 10 years: ((36579.08-28155.03)/28155.03)*100 >>> 29.92023% increase
+```
+
+##### First/last years
+There are 5 charts for the different geographies: Region and the 4 counties.
+```{r, line-region-half, fig.width=7.29, fig.height=5.17}
+facet_line_by_geography(data_clean_2yr, "Region", ": Region")
+```
+
+#### By equity group
+There are 6 charts for the different equity groups: POC, low-income, etc.
+
+##### All years
+```{r, line-poc-onethird, fig.width=4.95, fig.height=3.51}
+equity_group_facet_line(data_clean, "POC_cat", " (race/ethnicity)")
+```
+
+###### First/last years
+There are 6 charts for the different equity groups: POC, low-income, etc.
+```{r}
+equity_group_facet_line(data_clean_2yr, "POC_cat", " (race/ethnicity)")
+```
+
+### Cleveland dot plot
+```{r}
+cleveland_dot
+```
+
+```{r}
+cleveland_dot
+```
+
+```{r}
+data <- dplyr::select(data_clean_df, c(data_year_yr, fact_value, focus_attribute_ord))
+viz <- cleveland_dot_chart(t=data, 
+                           x="fact_value", 
+                           y="focus_attribute_ord", 
+                           fill="data_year_yr",
+                           est="currency",
+                           lwidth=1,
+                           color="gnbopgy_5",
+                           title = paste0(indicator_title, ": Region"),
+                           subtitle = "values are adjusted to 2021 dollars",
+                           source=paste("U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)", "2011 disability data not available", sep = "\n"))
+
+viz +
+  # geom_point(aes(color = data_year_yr, shape=data_year_yr), size = 1.5, alpha=0.3)+
+  geom_line(data=highlight, aes(group = focus_attribute_ord), size=0.9) +
+  # geom_point(data=highlight, aes(color = data_year_yr, shape=data_year_yr), size = 2.1) +
+  scale_shape_manual(values = c(15, 16)) +
+  # scale_color_manual(values=c("#00A7A0","#F05A28")) +
+  labs(colour= "Year",
+       shape="Year") +
+  theme(plot.title = element_text(face="bold", size=16),
+        axis.text.y = element_text(face = c('plain','bold', 'plain', 'bold',
+                                            'plain','bold', 'plain', 'bold')))
+  
+# psrcplot::cleveland_dot_chart(t=data_clean_df, 
+#                               x="fact_value", 
+#                               y="focus_attribute_ord", 
+#                               fill="data_year_yr")
+# save(data_clean_df, file = "T:/2023April/Mary/EquityTracker/data/data_clean_df.rda")
+```
+\
+\
+
+<a href="#top">Back to top of the page</a>
