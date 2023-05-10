@@ -1,0 +1,265 @@
+---
+title: "HousingCostBurden_income"
+author: "Meg Grzybowski"
+date: "2023-04-19"
+output: html_document
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+library(tidyverse)
+library(psrccensus)
+library(psrcplot)
+library(psrctrends)
+library(rlang) #required for psrccensus
+library(emmeans) #required for rlang
+library(magrittr)
+library(kableExtra)
+library(ggplot2)
+
+library(summarytools) #freq
+library(vtable) #summary stats
+library(table1)  #nice descriptive summary table
+library(scales) #number formatting
+library(ggpubr) #graphing - ggarrange fx
+library(forcats) #for factor re-leveling
+library(plotly) #for interactive charts
+
+#remove.packages("Rcpp")
+#install.packages("Rcpp")
+#library(Rcpp)
+library(odbc) #connect to ElmerGeo
+library(DBI) #connect to ElmerGeo
+library(sf)
+library(leaflet)
+library(leafem) #home button, part of leaflet/Rcpp
+library(htmlwidgets) #save visuals as html
+library(raster)
+library(ggspatial)
+library(lubridate) #year formatting
+library(stringr) #add leading zero's
+library(reshape2) #formatting data
+library(readxl)
+library(RColorBrewer)
+library(gridExtra)
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+```
+
+# Introduction
+The data set referenced in this script is generated from the American Community Survey (ACS) Public Use Microdata Sample (PUMS) and the Washington Office of Superintendent of Public Instruction [(OSPI)](https://www.k12.wa.us/data-reporting/data-portal). These data sets provide data at the **person-level**, with the ability to look at indicators by the six equity demographic groups of interest. 
+
+# Access data
+## PUMS and OSPI data (Elmer)
+This data set was compiled from PUMS data. 
+```{r equity quintiles in Elmer}
+# connect to Elmer
+elmer_connection <- dbConnect(odbc::odbc(),
+  driver = "SQL Server",
+  server = "AWS-PROD-SQL\\Sockeye",
+  database = "Elmer",
+  trusted_connection = "yes"
+  )
+
+# PUMS/OSPI data set
+pums_ospi_elmer <- dbReadTable(elmer_connection, SQL("equity.v_tracker_indicators"))
+
+dbDisconnect(elmer_connection)
+```
+Looking at the fields in the data set.
+```{r}
+# explore the data
+head(pums_ospi_elmer)
+# view the equity demographic groups
+unique(pums_ospi_elmer$focus_type)
+# view the different indicators available within the data set
+unique(pums_ospi_elmer$indicator_type)
+# view the different data years available within the data set
+unique(pums_ospi_elmer$data_year)
+```
+
+# Housing Cost Burden
+```{r indicator specific information, include=FALSE}
+# set up a variable for analysis
+indicator_measure <- 'median_household_income'
+# set up a variable for titles
+indicator_title <- 'Median Household Income'
+```
+
+## 1. Explore data
+*In this section we make sure that the data set makes sense.*  
+```{r}
+# clean data set
+data_full <- pums_ospi_elmer %>% 
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>%
+  dplyr::filter(indicator_type ==indicator_measure) %>% 
+  dplyr::filter(focus_type !="Total") %>% 
+  filter(focus_attribute !="Total") %>%
+  filter(indicator_attribute !="Total") %>%
+  dplyr::mutate(data_year_yr = format(data_year,format="%Y"))
+
+```
+
+#### *indicator-specific data*
+These fields will vary by indicator:
+
+* Type of metric - this will determine how the data are visualized *(est ="percent" or "currency" or "number")*
+* Number of years (5-year span) - this can vary depending on data availability
+* Number of indicator-specific categories - this can vary depending on the indicator of interest, ranging from N/A (*median income*) to multiple levels (*crowding, housing cost burden*)
+```{r}
+# metric
+unique(data_full$fact_type) #share
+
+# years
+num_yr <- length(unique(data_full$data_year)) #3
+unique(data_full$data_year)
+time_period <- '2011, 2016, 2021'
+
+# indicator attributes
+num_indatt <- length(unique(data_full$indicator_attribute))
+unique(data_full$indicator_attribute)
+
+```
+
+
+To look at distribution of all data - not the most useful visual, but provides a sense of the range of values at a high level in one plot. 
+\
+```{r}
+qplot(data_year_yr, fact_value, 
+      colour = county, shape = focus_type, 
+      data = data_full, 
+      main = indicator_title) + theme(axis.title.x = element_blank(),
+                                               axis.title.y = element_blank())
+```
+\
+This table includes a lot of information about the data set and helps to show the different levels of each field. It provides another way to check if data are available for all counties and all years, or where there may be gaps in the data set. 
+```{r}
+data_refined <- data_full %>% 
+  dplyr::select(data_year_yr, county, vulnerability, focus_type, focus_attribute,
+                indicator_type, indicator_attribute, fact_value)
+
+sumtable(data_refined,
+         add.median=TRUE,
+         group="county",
+         out="return")
+```
+
+```{r}
+# renaming labels ----
+#max(data_clean$fact_value, na.rm = TRUE)
+#min(data_clean$fact_value, na.rm = TRUE)
+
+data_clean <- data_full %>% 
+  mutate(focus_type_edit = case_when(focus_type=="POC_cat"~"race/ethnicity",
+                                     focus_type=="Disability_cat"~"disability status",
+                                     focus_type=="LEP_cat"~"English proficiency",
+                                     focus_type=="Income_cat"~"income",
+                                     focus_type=="Youth_cat"~"youth <18",
+                                     focus_type=="Older_cat"~"older adults 65+"))%>%
+  mutate(fact_value = case_when(fact_value < 25000 ~"Under $25,000",
+                                       fact_value >= 25000 & fact_value <= 34999 ~"$25,000-$34,999",
+                                       fact_value >= 35000 & fact_value <= 49999 ~"$35,000-$49,999",
+                                       fact_value >= 50000 & fact_value <= 74999 ~"$50,000-$74,999",
+                                       fact_value >= 75000 & fact_value <= 99999 ~"$75,000-$99,999",
+                                       fact_value >= 100000 ~"$100,000 or more"))
+
+# re-ordering variables ----
+data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute,
+                                         levels = c("POC",
+                                                    "Non-POC",
+                                                    "Low Income",
+                                                    "Non-Low Income",
+                                                    "With disability",
+                                                    "Without disability",
+                                                    "Limited English proficiency",
+                                                    "English proficient",
+                                                    "Household with youth",
+                                                    "Household without youth", 
+                                                    "Household with older adult",
+                                                    "Household without older adult",
+                                                    "Total"))
+data_clean$county_ord <- factor(data_clean$county,
+                                levels = c("King",
+                                           "Kitsap",
+                                           "Pierce",
+                                           "Snohomish",
+                                           "Region"))
+data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
+                                    levels = c("race/ethnicity",
+                                               "income",
+                                               "disability status",
+                                               "English proficiency",
+                                               "youth <18",
+                                               "older adults 65+"))
+```
+
+### Data labels, shares
+These charts were generated to ensure the labels across years are consistent/make sense. There had been an issue with misassigned labels because tidycensus::pums_variables, i.e. the only digital data dictionary available to associate labels with codes, exists only from 2017 forward. Most variables have had consistent codes, but in cases where the codes have shifted over time, using the 2017 lookup winds up mischaracterizing categories.
+\
+\
+These charts also help to confirm that the shares add up to 100% - only relevant when *indicator_attribute* has more than one category. The *indicator_attribute* for educational attainment includes 2 categories: "Less than a Bachelor's degree" and "Bachelor's degree or higher" 
+\
+\
+*The colors of the charts may not be consistent between the years depending on missing data.* 
+\
+```{r}
+just_region_11 <- data_clean %>% 
+  filter(county=="Region") %>% 
+  filter(data_year==2011) %>%
+  filter(focus_type == "POC_cat") %>%
+  arrange(focus_attribute_ord, indicator_attribute)
+just_region_16 <- data_clean %>% 
+  filter(county=="Region") %>% 
+  filter(data_year==2016) %>% 
+  filter(focus_type == "POC_cat") %>%
+  arrange(focus_attribute_ord, indicator_attribute)
+just_region_21 <- data_clean %>% 
+  filter(county=="Region") %>% 
+  filter(data_year==2021) %>% 
+  filter(focus_type == "POC_cat") %>%
+  arrange(focus_attribute_ord, indicator_attribute)
+
+bar_chart <- static_bar_chart(t=just_region_11,
+                               x="fact_value", y="focus_attribute_ord",
+                               fill="indicator_attribute",
+                               est = "percent",
+                               pos= "stack",
+                               color = "psrc_light", 
+                               title = paste0(indicator_title, ": Region (2011)"),
+                               subtitle = "by equity focus group",
+                               source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+bar_chart
+
+bar_chart <- static_bar_chart(t=just_region_16,
+                               x="fact_value", y="focus_attribute_ord",
+                               fill="indicator_attribute",
+                               est = "percent",
+                               pos= "stack",
+                               color = "psrc_light",
+                               title = paste0(indicator_title, ": Region (2016)"),
+                               subtitle = "by equity focus group",
+                               source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+bar_chart
+
+bar_chart <- static_bar_chart(t=just_region_21,
+                               x="fact_value", y="focus_attribute_ord",
+                               fill="indicator_attribute",
+                               est = "percent",
+                               pos= "stack",
+                               color = "psrc_light",
+                               title = paste0(indicator_title, ": Region (2021)"),
+                               subtitle = "by equity focus group",
+                               source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+
+bar_chart
+```
