@@ -22,8 +22,15 @@ knitr::opts_chunk$set(echo=FALSE,
 ```
 
 ```{r library setup, include=FALSE}
-# devtools::install_github("psrc/psrcplot",
-#                          force=TRUE)
+
+# packages that are from github that host functions for pulling data (do the install in R Gui, not RStudio)
+
+devtools::install_github("psrc/psrc.travelsurvey", force = TRUE)
+devtools::install_github("psrc/psrccensus", force = TRUE)
+devtools::install_github("psrc/psrcplot", force = TRUE)
+devtools::install_github("psrc/psrctrends", force = TRUE)
+
+
 library(tidyverse)
 library(psrccensus)
 library(psrcplot)
@@ -69,10 +76,10 @@ library(showtextdb) #required for showtext
 ```
 
 # Introduction
-The data set referenced in this script is generated from the American Community Survey (ACS) Public Use Microdata Sample (PUMS) and the Washington Office of Superintendent of Public Instruction [(OSPI)](https://www.k12.wa.us/data-reporting/data-portal). These data sets provide data at the **person-level**, with the ability to look at indicators by the six equity demographic groups of interest. 
+The data set referenced in this script is generated from the American Community Survey (ACS) Public Use Microdata Sample (PUMS). These data sets provide data at the **person-level**, with the ability to look at indicators by the six equity demographic groups of interest. 
 
 # Access data
-## PUMS and OSPI data (Elmer)
+## PUMS data (Elmer)
 This data set was compiled from PUMS data. 
 ```{r equity quintiles in Elmer}
 # connect to Elmer
@@ -100,7 +107,7 @@ unique(pums_ospi_elmer$indicator_type)
 unique(pums_ospi_elmer$data_year)
 ```
 
-# Housing Cost Burden
+# Overcrowding
 ```{r indicator specific information, include=FALSE}
 # set up a variable for analysis
 indicator_measure <- 'crowding'
@@ -128,7 +135,7 @@ data_full <- data_indicator %>%
   filter(indicator_attribute !="Total") %>%
   dplyr::mutate(data_year_yr = format(data_year,format="%Y"))%>%
   group_by(data_year, span, county, vulnerability, focus_type, focus_attribute, indicator_type, indicator_attribute, fact_type) %>% 
-  summarise(fv = sum(fact_value), moe = moe_sum(margin_of_error, estimate = fact_value, na.rm = TRUE))
+  summarise(fv = sum(fact_value), moe = moe_sum(fact_value, margin_of_error))
 
 ```
 
@@ -171,7 +178,7 @@ num_indatt <- length(unique(data_full$indicator_attribute))
 unique(data_full$indicator_attribute)
 
 # calculate expected no. rows
-num_row <- num_yr*num_county*num_group*2*num_indatt #540
+num_row <- num_yr*num_county*num_group*2*num_indatt #360
 ```
 
 There are **`r num_county`** geographies and **`r num_group`** equity focus groups (each with **2** subgroups). There are **`r num_yr`** years in the data set and the indicator specific field has **`r num_indatt`** attribute(s), which means there should be a total of **`r num_row`** rows.
@@ -303,12 +310,14 @@ data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute,
                                                     "Household with older adult",
                                                     "Household without older adult",
                                                     "Total"))
+
 data_clean$county_ord <- factor(data_clean$county,
                                 levels = c("King",
                                            "Kitsap",
                                            "Pierce",
                                            "Snohomish",
                                            "Region"))
+
 data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
                                     levels = c("race/ethnicity",
                                                "income",
@@ -316,10 +325,7 @@ data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
                                                "English proficiency",
                                                "youth <18",
                                                "older adults 65+"))
-```
 
-```{r}
-# indicator specific re-ordering
 data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
                                     levels = c("More than 1 person per bedroom",
                                                "One person per bedroom or less"))
@@ -330,7 +336,7 @@ data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
 These charts were generated to ensure the labels across years are consistent/make sense. There had been an issue with misassigned labels because tidycensus::pums_variables, i.e. the only digital data dictionary available to associate labels with codes, exists only from 2017 forward. Most variables have had consistent codes, but in cases where the codes have shifted over time, using the 2017 lookup winds up mischaracterizing categories.
 \
 \
-These charts also help to confirm that the shares add up to 100% - only relevant when *indicator_attribute* has more than one category. The *indicator_attribute* for educational attainment includes 2 categories: "Less than a Bachelor's degree" and "Bachelor's degree or higher" 
+These charts also help to confirm that the shares add up to 100% - only relevant when *indicator_attribute* has more than one category. The *indicator_attribute* for overcrowding includes 2 categories: "One person per bedroom or less" and "More than 1 person per bedroom" 
 \
 \
 *The colors of the charts may not be consistent between the years depending on missing data.* 
@@ -389,16 +395,40 @@ bar_chart
 *In this section we start to explore the data visually - distribution by the different dimensions within the data set. These plots are helpful to check for outliers and get a higher level understanding of the data in one visual, before slicing the data by geography and equity focus group in the following sections.* 
 \
 \
-The following code will need to be adjusted to fit the fields specific to the data indicator. For housing cost burden, we focus on those with more than 50 percent cost burden. The following code establishes the data frame that the rest of the analysis uses. **If there are fewer than 2 indicator attributes**, this section can be skipped/commented out, but the code will need to be adjusted throughout to call the correct data frame. 
+The following code will need to be adjusted to fit the fields specific to the data indicator. For overcrowding, , we focus on those with more than 1 person per bedroom. The following code establishes the data frame that the rest of the analysis uses. **If there are fewer than 2 indicator attributes**, this section can be skipped/commented out, but the code will need to be adjusted throughout to call the correct data frame. 
 \
 \
 
 #### By *indicator_attribute*
 This section isn't relevant for this specific indicator because there aren't unique indicator attributes. 
+#### By *indicator_attribute*
+```{r}
+# separating indicator attributes by levels ----
+data_clean_oneplus <- data_clean %>% 
+  filter(indicator_attribute=="More than 1 person per bedroom")
+
+data_clean_lessthan <- data_clean %>% 
+  filter(indicator_attribute=="One person per bedroom or less")
+```
+
+```{r}
+# plot data
+qplot(data_year, fv, 
+      colour = county, shape = focus_type_ord, 
+      data = data_clean_oneplus, 
+      main = paste0(indicator_title, ": Region, more than 1 person per bedroom")) + theme(axis.title.x = element_blank(),
+                                                          axis.title.y = element_blank()) + ylim(0, 1)
+
+qplot(data_year, fv, 
+      colour = county, shape = focus_type_ord, 
+      data = data_clean_lessthan, 
+      main = paste0(indicator_title, ": Region, one person per bedroom or less")) + theme(axis.title.x = element_blank(),
+                                                          axis.title.y = element_blank()) + ylim(0, 1)
+```
 
 #### By Year
 ```{r}
-# separating by year - focusing on only more than 50 percent cost burdened
+# separating by year - focusing on only more than 1 person per bedroom
 data_clean11 <- data_clean %>% 
   filter(data_year==2011)
 data_clean16 <- data_clean %>% 
@@ -448,17 +478,17 @@ facet_by_geography <- function(df, geography, focus.text){
                             scales="fixed",
                             ncol=3,
                             title=paste0(indicator_title, focus.text),
-                            subtitle="unsure",
+                            subtitle="more than one person per bedroom",
                             source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
 }
 ```
 
 ```{r}
-facet_by_geography(data_clean, "Region", ": Region")
-facet_by_geography(data_clean, "King", ": King County")
-facet_by_geography(data_clean, "Kitsap", ": Kitsap County")
-facet_by_geography(data_clean, "Pierce", ": Pierce County")
-facet_by_geography(data_clean, "Snohomish", ": Snohomish County")
+facet_by_geography(data_clean_oneplus, "Region", ": Region")
+facet_by_geography(data_clean_oneplus, "King", ": King County")
+facet_by_geography(data_clean_oneplus, "Kitsap", ": Kitsap County")
+facet_by_geography(data_clean_oneplus, "Pierce", ": Pierce County")
+facet_by_geography(data_clean_oneplus, "Snohomish", ": Snohomish County")
 ```
 \
 \
@@ -529,7 +559,7 @@ facet_line_by_geography_free(data_clean, "Snohomish", ": Snohomish County")
 #### calculated difference b/t
 The 5 geographies are all included in the facets by geography, but they could be separated out to create 5 individual charts - one for each geography.
 ```{r}
-dif_groups <- function(geography, group, category){
+dif_groups <- function(df, geography, group, category){
   region_btgrp_dif <- df %>% 
     # dplyr::filter(county==geography) %>% 
     dplyr::filter(focus_type==group) %>% 
@@ -538,12 +568,12 @@ dif_groups <- function(geography, group, category){
     dplyr::filter(dif!=0)
 }
 
-poc <- dif_groups("Region", "POC_cat", 'POC')
-dis <- dif_groups("Region", "Disability_cat", 'With disability')
-income <- dif_groups("Region", "Income_cat", 'Low Income')
-youth <- dif_groups("Region", "Youth_cat", 'Household with youth')
-older <- dif_groups("Region", "Older_cat", 'Household with older adult')
-lep <- dif_groups("Region", "LEP_cat", 'Limited English proficiency')
+poc <- dif_groups(data_clean, "Region", "POC_cat", 'POC')
+dis <- dif_groups(data_clean, "Region", "Disability_cat", 'With disability')
+income <- dif_groups(data_clean, "Region", "Income_cat", 'Low Income')
+youth <- dif_groups(data_clean, "Region", "Youth_cat", 'Household with youth')
+older <- dif_groups(data_clean, "Region", "Older_cat", 'Household with older adult')
+lep <- dif_groups(data_clean, "Region", "LEP_cat", 'Limited English proficiency')
 
 dif_equity_groups <- rbind(poc, 
                            dis, 
@@ -572,7 +602,7 @@ dif_equity
 ### Line charts by equity group
 #### High / low vulnerability
 ```{r, include=FALSE}
-equity_group_facet_line <- function(focus.type, focus.text){
+equity_group_facet_line <- function(df, focus.type, focus.text){
   # filter data
   data_clean_filter <- df %>% 
     filter(focus_type==focus.type)
