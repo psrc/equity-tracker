@@ -30,6 +30,7 @@ hvars <- c("ACCESSINET",             # Internet access
            "LNGI",                   # Limited English speaking household
            "NP",                     # Number of persons in household
            "OCPIP",                  # Homeowner costs as percentage of income
+           "OWN_RENT",               # Simplified housing tenure (PSRC categories)
            "POVPIP",                 # Income-to-poverty ratio
            "PRACE",                  # Householder race (PSRC categories)
            "SMOCP",                  # Homeowner costs
@@ -39,7 +40,7 @@ hvars <- c("ACCESSINET",             # Internet access
 
 # 2. Setup: List and define Equity Focus Area (EFA) variables -------
 
-efa_vars <- c("POC_cat", "Income_cat", "Disability_cat", "LEP_cat", "Youth_cat", "Older_cat")
+efa_vars <- c("POC_cat", "Income_cat",  "Disability_cat", "Youth_cat", "Older_cat", "LEP_cat")
 
 # Create the EFA variables from available PUMS variables
 add_efa_vars <- function(so){
@@ -161,13 +162,20 @@ pums_efa_singleyear <- function(dyear, span=5){
   if("ACCESS" %in% colnames(hh_df)){hh_df %<>% rename("ACCESSINET"="ACCESS")}                      # Variable changed names w/ 2020 data
   hh_df %<>% add_efa_vars() %>% mutate(
                poverty=Income_cat,                                                                 # Identical to Income_cat
-               housing_burden=factor(case_when(                                                    # Define the rent burden subject variable
+               housing_burden=factor(case_when(                                                    # Define the housing cost burden subject variable
                                      GRPIP<30|OCPIP<30|SMOCP==0|(is.na(GRNTP) & is.na(SMOCP)) ~ "Less than 30 percent",
                                      dplyr::between(GRPIP,30,50)|dplyr::between(OCPIP,30,50) ~ "Between 30 and 50 percent",
                                      GRPIP>50|OCPIP>50|is.na(HINCP)      ~ "Greater than 50 percent"),
                                 levels=c("Greater than 50 percent",
                                          "Between 30 and 50 percent",
                                          "Less than 30 percent")),
+                 rent_burden=factor(case_when(                                                    # Define the rent burden subject variable
+                                         GRPIP<30|(is.na(GRNTP) & OWN_RENT=="Rented") ~ "Less than 30 percent",
+                                         dplyr::between(GRPIP,30,50) ~ "Between 30 and 50 percent",
+                                         GRPIP>50|is.na(HINCP)       ~ "Greater than 50 percent"),
+                                    levels=c("Greater than 50 percent",
+                                             "Between 30 and 50 percent",
+                                             "Less than 30 percent")),
                crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_,          # Define the crowding subject variable
                                            NP/BDSP <= 1                  ~ "One person per bedroom or less",
                                            NP/BDSP <= 1.5                ~ "Between 1 and 1.5 person(s) per bedroom",
@@ -179,24 +187,18 @@ pums_efa_singleyear <- function(dyear, span=5){
                                          grepl("^No", ACCESSINET)        ~ "Without internet access")))
 
   deep_pocket      <- list()
-  deep_pocket[[1]] <- bulk_count_efa(pp_df, "edu_simp")                                            # Generate educational attainment table
-  deep_pocket[[2]] <- bulk_count_efa(pp_df, "healthcov")                                           # Generate health insurance coverage table
-  deep_pocket[[3]] <- bulk_stat_efa(hh_df, "median", "HINCP2020")                                  # Generate median household income table; dollar comparisons require inflation adjustment
-  deep_pocket[[4]] <- bulk_count_efa(hh_df, "poverty")                                             # Generate median household income table
-  deep_pocket[[5]] <- bulk_count_efa(hh_df, "housing_burden")                                      # Generate housing cost burden table
-  deep_pocket[[6]] <- bulk_stat_efa(hh_df, "median", "GRNTP2020")                                  # Generate gross rent table
-  deep_pocket[[7]] <- bulk_count_efa(hh_df, "crowding")                                            # Generate crowding (persons per bedroom) table
-  deep_pocket[[8]] <- bulk_count_efa(hh_df, "FS")                                                  # Generate food stamp/SNAP table
-  deep_pocket[[9]] <- bulk_count_efa(hh_df, "internet")                                            # Generate internet access table
-  names(deep_pocket) <- c("educational_attainment",                                                # Name the elements; match the bulk_stat functions below
-                          "healthcare_coverage",
-                          "median_household_income",
-                          "household_poverty",
-                          "housing_cost_burden",
-                          "median_gross_rent",
-                          "crowding",
-                          "SNAP",
-                          "internet_access")
+  deep_pocket$"educational_attainment"  <- bulk_count_efa(pp_df, "edu_simp")
+  deep_pocket$"healthcare_coverage"     <- bulk_count_efa(pp_df, "healthcov")
+  deep_pocket$"median_household_income" <- bulk_stat_efa(hh_df, "median", "HINCP2020")             # Notice dollar comparisons require inflation adjustment
+  deep_pocket$"household_poverty"       <- bulk_count_efa(hh_df, "poverty")
+  deep_pocket$"housing_cost_burden"     <- bulk_count_efa(hh_df, "housing_burden")
+  deep_pocket$"tenure"                  <- bulk_count_efa(hh_df, "OWN_RENT")
+  deep_pocket$"rent_burden"             <- bulk_count_efa(hh_df, "rent_burden")
+  deep_pocket$"median_gross_rent"       <- bulk_stat_efa(hh_df, "median", "GRNTP2020")
+  deep_pocket$"crowding"                <- bulk_count_efa(hh_df, "crowding")                       # i.e. persons per bedroom
+  deep_pocket$"SNAP"                    <- bulk_count_efa(hh_df, "FS")                             # food stamp/SNAP
+  deep_pocket$"internet_access"         <- bulk_count_efa(hh_df, "internet")
+
   return(deep_pocket)
 }
 
