@@ -462,9 +462,9 @@ qplot(focus_type_ord, fv,
 ### 2b. Facets by geography
 *In this section we explore trends by different groups with MOEs. These charts help to show any missing data by geography, year, or focus group/subgroup.*
 ```{r, include=FALSE}
-facet_by_geography <- function(df, geography, focus.text){
+facet_by_geography <- function(geography, focus.text){
   # filter data
-  data_clean_geo <- df %>% 
+  data_clean_geo <- data_clean %>% 
     filter(county==geography)
   
   # make chart, adjust estimate type, subtitle
@@ -484,11 +484,11 @@ facet_by_geography <- function(df, geography, focus.text){
 ```
 
 ```{r}
-facet_by_geography(data_clean_oneplus, "Region", ": Region")
-facet_by_geography(data_clean_oneplus, "King", ": King County")
-facet_by_geography(data_clean_oneplus, "Kitsap", ": Kitsap County")
-facet_by_geography(data_clean_oneplus, "Pierce", ": Pierce County")
-facet_by_geography(data_clean_oneplus, "Snohomish", ": Snohomish County")
+facet_by_geography("Region", ": Region")
+facet_by_geography("King", ": King County")
+facet_by_geography("Kitsap", ": Kitsap County")
+facet_by_geography("Pierce", ": Pierce County")
+facet_by_geography("Snohomish", ": Snohomish County")
 ```
 \
 \
