@@ -104,7 +104,7 @@ unique(pums_ospi_elmer$focus_type)
 # view the different indicators available within the data set
 unique(pums_ospi_elmer$indicator_type)
 # view the different data years available within the data set
-unique(pums_ospi_elmer$data_year)
+unique(pums_ospi_elmer$data_year_yr)
 ```
 
 # Overcrowding
@@ -112,7 +112,7 @@ unique(pums_ospi_elmer$data_year)
 # set up a variable for analysis
 indicator_measure <- 'crowding'
 # set up a variable for titles
-indicator_title <- 'Overcrowding (>1 person/bedroom)'
+indicator_title <- 'Overcrowding'
 ```
 
 ## 1. Explore data
@@ -123,7 +123,7 @@ data_indicator <- pums_ospi_elmer %>%
   mutate(indicator_attribute = case_when(indicator_attribute == "More than 1.5 persons per bedroom" |
                                           indicator_attribute == "Between 1 and 1.5 person(s) per bedroom" ~ "More than 1 person per bedroom",
                                           TRUE~ indicator_attribute))
- # group_by(indicator_attribute, vulnerability, indicator_type, focus_type, focus_attribute, data_year, county, fact_value, margin_of_error)%>%
+ # group_by(indicator_attribute, vulnerability, indicator_type, focus_type, focus_attribute, data_year_yr, county, fact_value, margin_of_error)%>%
   #summarise(fact_value = sum(fact_value))
 
 
@@ -134,8 +134,8 @@ data_full <- data_indicator %>%
   filter(focus_attribute !="Total") %>%
   filter(indicator_attribute !="Total") %>%
   dplyr::mutate(data_year_yr = format(data_year,format="%Y"))%>%
-  group_by(data_year, span, county, vulnerability, focus_type, focus_attribute, indicator_type, indicator_attribute, fact_type) %>% 
-  summarise(fv = sum(fact_value), moe = moe_sum(fact_value, margin_of_error))
+  group_by(data_year_yr, span, county, vulnerability, focus_type, focus_attribute, indicator_type, indicator_attribute, fact_type) %>% 
+  summarise(fv = sum(fact_value), moe = moe_sum(margin_of_error, estimate = fact_value, na.rm = TRUE))
 
 ```
 
@@ -169,8 +169,8 @@ These fields will vary by indicator:
 unique(data_full$fact_type) #share
 
 # years
-num_yr <- length(unique(data_full$data_year)) #3
-unique(data_full$data_year)
+num_yr <- length(unique(data_full$data_year_yr)) #3
+unique(data_full$data_year_yr)
 time_period <- '2011, 2016, 2021'
 
 # indicator attributes
@@ -197,7 +197,7 @@ num_yr_geo <- num_group*2*num_indatt #24
 ```
 If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
 ```{r}
-table(data_full$data_year,
+table(data_full$data_year_yr,
       data_full$county)
 ```
 <span style="color: #00A7A0">
@@ -212,7 +212,7 @@ num_yr_grp <- num_county*2*num_indatt #20
 ```
 If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
 ```{r}
-table(data_full$data_year,
+table(data_full$data_year_yr,
       data_full$focus_type)
 ```
 <span style="color: #00A7A0">
@@ -227,7 +227,7 @@ num_yr_subgrp <- num_county*num_indatt #10
 ```
 If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
 ```{r}
-table(data_full$data_year,
+table(data_full$data_year_yr,
       data_full$focus_attribute)
 ```
 <span style="color: #00A7A0">
@@ -242,7 +242,7 @@ num_yr_ind <- num_county*num_group*2 #60
 ```
 If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
 ```{r}
-table(data_full$data_year,
+table(data_full$data_year_yr,
       data_full$indicator_attribute)
 ```
 <span style="color: #00A7A0">
@@ -266,7 +266,7 @@ There are no 0s or nulls.
 To look at distribution of all data - not the most useful visual, but provides a sense of the range of values at a high level in one plot. 
 \
 ```{r}
-qplot(data_year, fv, 
+qplot(data_year_yr, fv, 
       colour = county, shape = focus_type, 
       data = data_full, 
       main = indicator_title) + theme(axis.title.x = element_blank(),
@@ -276,7 +276,7 @@ qplot(data_year, fv,
 This table includes a lot of information about the data set and helps to show the different levels of each field. It provides another way to check if data are available for all counties and all years, or where there may be gaps in the data set. 
 ```{r}
 data_refined <- data_full %>% 
-  dplyr::select(data_year, county, vulnerability, focus_type, focus_attribute,
+  dplyr::select(data_year_yr, county, vulnerability, focus_type, focus_attribute,
                 indicator_type, indicator_attribute, fv)
 
 sumtable(data_refined,
@@ -344,15 +344,15 @@ These charts also help to confirm that the shares add up to 100% - only relevant
 ```{r}
 just_region_11 <- data_clean %>% 
   filter(county=="Region") %>% 
-  filter(data_year==2011) %>% 
+  filter(data_year_yr==2011) %>% 
   arrange(focus_attribute_ord, indicator_attribute)
 just_region_16 <- data_clean %>% 
   filter(county=="Region") %>% 
-  filter(data_year==2016) %>% 
+  filter(data_year_yr==2016) %>% 
   arrange(focus_attribute_ord, indicator_attribute)
 just_region_21 <- data_clean %>% 
   filter(county=="Region") %>% 
-  filter(data_year==2021) %>% 
+  filter(data_year_yr==2021) %>% 
   arrange(focus_attribute_ord, indicator_attribute)
 
 bar_chart <- static_bar_chart(t=just_region_11,
@@ -413,13 +413,13 @@ data_clean_lessthan <- data_clean %>%
 
 ```{r}
 # plot data
-qplot(data_year, fv, 
+qplot(data_year_yr, fv, 
       colour = county, shape = focus_type_ord, 
       data = data_clean_oneplus, 
       main = paste0(indicator_title, ": Region, more than 1 person per bedroom")) + theme(axis.title.x = element_blank(),
                                                           axis.title.y = element_blank()) + ylim(0, 1)
 
-qplot(data_year, fv, 
+qplot(data_year_yr, fv, 
       colour = county, shape = focus_type_ord, 
       data = data_clean_lessthan, 
       main = paste0(indicator_title, ": Region, one person per bedroom or less")) + theme(axis.title.x = element_blank(),
@@ -428,13 +428,13 @@ qplot(data_year, fv,
 
 #### By Year
 ```{r}
-# separating by year - focusing on only more than 1 person per bedroom
+# separating by year
 data_clean11 <- data_clean %>% 
-  filter(data_year==2011)
+  filter(data_year_yr==2011)
 data_clean16 <- data_clean %>% 
-  filter(data_year==2016)
+  filter(data_year_yr==2016)
 data_clean21 <- data_clean %>% 
-  filter(data_year==2021)
+  filter(data_year_yr==2021)
 ```
 
 ```{r}
@@ -464,22 +464,24 @@ qplot(focus_type_ord, fv,
 ```{r, include=FALSE}
 facet_by_geography <- function(geography, focus.text){
   # filter data
-  data_clean_geo <- data_clean %>% 
+  data_clean_geo <- data_clean_oneplus %>% 
     filter(county==geography)
   
   # make chart, adjust estimate type, subtitle
   static_facet_column_chart(t=data_clean_geo,
-                            x="data_year", y="fv",
+                            x="data_year_yr", y="fv",
                             fill="vulnerability", facet="focus_type_ord",
                             color="psrc_light",
                             est ="percent",
                             moe = "moe",
                             dec=0,
-                            scales="fixed",
+                            scales="free",
                             ncol=3,
                             title=paste0(indicator_title, focus.text),
                             subtitle="more than one person per bedroom",
                             source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+ #   geom_text(aes(label = paste0(fv*100,"%")), 
+  #          position = position_stack(vjust = 0.5), size = 2)
 }
 ```
 
@@ -489,6 +491,33 @@ facet_by_geography("King", ": King County")
 facet_by_geography("Kitsap", ": Kitsap County")
 facet_by_geography("Pierce", ": Pierce County")
 facet_by_geography("Snohomish", ": Snohomish County")
+```
+
+```{r, test, evalu = FALSE}
+
+facet_by_geography <- function(geography, focus.text) {
+  # filter data
+  data_clean_geo <- data_clean_oneplus %>% 
+    filter(county==geography)
+
+  # make chart, adjust estimate type, subtitle 
+  static_facet_column_chart(t=data_clean_geo, 
+                            x="data_year_yr", 
+                            y="fv", 
+                            fill="vulnerability", 
+                            facet="focus_type_ord", 
+                            color="psrc_light", 
+                            est ="percent", 
+                            moe = "moe", 
+                            ncol=3, 
+                            scales = "fixed",
+                            title=paste0(indicator_title, focus.text), 
+                            subtitle="more than one person per bedroom", 
+                            source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)") 
+  } 
+
+facet_by_geography("King", ": King County") 
+print(test)
 ```
 \
 \
@@ -501,12 +530,12 @@ facet_by_geography("Snohomish", ": Snohomish County")
 ```{r, include=FALSE}
 facet_line_by_geography_fixed <- function(df, geography, focus.text){
   # filter data
-  data_clean_geo <- df %>% 
+  data_clean_geo <- data_clean_oneplus %>% 
     filter(county==geography)
   
   # make chart, adjust estimate type, subtitle
   static_facet_line_chart(t=data_clean_geo,
-                          x="data_year", y="fv",
+                          x="data_year_yr", y="fv",
                           fill="vulnerability", facet="focus_type_ord",
                           color="psrc_light",
                           est ="percent",
@@ -521,12 +550,12 @@ facet_line_by_geography_fixed <- function(df, geography, focus.text){
 
 facet_line_by_geography_free <- function(df, geography, focus.text){
   # filter data
-  data_clean_geo <- df%>% 
+  data_clean_geo <-  data_clean_oneplus %>% 
     filter(county==geography)
   
   # make chart, adjust estimate type, subtitle
   static_facet_line_chart(t=data_clean_geo,
-                          x="data_year", y="fv",
+                          x="data_year_yr", y="fv",
                           fill="vulnerability", facet="focus_type_ord",
                           color="psrc_light",
                           est ="percent",
@@ -541,17 +570,17 @@ facet_line_by_geography_free <- function(df, geography, focus.text){
 ```
 
 ```{r}
-facet_line_by_geography_fixed(data_clean, "Region", ": Region")
-facet_line_by_geography_fixed(data_clean, "King", ": King County")
-facet_line_by_geography_fixed(data_clean, "Kitsap", ": Kitsap County")
-facet_line_by_geography_fixed(data_clean, "Pierce", ": Pierce County")
-facet_line_by_geography_fixed(data_clean, "Snohomish", ": Snohomish County")
+facet_line_by_geography_fixed("Region", ": Region")
+facet_line_by_geography_fixed("King", ": King County")
+facet_line_by_geography_fixed( "Kitsap", ": Kitsap County")
+facet_line_by_geography_fixed("Pierce", ": Pierce County")
+facet_line_by_geography_fixed("Snohomish", ": Snohomish County")
 
-facet_line_by_geography_free(data_clean, "Region", ": Region")
-facet_line_by_geography_free(data_clean, "King", ": King County")
-facet_line_by_geography_free(data_clean, "Kitsap", ": Kitsap County")
-facet_line_by_geography_free(data_clean, "Pierce", ": Pierce County")
-facet_line_by_geography_free(data_clean, "Snohomish", ": Snohomish County")
+facet_line_by_geography_free("Region", ": Region")
+facet_line_by_geography_free("King", ": King County")
+facet_line_by_geography_free("Kitsap", ": Kitsap County")
+facet_line_by_geography_free("Pierce", ": Pierce County")
+facet_line_by_geography_free("Snohomish", ": Snohomish County")
 ```
 \
 \
@@ -560,20 +589,20 @@ facet_line_by_geography_free(data_clean, "Snohomish", ": Snohomish County")
 The 5 geographies are all included in the facets by geography, but they could be separated out to create 5 individual charts - one for each geography.
 ```{r}
 dif_groups <- function(df, geography, group, category){
-  region_btgrp_dif <- df %>% 
+  region_btgrp_dif <- data_clean_oneplus %>% 
     # dplyr::filter(county==geography) %>% 
     dplyr::filter(focus_type==group) %>% 
-    group_by(data_year) %>% 
+    group_by(data_year_yr) %>% 
     mutate(dif = ifelse(focus_attribute!=category, fv - fv[focus_attribute == category], 0)) %>% 
     dplyr::filter(dif!=0)
 }
 
-poc <- dif_groups(data_clean, "Region", "POC_cat", 'POC')
-dis <- dif_groups(data_clean, "Region", "Disability_cat", 'With disability')
-income <- dif_groups(data_clean, "Region", "Income_cat", 'Low Income')
-youth <- dif_groups(data_clean, "Region", "Youth_cat", 'Household with youth')
-older <- dif_groups(data_clean, "Region", "Older_cat", 'Household with older adult')
-lep <- dif_groups(data_clean, "Region", "LEP_cat", 'Limited English proficiency')
+poc <- dif_groups("Region", "POC_cat", 'POC')
+dis <- dif_groups("Region", "Disability_cat", 'With disability')
+income <- dif_groups("Region", "Income_cat", 'Low Income')
+youth <- dif_groups("Region", "Youth_cat", 'Household with youth')
+older <- dif_groups("Region", "Older_cat", 'Household with older adult')
+lep <- dif_groups("Region", "LEP_cat", 'Limited English proficiency')
 
 dif_equity_groups <- rbind(poc, 
                            dis, 
@@ -585,7 +614,7 @@ dif_equity_groups <- rbind(poc,
 
 # facet line chart option
 dif_equity <- static_facet_line_chart(t=dif_equity_groups,
-                                      x="data_year", y="dif",
+                                      x="data_year_yr", y="dif",
                                       fill="county_ord", facet="focus_type_ord",
                                       color="psrc_light",
                                       est ="percent",
@@ -604,12 +633,12 @@ dif_equity
 ```{r, include=FALSE}
 equity_group_facet_line <- function(df, focus.type, focus.text){
   # filter data
-  data_clean_filter <- df %>% 
+  data_clean_filter <- data_clean_oneplus %>% 
     filter(focus_type==focus.type)
   
   # make chart, adjust estimate type, subtitle, and y limits
   static_facet_line_chart(t=data_clean_filter,
-                          x="data_year", y="fv",
+                          x="data_year_yr", y="fv",
                           fill="focus_attribute", facet="county",
                           color="psrc_light",
                           est ="percent",
@@ -638,9 +667,9 @@ The 6 equity focus groups are all included in the facets by geography, but they 
 ```{r}
 dif_groups <- function(group, category){
 
-  btgrp_dif <- df %>% 
+  btgrp_dif <- data_clean_oneplus %>% 
     dplyr::filter(focus_type==group) %>% 
-    group_by(data_year) %>% 
+    group_by(data_year_yr) %>% 
     mutate(dif = ifelse(focus_attribute!=category, fv - fv[focus_attribute == category], 0)) %>% 
     dplyr::filter(dif!=0)
 }
@@ -662,7 +691,7 @@ dif_equity_groups <- rbind(poc,
 
 # facet line chart option
 dif_equity <- static_facet_line_chart(t=dif_equity_groups,
-                                      x="data_year", y="dif",
+                                      x="data_year_yr", y="dif",
                                       fill="focus_type_edit", facet="county_ord",
                                       color="psrc_light",
                                       est ="percent",
@@ -684,9 +713,9 @@ The code to make this is type of visual is long - adjust to indicator as needed 
 \
 ```{r, edu-attainment, fig.width=10}
 # get first and most recent years
-data_clean_df <- df %>% 
-  dplyr::filter(data_year==2011 |
-                  data_year==2021) %>% 
+data_clean_df <- data_clean_oneplus %>% 
+  dplyr::filter(data_year_yr==2011 |
+                  data_year_yr==2021) %>% 
   dplyr::filter(county=="Region")
 
 # order of y-axis
@@ -729,11 +758,11 @@ highlight <- data_clean_df %>%
 # plot
 p <- ggplot(data_clean_df, aes(fv, focus_attribute_ord)) +
   geom_line(aes(group = focus_attribute_ord), alpha=0.3) +
-  geom_point(aes(color = data_year, shape=data_year), size = 1.5, alpha=0.3)+
+  geom_point(aes(color = data_year_yr, shape=data_year_yr), size = 1.5, alpha=0.3)+
   scale_shape_manual(values = c(15, 16)) +
   scale_color_manual(values=c("#00A7A0","#F05A28")) +
   geom_line(data=highlight, aes(group = focus_attribute_ord), size=0.9) +
-  geom_point(data=highlight, aes(color = data_year, shape=data_year), size = 2.1) +
+  geom_point(data=highlight, aes(color = data_year_yr, shape=data_year_yr), size = 2.1) +
   scale_shape_manual(values = c(15, 16)) +
   geom_text(data = right_label, aes(label = percent(fv, #adjust: percent or dollar
                                                     accuracy = 1)), #adjust to round
@@ -806,11 +835,11 @@ p
 
 ### Line chart: all categories
 ```{r}
-data_clean_region <- df %>% 
+data_clean_region <- data_clean_oneplus %>% 
   dplyr::filter(county=="Region")
 
 line_chart <- static_line_chart(t=data_clean_region,
-                                x="data_year", y="fv",
+                                x="data_year_yr", y="fv",
                                 fill="focus_attribute_ord",
                                 est = "percent",
                                 breaks = NULL,
@@ -823,7 +852,7 @@ line_chart <- static_line_chart(t=data_clean_region,
 line_chart
 
 line_chart <- interactive_line_chart(t=data_clean_region,
-                                     x="data_year", y="fv",
+                                     x="data_year_yr", y="fv",
                                      fill="focus_attribute_ord",
                                      est = "percent",
                                      breaks = NULL,
@@ -838,7 +867,7 @@ line_chart
 ### Line chart: by vulnerability
 ```{r}
 static_facet_line_chart(t=data_clean_region,
-                        x="data_year", y="fv",
+                        x="data_year_yr", y="fv",
                         fill="focus_type_ord", facet="vulnerability",
                         color="psrc_light",
                         est ="percent",
