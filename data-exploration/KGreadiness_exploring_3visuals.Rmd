@@ -977,12 +977,14 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 # set map extent
 map.lat<- 47.615
 map.lon<- -122.257
-map.zoom<- 8.15
+map.zoom<- 8.5
 
 # set up palettes
 # display.brewer.all()
 
-health_pal <- leaflet::colorNumeric(palette=colorRampPalette(brewer.pal(name="YlGn", n = 5))(10),
+# health_pal <- leaflet::colorNumeric(palette=colorRampPalette(brewer.pal(name="YlGn", n = 5))(10),
+#                                     domain = kg_schdistrict_22$Percent_num)
+health_pal <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                     domain = kg_schdistrict_22$Percent_num)
 
 # health_pal <- leaflet::colorNumeric(palette="Greens",
@@ -997,7 +999,13 @@ labels <- sprintf(
   
 # map settings
 kg_map <- leaflet() %>%
-  addProviderTiles(providers$CartoDB.Positron) %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  # addProviderTiles(providers$CartoDB.Positron) %>%
   # addLayersControl(baseGroups = var_name,
   #                  # overlayGroups = c(var_name,
   #                  #                   Population density),
@@ -1015,7 +1023,7 @@ kg_map <- leaflet() %>%
               fillColor = health_pal(kg_schdistrict_22$Percent_num),
               stroke=FALSE, 
               smoothFactor = 0.2,
-              fillOpacity = 0.8,
+              fillOpacity = 0.7,
               group = var_name,
               label = labels) %>% 
 
@@ -1025,7 +1033,7 @@ kg_map <- leaflet() %>%
                      position = "bottomright",
                      title = var_name,
                      group = var_name,
-                     opacity = 0.8,
+                     opacity = 0.7,
                      labFormat = labelFormat(suffix = "%"),
                      decreasing = TRUE) %>% #to get legend high-low with correct color order
   # leaflet::addLegend(pal = popdens_pal,
@@ -1042,7 +1050,7 @@ kg_map <- leaflet() %>%
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
   addEasyButton(easyButton(
     icon="fa-globe", title="Region",
-    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.15); }"))) #%>%
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }"))) #%>%
   # addEasyButton(easyButton(
   #   icon = "fa-crosshairs", title = "My Location",
   #   onClick = JS("function(btn, map){map.locate({setView: true});}")))
@@ -1063,13 +1071,23 @@ website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy
 ```
 
 ```{r}
-# create_tract_map(tract.tbl=medinc21,
-#   tract.lyr=tracts20.lyr,
-#   map.title = "Median household income",
-#   map.subtitle = "2021 data",
-#   map.title.position = "topleft",
-#   legend.title = "Median income",
-#   legend.subtitle = "2020 $USD")
+# source('C:/Users/mrichards/Documents/GitHub/psrc.map/map_region.R')
+# 
+# psrc_purple_plus <- append(psrc_colors$purples_inc, '#FFFFFF', after=0)
+# 
+# map_kg <- create_psrc_map(lyr=kg_schdistrict_22,
+#                           lyr_data_field=kg_schdistrict_22$Percent_num,
+#                           legend_title = "Kindergarten readiness",
+#                           legend_subtitle = "6 of 6 domains",
+#                           psrc_col_pal=psrc_purple_plus)
+# 
+# # fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+# css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+# html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+# map_kg %<>% htmlwidgets::prependContent(html_fix)      # Insert into leaflet HTML code
+# 
+# 
+# map_kg
 ```
 
 ```{r, include=FALSE, eval=FALSE}
