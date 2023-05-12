@@ -5,22 +5,16 @@ library(data.table)
 library(sf)
 library(tidycensus)
 library(openxlsx)
+library(psrcelmer)
 
 # References -------------------------------------------------------
 dyear <- 2020
 voting_url <-"https://www.sos.wa.gov/_assets/elections/research/"
 turnout_url <- paste0(voting_url, dyear, "Gen_Precinct_Results_GIS-Ready.xlsx")
 psrc_counties <- data.frame("CountyName"=c("King","Kitsap","Pierce","Snohomish"),
-                            "FIPS"=c("033","035","053","061"))
+                                  "FIPS"=c("033","035","053","061"))
 
 # Helper functions -------------------------------------------------
-sandbox_connect <- function(){DBI::dbConnect(odbc::odbc(),
-                                           driver = "ODBC Driver 17 for SQL Server",
-                                           server = "AWS-PROD-SQL\\Sockeye",
-                                           database = "Sandbox",
-                                           trusted_connection = "yes",
-                                           port = 1433)
-}
 
 # Download/unzip precinct geometry
 fetch_zip <- function(dyear){
@@ -63,10 +57,7 @@ label_quintile <- function(var){
 
 # Primary function --------------------------------------------------
 
-precinct_sql <- "SELECT * FROM Mike.block20_to_precinct;"                                          # Spatial join much faster in SQL
-sandbox_connection <- sandbox_connect()
-b2p <- DBI::dbGetQuery(sandbox_connection, DBI::SQL(precinct_sql)) %>% setDT()
-DBI::dbDisconnect(sandbox_connection)
+b2p <- psrcelmer::get_table(db_name="Sandbox", schema="Mike", tbl_name="block20_to_precinct")      # Spatial join much faster in SQL
 
 vt <- read.xlsx(turnout_url) %>% setDT() %>%                                                       # Load turnout data
   .[County %in% psrc_counties$CountyName & RaceName=="Turnout"] %>%
