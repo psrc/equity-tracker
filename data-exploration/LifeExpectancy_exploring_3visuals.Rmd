@@ -5,6 +5,7 @@ author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
+    keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
@@ -74,7 +75,7 @@ library(showtextdb) #required for showtext
 
 # Download data 
 Data comes from [WTN](https://fortress.wa.gov/doh/wtn/WTNPortal#!q0=655). Separate CSVs at the census tract geography are available (manual download) for 5y time spans at 1y increments, starting in 2000, until 2020.
-```{r}
+```{r, include=FALSE}
 folder_path <- "Y:/Equity Indicators/experimenting/R-scripts/WTN/data-from-WTN/life_expectancy_over_time/"
 life_expec_01_05 <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
 life_expec_06_10 <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
@@ -164,7 +165,7 @@ tract.20 <- tracts_10_15_20 %>%
 # Using 2010 and 2020 equity quintiles
 ## Merge/Clean
 The 2010 and 2015 equity tracts are in 2010 geographies and include ~770 census tracts, each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The 2010, 2015, an 2020 life expectancy data are available from WTN in 2010 geographies, so the 2020-year data will need to be translated to 2020 geographies to be able to use the 2020 population information. 
-```{r}
+```{r, include=FALSE}
 # 2010 data -----
 equity_tracts_10 <- equity_tracts %>% 
   dplyr::filter(data_year==2010)
@@ -182,7 +183,7 @@ health_equity_tract10 <- merge(tract.10, health_risk_equity_tracts,
                                all.x=TRUE)
 ```
 
-```{r}
+```{r, include=FALSE}
 # 2015 data ----- 
 equity_tracts_15 <- equity_tracts %>% 
   dplyr::filter(data_year==2015)
@@ -200,7 +201,7 @@ health_equity_tract15 <- merge(tract.15, health_risk_equity_tracts,
                                all.x=TRUE)
 ```
 
-```{r}
+```{r, include=FALSE}
 # 2020 data -----
 equity_tracts_20 <- equity_tracts %>% 
   dplyr::filter(data_year==2020)
@@ -226,7 +227,7 @@ health_equity_tract20 <- merge(tract.20, health_risk_equity_tracts,
 
 ## Transform
 The data sets need to be cleaned and pivoted to a longer table so that there is only one field for the 6 different equity categories, instead of one field for each.
-```{r}
+```{r, include=FALSE}
 # clean/simplify data sets
 health_equity_quintiles10 <- health_equity_tract10 %>% 
   dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
@@ -259,7 +260,7 @@ health_equity_pivot20 <- health_equity_quintiles20 %>%
 
 ## Calculate by region
 The life expectancy values are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2010, 2015, 2020).
-```{r}
+```{r, include=FALSE}
 # health_equity_quintiles20_calc <- health_equity_quintiles20 %>% 
 #   mutate(life.expectancy.wgt=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE)))
 
@@ -358,7 +359,7 @@ health_equity_wt20 <- health_equity_pivot20 %>%
 The regional population in 2020: `r population_test`
 
 ## Combine years
-```{r}
+```{r, include=FALSE}
 health_equity_10_15_20 <- as.data.frame(rbind(health_equity_wt10,
                                               health_equity_wt15,
                                               health_equity_wt20)) %>% 
@@ -376,7 +377,7 @@ str(health_equity_10_15_20)
 
 
 ## Visuals
-```{r}
+```{r, include=FALSE}
 indicator_title <- "Life Expectancy at Birth"
 source_info <- paste("Washington State Department of Health, Washington Tracking Network", "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 subtitle_text <- "the number of years a newborn can expect to live"
@@ -384,12 +385,12 @@ subtitle_text <- "the number of years a newborn can expect to live"
 
 # renaming labels ----
 health_equity <- health_equity_10_15_20 %>% 
-  mutate(equity_group_edit = case_when(equity_group=="poc_quintile"~"race/ethnicity",
-                                       equity_group=="disability_quintile"~"disability status",
-                                       equity_group=="lep_quintile"~"limited English proficiency",
-                                       equity_group=="income_quintile"~"low income",
-                                       equity_group=="youth_quintile"~"youth <18",
-                                       equity_group=="older_quintile"~"older adults 65+"))
+  mutate(equity_group_edit = case_when(equity_group=="poc_quintile"~"Race/Ethnicity",
+                                       equity_group=="disability_quintile"~"Disability Status",
+                                       equity_group=="lep_quintile"~"English Proficiency",
+                                       equity_group=="income_quintile"~"Low Income",
+                                       equity_group=="youth_quintile"~"Households with Youth <18",
+                                       equity_group=="older_quintile"~"Households with Older Adults 65+"))
 
 # re-ordering variables ----
 health_equity <- health_equity %>%
@@ -399,12 +400,12 @@ health_equity <- health_equity %>%
                                     "Medium", "Medium High", "High")) %>% 
   ## equity groups
   mutate(equity_group_ord = fct_relevel(equity_group_edit,
-                                        "race/ethnicity",
-                                        "low income",
-                                        "disability status",
-                                        "limited English proficiency",
-                                        "youth <18",
-                                        "older adults 65+"))
+                                        "Race/Ethnicity",
+                                        "Low Income",
+                                        "Disability Status",
+                                        "English Proficiency",
+                                        "Households with Youth <18",
+                                        "Households with Older Adults 65+"))
 
 # head(health_equity_pivot20)
 # unique(health_equity_pivot20$quintile)
@@ -412,7 +413,7 @@ health_equity <- health_equity %>%
 ```
 
 ### 1. Map of most recent data
-```{r}
+```{r, include=FALSE}
 # simplify data
 # colnames(health_equity_quintiles20)
 
@@ -564,6 +565,10 @@ health_pal <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
 
 # set the variable
 var_name <- "Life Expectancy"
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong>",
+  health_risk_tract20$geoid20, paste(prettyNum((round(health_risk_tract20$Life.Expectancy_num, digits=1))), " years")) %>% 
+  lapply(htmltools::HTML)
 
 # map settings
 healthrisk_map <- leaflet() %>%
@@ -593,7 +598,8 @@ healthrisk_map <- leaflet() %>%
               smoothFactor = 0.2,
               fillOpacity = 0.7,
               group = var_name,
-              label = round(health_risk_tract20$Life.Expectancy_num, digits=1)) %>%
+              # label = round(health_risk_tract20$Life.Expectancy_num, digits=1),
+              label = labels) %>%
 
   # legends
   addLegend_decreasing(pal = health_pal,
@@ -623,17 +629,20 @@ healthrisk_map <- leaflet() %>%
 # fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
 css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
 html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
-healthrisk_map %<>% htmlwidgets::prependContent(html_fix)      # Insert into leaflet HTML code
-
-# fix font for map
-css_fix <- "body {font-family: Poppins, serif;}"
+healthrisk_map %<>% htmlwidgets::prependContent(html_fix)
 
 # print map
 healthrisk_map
+
+website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/health/life-expec","/")
+
+# interactive webpage output process
+htmlwidgets::saveWidget(healthrisk_map,
+                        file=paste0(website_dev_folder, 'life-expec20.html'))
 ```
 
 ### 2. Facet chart of most recent
-```{r}
+```{r, include=FALSE}
 facet_by_geography <- function(df, geography, focus.text){
   # filter data
   data_clean_geo <- df %>% 
@@ -656,12 +665,16 @@ facet_by_geography <- function(df, geography, focus.text){
 }
 ```
 
-```{r}
+```{r, include=FALSE, eval=FALSE}
 facet_by_geography(health_equity, "Region", ": Region")
 facet_by_geography(health_equity, "King", ": King County")
 facet_by_geography(health_equity, "Kitsap", ": Kitsap County")
 facet_by_geography(health_equity, "Pierce", ": Pierce County")
 facet_by_geography(health_equity, "Snohomish", ": Snohomish County")
+```
+```{r, facet-1y-full, fig.width=14.58,fig.height=10.35}
+facet_1y <- facet_by_geography(health_equity, "Region", ": Region") 
+facet_1y + theme(axis.text.x = element_blank())
 ```
 
 ### 3. Time series
@@ -684,6 +697,7 @@ facet_line_by_geography <- function(df, geography, focus.text){
                           dec=2,
                           scales="fixed",
                           ncol=3,
+                          lwidth = 2,
                           title=paste0(indicator_title, focus.text),
                           subtitle=paste0(subtitle_text, ", by equity demographic group"),
                           source=source_info) #+ coord_cartesian(ylim = c(50, 85))
@@ -691,7 +705,7 @@ facet_line_by_geography <- function(df, geography, focus.text){
 ```
 
 The y-axis scale is consistent for all equity group facets, but it shifts by county.
-```{r}
+```{r, include=FALSE, eval=FALSE}
 facet_line_by_geography(health_equity, "Region", ": King County")
 facet_line_by_geography(health_equity, "King", ": King County")
 facet_line_by_geography(health_equity, "Kitsap", ": Kitsap County")
@@ -722,7 +736,7 @@ equity_group_facet_line <- function(df, focus.type, focus.text){
 }
 ```
 The y-axis scale is consistent for all county facets, but it shifts by equity group.
-```{r}
+```{r, include=FALSE, eval=FALSE}
 equity_group_facet_line(health_equity, "poc_quintile", " (race/ethnicity)")
 equity_group_facet_line(health_equity, "income_quintile", " (income)")
 equity_group_facet_line(health_equity, "disability_quintile", " (disability)")
@@ -741,7 +755,7 @@ health_equity_hilo <- health_equity %>%
 
 ###### By equity group
 The y-axis scale is consistent for all equity group facets, but it shifts by county.
-```{r}
+```{r, eval=FALSE}
 facet_line_by_geography(health_equity_hilo, "Region", ": King County")
 facet_line_by_geography(health_equity_hilo, "King", ": King County")
 facet_line_by_geography(health_equity_hilo, "Kitsap", ": Kitsap County")
@@ -749,9 +763,13 @@ facet_line_by_geography(health_equity_hilo, "Pierce", ": Pierce County")
 facet_line_by_geography(health_equity_hilo, "Snohomish", ": Snohomish County")
 ```
 
+```{r, line-ally-full, fig.width=14.58,fig.height=10.35}
+facet_line_by_geography(health_equity_hilo, "Region", ": King County")
+```
+
 ###### By county
 The y-axis scale is consistent for all county facets, but it shifts by equity group.
-```{r}
+```{r, include=FALSE, eval=FALSE}
 equity_group_facet_line(health_equity_hilo, "poc_quintile", " (race/ethnicity)")
 equity_group_facet_line(health_equity_hilo, "income_quintile", " (income)")
 equity_group_facet_line(health_equity_hilo, "disability_quintile", " (disability)")
@@ -762,7 +780,7 @@ equity_group_facet_line(health_equity_hilo, "lep_quintile", " (limited English p
 \
 
 ##### First/last years
-```{r}
+```{r, include=FALSE, eval=FALSE}
 health_equity_2yr <- health_equity %>% 
   filter(data_year=="2010" | 
              data_year =="2020")
@@ -770,7 +788,7 @@ health_equity_2yr <- health_equity %>%
 
 ###### By equity group
 The y-axis scale is consistent for all equity group facets, but it shifts by county.
-```{r}
+```{r, include=FALSE, eval=FALSE}
 facet_line_by_geography(health_equity_2yr, "Region", ": King County")
 facet_line_by_geography(health_equity_2yr, "King", ": King County")
 facet_line_by_geography(health_equity_2yr, "Kitsap", ": Kitsap County")
@@ -780,7 +798,7 @@ facet_line_by_geography(health_equity_2yr, "Snohomish", ": Snohomish County")
 
 ###### By county
 The y-axis scale is consistent for all county facets, but it shifts by equity group.
-```{r}
+```{r, include=FALSE, eval=FALSE}
 equity_group_facet_line(health_equity_2yr, "poc_quintile", " (race/ethnicity)")
 equity_group_facet_line(health_equity_2yr, "income_quintile", " (income)")
 equity_group_facet_line(health_equity_2yr, "disability_quintile", " (disability)")
@@ -839,7 +857,7 @@ cleveland_dot_high
 ```
 
 ##### By county and quintile
-```{r cleveland_dot_county_quintile}
+```{r cleveland_dot_county_quintile, include=FALSE, eval=FALSE}
 cleveland_dot_county_quintile <- function(county, quintile_grp){
   # get first and most recent years
   data_clean_df <- health_equity %>% 
@@ -890,7 +908,7 @@ cleveland_dot_county_quintile <- function(county, quintile_grp){
 \
 
 **King**: There are 5 charts for the different equity quintiles (high, medium high, medium, low medium, low).
-```{r, fig.width=10}
+```{r, fig.width=10, include=FALSE, eval=FALSE}
 cleveland_dot_county_quintile("King", "High")
 # cleveland_dot_county_quintile("King", "Medium High")
 # cleveland_dot_county_quintile("King", "Medium")
@@ -900,7 +918,7 @@ cleveland_dot_county_quintile("King", "High")
 \
 \
 **Kitsap**: There are 5 charts for the different equity quintiles (high, medium high, medium, low medium, low).
-```{r, fig.width=10}
+```{r, fig.width=10, include=FALSE, eval=FALSE}
 # cleveland_dot_county_quintile("Kitsap", "High")
 cleveland_dot_county_quintile("Kitsap", "Medium High")
 # cleveland_dot_county_quintile("Kitsap", "Medium")
@@ -910,7 +928,7 @@ cleveland_dot_county_quintile("Kitsap", "Medium High")
 \
 \
 **Pierce**: There are 5 charts for the different equity quintiles (high, medium high, medium, low medium, low).
-```{r, fig.width=10}
+```{r, fig.width=10, include=FALSE, eval=FALSE}
 # cleveland_dot_county_quintile("Pierce", "High")
 # cleveland_dot_county_quintile("Pierce", "Medium High")
 cleveland_dot_county_quintile("Pierce", "Medium")
@@ -920,7 +938,7 @@ cleveland_dot_county_quintile("Pierce", "Medium")
 \
 \
 **Snowhomish**: There are 5 charts for the different equity quintiles (high, medium high, medium, low medium, low).
-```{r, fig.width=10}
+```{r, fig.width=10, include=FALSE, eval=FALSE}
 # cleveland_dot_county_quintile("Snohomish", "High")
 # cleveland_dot_county_quintile("Snohomish", "Medium High")
 # cleveland_dot_county_quintile("Snohomish", "Medium")
@@ -930,7 +948,7 @@ cleveland_dot_county_quintile("Snohomish", "Low Medium")
 \
 
 ##### By county and equity group
-```{r cleveland_dot_county_equity}
+```{r cleveland_dot_county_equity, include=FALSE, eval=FALSE}
 cleveland_dot_county_equity <- function(county, equity_grp){
   # get first and most recent years
   data_clean_df <- health_equity %>% 
@@ -982,7 +1000,7 @@ cleveland_dot_county_equity <- function(county, equity_grp){
 \
 
 **King**: There are 6 charts for the different equity groups (POC, low-income, etc.)
-```{r, fig.width=10}
+```{r, fig.width=10, include=FALSE, eval=FALSE}
 cleveland_dot_county_equity("King", "race/ethnicity")
 # cleveland_dot_county_equity("King", "low income")
 # cleveland_dot_county_equity("King", "disability status")
@@ -993,7 +1011,7 @@ cleveland_dot_county_equity("King", "race/ethnicity")
 \
 \
 **Kitsap**: There are 6 charts for the different equity groups (POC, low-income, etc.)
-```{r, fig.width=10}
+```{r, fig.width=10, include=FALSE, eval=FALSE}
 cleveland_dot_county_equity("Kitsap", "race/ethnicity")
 # cleveland_dot_county_equity("Kitsap", "low income")
 # cleveland_dot_county_equity("Kitsap", "disability status")
@@ -1004,7 +1022,7 @@ cleveland_dot_county_equity("Kitsap", "race/ethnicity")
 \
 \
 **Pierce**: There are 6 charts for the different equity groups (POC, low-income, etc.)
-```{r, fig.width=10}
+```{r, fig.width=10, include=FALSE, eval=FALSE}
 cleveland_dot_county_equity("Pierce", "race/ethnicity")
 # cleveland_dot_county_equity("Pierce", "low income")
 # cleveland_dot_county_equity("Pierce", "disability status")
@@ -1015,7 +1033,7 @@ cleveland_dot_county_equity("Pierce", "race/ethnicity")
 \
 \
 **Snohomish**: There are 6 charts for the different equity groups (POC, low-income, etc.)
-```{r, fig.width=10}
+```{r, fig.width=10, include=FALSE, eval=FALSE}
 cleveland_dot_county_equity("Snohomish", "race/ethnicity")
 # cleveland_dot_county_equity("Snohomish", "low income")
 # cleveland_dot_county_equity("Snohomish", "disability status")

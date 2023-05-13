@@ -450,6 +450,7 @@ facet_line_by_geography <- function(df, geography, focus.text){
                           dec=2,
                           scales="fixed",
                           ncol=3,
+                          lwidth = 2,
                           title=paste0(indicator_title, focus.text),
                           subtitle="values are adjusted to 2021 dollars",
                           source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
@@ -1041,11 +1042,11 @@ medinc_map %<>% htmlwidgets::prependContent(html_fix)      # Insert into leaflet
 # print map
 medinc_map
 
-website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy","/")
+website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy/med-income","/")
 
 # interactive webpage output process
-# htmlwidgets::saveWidget(medinc_map,
-#                         file=paste0(website_dev_folder, 'medinc20.html'))
+htmlwidgets::saveWidget(medinc_map,
+                        file=paste0(website_dev_folder, 'medinc20.html'))
 ```
 
 ```{r}
@@ -1091,7 +1092,7 @@ facet_1y <- facet_by_geography(data_clean21, "Region", ": Region")
 facet_1y + theme(axis.text.x = element_blank())
 ```
 
-```{r}
+```{r, include=FALSE}
 # calculate call out information
 filter <- data_clean21 %>% 
   filter(county=="Region",
@@ -1129,7 +1130,7 @@ facet_line_by_geography(data_clean, "Region", ": Region")
 # save(data_clean, file = "T:/2023April/Mary/EquityTracker/data/data_clean.rda")
 ```
 
-```{r}
+```{r, include=FALSE}
 # calculate call out information
 calc <- data_clean %>% 
   filter(county=="Region",

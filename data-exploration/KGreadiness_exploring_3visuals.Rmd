@@ -475,6 +475,7 @@ facet_line_by_geography <- function(df, geography, focus.text){
                           dec=2,
                           scales="fixed",
                           ncol=2,
+                          lwidth = 2,
                           title=paste0(indicator_title, focus.text),
                           subtitle="percentage of students demonstrating readiness in 6 of 6 domains*",
                             source=paste("Office of the Superintendent of Public Instruction (OSPI)", "No 2022 data available for students with limited English proficiency in Kitsap County","*Social-Emotional, Physical, Language, Cognitive, Literacy, and Math", sep="\n"))
@@ -833,24 +834,17 @@ kg_schdistrict <- kgreadiness_schdistrict %>%
   dplyr::filter(OrganizationLevel=="District",
                 StudentGroupType=="All",
                 Domain=="NumberofDomains", # removes Skykomish
-                MeasureValue=="6") %>% 
-  mutate(org_id=stringr::str_replace(DistrictOrganizationId, "10+(\\d+)$", "\\1")) %>% 
+                MeasureValue=="6") %>%
   mutate(Percent_num=Percent*100) %>% 
   arrange(DistrictName)
 
-# school district spatial file
-sch_districts <- st_read_elmergeo('school_districts') %>% 
-  mutate(org_id_chr=as.character(org_id)) %>% 
-  mutate(org_id_chr=case_when(org_id_chr=="253" ~ "254", # adjusting for Steilacoom
-                              org_id_chr=="258" ~ "259", # adjusting for Sumner
-                              org_id_chr=="262" ~ "263",
-                              TRUE~org_id_chr)) # adjusting for Tahoma
+# school district spatial file (without water)
+sch_districts <- st_read_elmergeo('school_districts_no_water')
 
-
-# merge median income data with population data
+# merge kg readiness data with population data
 kg_schdistrict_22 <- merge(sch_districts, kg_schdistrict,
-                              by.x = "org_id_chr",
-                              by.y = "org_id", 
+                              by.x = "organization",
+                              by.y = "OrganizationId", 
                               all.x=TRUE)
 
 # check NAs
@@ -861,9 +855,6 @@ kg_schdistrict_22_na <- kg_schdistrict_22 %>%
 
 # Index data are suppressed 
 # Skykomish data are suppressed 
-# Steilacoom is 253 in the ElmerGeo data and 254 in the OSPI data
-# Sumner is 258 in the ElmerGeo data and 259 in the OSPI data
-# Tahoma is 262 in the ElmerGeo data and 263 in the OSPI data 
 ```
 
 ```{r}
@@ -994,7 +985,7 @@ health_pal <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
 var_name <- "Kindergarten Readiness <br> (2022-23)"
 labels <- sprintf(
   "School district: <em>%s</em><br/><strong>%s</strong>",
-  kg_schdistrict_22$labels, paste(prettyNum(round(kg_schdistrict_22$Percent_num), digits=2),'%')) %>% 
+  kg_schdistrict_22$lea_name, paste(prettyNum(round(kg_schdistrict_22$Percent_num), digits=2),'%')) %>% 
   lapply(htmltools::HTML)
   
 # map settings
@@ -1063,11 +1054,11 @@ kg_map %<>% htmlwidgets::prependContent(html_fix)      # Insert into leaflet HTM
 # print map
 kg_map
 
-website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy","/")
+website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy/kg-readiness","/")
 
 # interactive webpage output process
-# htmlwidgets::saveWidget(kg_map,
-#                         file=paste0(website_dev_folder, 'kg_2022.html'))
+htmlwidgets::saveWidget(kg_map,
+                        file=paste0(website_dev_folder, 'kg_2022.html'))
 ```
 
 ```{r}
