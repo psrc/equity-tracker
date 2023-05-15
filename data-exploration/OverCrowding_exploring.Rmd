@@ -528,7 +528,7 @@ print(test)
 ### Line charts by geography
 #### High / low vulnerability
 ```{r, include=FALSE}
-facet_line_by_geography_fixed <- function(df, geography, focus.text){
+facet_line_by_geography_fixed <- function(geography, focus.text){
   # filter data
   data_clean_geo <- data_clean_oneplus %>% 
     filter(county==geography)
@@ -548,7 +548,7 @@ facet_line_by_geography_fixed <- function(df, geography, focus.text){
     #scale_y_continuous(limits = c(0, 30))
 }
 
-facet_line_by_geography_free <- function(df, geography, focus.text){
+facet_line_by_geography_free <- function(geography, focus.text){
   # filter data
   data_clean_geo <-  data_clean_oneplus %>% 
     filter(county==geography)
@@ -588,7 +588,7 @@ facet_line_by_geography_free("Snohomish", ": Snohomish County")
 #### calculated difference b/t
 The 5 geographies are all included in the facets by geography, but they could be separated out to create 5 individual charts - one for each geography.
 ```{r}
-dif_groups <- function(df, geography, group, category){
+dif_groups <- function(geography, group, category){
   region_btgrp_dif <- data_clean_oneplus %>% 
     # dplyr::filter(county==geography) %>% 
     dplyr::filter(focus_type==group) %>% 
@@ -631,7 +631,7 @@ dif_equity
 ### Line charts by equity group
 #### High / low vulnerability
 ```{r, include=FALSE}
-equity_group_facet_line <- function(df, focus.type, focus.text){
+equity_group_facet_line <- function(focus.type, focus.text){
   # filter data
   data_clean_filter <- data_clean_oneplus %>% 
     filter(focus_type==focus.type)
@@ -713,7 +713,7 @@ The code to make this is type of visual is long - adjust to indicator as needed 
 \
 ```{r, edu-attainment, fig.width=10}
 # get first and most recent years
-data_clean_df <- data_clean_oneplus %>% 
+data_clean_df <- data_clean %>% 
   dplyr::filter(data_year_yr==2011 |
                   data_year_yr==2021) %>% 
   dplyr::filter(county=="Region")
