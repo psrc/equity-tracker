@@ -1071,34 +1071,29 @@ htmlwidgets::saveWidget(kg_map,
 #                           legend_title = "Kindergarten readiness",
 #                           legend_subtitle = "6 of 6 domains",
 #                           psrc_col_pal=psrc_purple_plus)
-# 
-# # fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
 # css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
 # html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
 # map_kg %<>% htmlwidgets::prependContent(html_fix)      # Insert into leaflet HTML code
-# 
-# 
-# map_kg
+
+# map_kg 
 ```
 
 ```{r, include=FALSE, eval=FALSE}
 # calculate call out information
-calc <- income_population_21 %>% 
-  dplyr::mutate(inc_wt_pop = pop21*estimate) %>% 
-  dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(pop21, na.rm=TRUE))
+data <- kg_schdistrict_22 %>%
+  st_drop_geometry()
 
-# regional median income: 104506.3
+sum(data$Numerator,na.rm=TRUE)/sum(data$Denominator, na.rm=TRUE)
+# regional mean: 0.5317494
 
-sort <- income_population_21 %>% 
-  dplyr::arrange(desc(estimate))
+sort <- data %>% 
+  dplyr::arrange(desc(Percent_num))
+sort <- data %>% 
+  dplyr::arrange(Percent_num)
 
-# 53033004101 (Seattle), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
-
-sort <- income_population_21 %>% 
-  dplyr::arrange(estimate)
-
-# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
-# 53033030501 (Auburn, around 167)
+# Snoqualmie Valley School District (80.508%), Federal Way School District (40.255%)
 ```
 
 ## 2. Facet chart of most recent
@@ -1121,24 +1116,26 @@ facet_1y + theme(axis.text.x = element_blank())
 
 ```{r, include=FALSE, eval=FALSE}
 # calculate call out information
-filter <- data_clean21 %>% 
+filter <- data_clean22 %>% 
   filter(county=="Region",
          focus_type=="Income_cat",
-         vulnerability=="high vulnerability")
+         vulnerability=="low vulnerability")
 
-# region low income households: $22555.19
+# region low income households: 0.3687869	
+# region high income households: 0.6051601
+# 37% of students from households below 200% of the poverty level are kindergarten ready
 
-filter <- data_clean21 %>% 
+filter <- data_clean22 %>% 
   filter(county=="Region",
-         focus_type=="LEP_cat")
+         focus_type=="Disability_cat")
 
-# region lep households (low vuln-high vuln): 103566.97 - 51737.43 = 51829.54
+# region disability households (low vuln-high vuln): 0.5626604 - 0.2313319 = 0.3313285
 
-filter <- data_clean21 %>% 
+filter <- data_clean22 %>% 
   filter(county=="Region",
-         focus_type=="Youth_cat")
+         focus_type=="POC_cat")
 
-# region youth households (high vuln-low vuln): 125506.87 - 90627.96 = 34878.91
+# region youth households (high vuln-low vuln): 0.5978134 - 0.4865695 = 0.1112439
 ```
 
 ## 3. Time series
@@ -1156,33 +1153,32 @@ facet_line_by_geography(data_clean, "Region", ": Region")
 # calculate call out information
 calc <- data_clean %>% 
   filter(county=="Region",
+         focus_type=="POC_cat",
+         data_year==2011 | data_year==2022)
+
+# dif in 2011: 0.5937888-0.3802211=0.2135677
+# dif in 2022: 0.5978134-0.4865695=0.1112439
+# ((0.1112439 - 0.2135677)/0.2135677)*100 >>> 47.91165% decrease
+
+calc <- data_clean %>% 
+  filter(county=="Region",
          focus_type=="Income_cat",
          data_year==2011 | 
-           data_year==2021)
+           data_year==2022)
 
-# dif in 2011: 94495.76- 22040.56 = 72455.2
-# dif in 2021: 120333.12- 22555.19 = 97777.93
-# %gap over 10 years: ((97777.93-72455.2)/72455.2)*100 >>> 34.9495% increase, 
-# 25.8982% decrease
-
-calc <- data_clean %>% 
-  filter(county=="Region",
-         focus_type=="POC_cat",
-         data_year==2011 | 
-           data_year==2021)
-
-# dif in 2011: 80454.51- 66565.02 = 13889.49
-# dif in 2021: 104791.96- 90969.10 = 13822.86
+# dif in 2011: 0.6212291-0.3469150 = 0.2743141
+# dif in 2022: 0.6051601-0.3687869 = 0.2363732
+# ((0.2363732-0.2743141)/0.2743141)*100 >>> 13.83119% decrease
 
 calc <- data_clean %>% 
   filter(county=="Region",
-         focus_type=="Older_cat",
+         focus_type=="Disability_cat",
          data_year==2011 | 
-           data_year==2021)
+           data_year==2022)
 
-# dif in 2011 (without older adult-with older adult): 83463.88- 55308.85 = 28155.03
-# dif in 2021 (without older adult-with older adult): 110527.45- 73948.37 = 36579.08
-# %gap over 10 years: ((36579.08-28155.03)/28155.03)*100 >>> 29.92023% increase
+# dif in 2011: 0.4294447- 0.2038217 = 0.225623
+# dif in 2022: 0.5626604- 0.2313319 = 0.3313285
+# %gap over 10 years: ((0.3313285-0.225623)/0.225623)*100 >>> 46.8505% decrease
 ```
 
 ##### First/last years
