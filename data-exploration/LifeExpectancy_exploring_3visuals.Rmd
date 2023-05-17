@@ -261,9 +261,6 @@ health_equity_pivot20 <- health_equity_quintiles20 %>%
 ## Calculate by region
 The life expectancy values are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2010, 2015, 2020).
 ```{r, include=FALSE}
-# health_equity_quintiles20_calc <- health_equity_quintiles20 %>% 
-#   mutate(life.expectancy.wgt=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE)))
-
 health_equity_pivot20_calc <- health_equity_pivot20 %>% 
   dplyr::group_by(equity_group, quintile) %>%
   summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
@@ -641,6 +638,34 @@ htmlwidgets::saveWidget(healthrisk_map,
                         file=paste0(website_dev_folder, 'life-expec20.html'))
 ```
 
+```{r, include=FALSE, eval=FALSE}
+# calculate call out information
+health_equity_quintiles20_calc <- health_equity_quintiles20 %>%
+  mutate(life.expectancy.wgt=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE)))
+# regional average life expectancy: 78.83183
+
+x<-rep(health_equity_quintiles20_calc$Life.Expectancy_num,times=health_equity_quintiles20_calc$estimate)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median life expectancy: 80.86   
+
+data <- health_risk_tract20 %>%
+  st_drop_geometry()
+
+sort <- data %>% 
+  dplyr::arrange(desc(Life.Expectancy_num))
+# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004401 (Roosevelt) and 53033004402 (U-district) King (92.14)
+
+sort <- data %>% 
+  dplyr::arrange(Life.Expectancy_num)
+
+# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
+
+#95.39-67.31=28.08
+```
+
 ### 2. Facet chart of most recent
 ```{r, include=FALSE}
 facet_by_geography <- function(df, geography, focus.text){
@@ -675,6 +700,36 @@ facet_by_geography(health_equity, "Snohomish", ": Snohomish County")
 ```{r, facet-1y-full, fig.width=14.58,fig.height=10.35}
 facet_1y <- facet_by_geography(health_equity, "Region", ": Region") 
 facet_1y + theme(axis.text.x = element_blank())
+```
+
+```{r, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- health_equity %>% 
+  filter(data_year=="2020",
+         County.Name=="Region",
+         equity_group=="poc_quintile")
+
+# region low quintile poc households: 80.90757	
+# region high quintile poc households: 76.93866
+# 80.90757-76.93866=3.96891
+
+filter <- health_equity %>% 
+  filter(data_year=="2020",
+         County.Name=="Region",
+         equity_group=="income_quintile")
+
+# region low quintile income households: 82.03165	
+# region high quintile income households: 70.82842
+# 82.03165-70.82842=11.20323
+
+filter <- health_equity %>% 
+  filter(data_year=="2020",
+         County.Name=="Region",
+         equity_group=="lep_quintile")
+
+# region low quintile lep households: 79.33226	
+# region high quintile lep households: 77.87368
+# 79.33226-77.87368=1.45858
 ```
 
 ### 3. Time series
@@ -756,7 +811,7 @@ health_equity_hilo <- health_equity %>%
 ###### By equity group
 The y-axis scale is consistent for all equity group facets, but it shifts by county.
 ```{r, eval=FALSE}
-facet_line_by_geography(health_equity_hilo, "Region", ": King County")
+facet_line_by_geography(health_equity_hilo, "Region", ": Region")
 facet_line_by_geography(health_equity_hilo, "King", ": King County")
 facet_line_by_geography(health_equity_hilo, "Kitsap", ": Kitsap County")
 facet_line_by_geography(health_equity_hilo, "Pierce", ": Pierce County")
@@ -764,7 +819,29 @@ facet_line_by_geography(health_equity_hilo, "Snohomish", ": Snohomish County")
 ```
 
 ```{r, line-ally-full, fig.width=14.58,fig.height=10.35}
-facet_line_by_geography(health_equity_hilo, "Region", ": King County")
+facet_line_by_geography(health_equity_hilo, "Region", ": Region")
+```
+
+```{r, include=FALSE, eval=FALSE}
+# calculate call out information
+calc <- health_equity_hilo %>% 
+  filter(County.Name=="Region",
+         equity_group=="poc_quintile",
+         data_year==2010 | data_year==2020)
+
+# dif in 2010: 80.17376-76.43512=3.73864
+# dif in 2020: 80.90757-76.93866=3.96891
+# ((3.96891 - 3.73864)/3.73864)*100 >>> 6.159192% increase
+
+calc <- health_equity_hilo %>% 
+  filter(County.Name=="Region",
+         equity_group=="income_quintile",
+         data_year==2010 | 
+           data_year==2020)
+
+# dif in 2010: 75.55304-72.48086 = 3.07218
+# dif in 2020: 82.03165-70.82842 = 11.20323
+# ((11.20323-3.07218)/3.07218)*100 >>> 264.6671% decrease
 ```
 
 ###### By county
