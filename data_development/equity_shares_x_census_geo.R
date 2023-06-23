@@ -51,7 +51,7 @@ write_shares_to_elmer <- function(dyear, scale){
                      "WHEN NOT MATCHED BY TARGET THEN INSERT (", paste0(colnames(rs), collapse=", "),")",
                      "VALUES (", paste0("source.", colnames(rs), collapse=", "), ");")
 
-  psrcelmer::stage_table(tblname)                                                                  # Stage table first
+  psrcelmer::stage_table(rs, tblname)                                                              # Stage table first
   psrcelmer::sql_execute(sql=merge_sql)                                                            # -- then merge
   psrcelmer::sql_execute(sql=paste("DROP TABLE stg.", tblname))                                    # Clean up
   return(invisible(NULL))                                                                          # No return object for this action
@@ -68,4 +68,4 @@ write_shares_to_elmer <- function(dyear, scale){
 # fwrite(equity_shares, filename)
 
 # Write to Elmer
-write_shares_to_elmer(2020,"block group")
+write_shares_to_elmer(2019, "tract")
