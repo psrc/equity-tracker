@@ -450,6 +450,7 @@ facet_line_by_geography <- function(df, geography, focus.text){
                           dec=2,
                           scales="fixed",
                           ncol=3,
+                          lwidth = 2,
                           title=paste0(indicator_title, focus.text),
                           subtitle="values are adjusted to 2021 dollars",
                           source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
@@ -948,12 +949,14 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 # set map extent
 map.lat<- 47.615
 map.lon<- -122.257
-map.zoom<- 8.15
+map.zoom<- 8.5
 
 # set up palettes
 # display.brewer.all()
 
-health_pal <- leaflet::colorNumeric(palette=colorRampPalette(brewer.pal(name="YlGn", n = 9))(15),
+# health_pal <- leaflet::colorNumeric(palette=colorRampPalette(brewer.pal(name="YlGn", n = 9))(15),
+#                                     domain = medinc_tract20$estimate)
+health_pal <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                     domain = medinc_tract20$estimate)
 
 # health_pal <- leaflet::colorNumeric(palette="Greens",
@@ -974,7 +977,13 @@ labels <- sprintf(
 
 # map settings
 medinc_map <- leaflet() %>%
-  addProviderTiles(providers$CartoDB.Positron) %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  # addProviderTiles(providers$CartoDB.Positron) %>%
   # addLayersControl(baseGroups = var_name,
   #                  # overlayGroups = c(var_name,
   #                  #                   Population density),
@@ -992,7 +1001,7 @@ medinc_map <- leaflet() %>%
               fillColor = health_pal(medinc_tract20$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
-              fillOpacity = 0.8,
+              fillOpacity = 0.7,
               group = var_name,
               # label = paste("$",prettyNum((round(medinc_tract20$estimate, digits=-2)), big.mark = ",")),
               label = labels) %>% 
@@ -1003,7 +1012,7 @@ medinc_map <- leaflet() %>%
                      position = "bottomright",
                      title = var_name,
                      group = var_name,
-                     opacity = 0.8,
+                     opacity = 0.7,
                      labFormat = labelFormat(prefix = "$"),
                      decreasing = TRUE) %>% #to get legend high-low with correct color order
   # leaflet::addLegend(pal = popdens_pal,
@@ -1020,7 +1029,7 @@ medinc_map <- leaflet() %>%
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
   addEasyButton(easyButton(
     icon="fa-globe", title="Region",
-    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.15); }"))) #%>%
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }"))) #%>%
   # addEasyButton(easyButton(
   #   icon = "fa-crosshairs", title = "My Location",
   #   onClick = JS("function(btn, map){map.locate({setView: true});}")))
@@ -1033,7 +1042,7 @@ medinc_map %<>% htmlwidgets::prependContent(html_fix)      # Insert into leaflet
 # print map
 medinc_map
 
-website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy","/")
+website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy/med-income","/")
 
 # interactive webpage output process
 htmlwidgets::saveWidget(medinc_map,
@@ -1041,13 +1050,16 @@ htmlwidgets::saveWidget(medinc_map,
 ```
 
 ```{r}
-# create_tract_map(tract.tbl=medinc21,
-#   tract.lyr=tracts20.lyr,
-#   map.title = "Median household income",
-#   map.subtitle = "2021 data",
-#   map.title.position = "topleft",
-#   legend.title = "Median income",
-#   legend.subtitle = "2020 $USD")
+# source('C:/Users/mrichards/Documents/GitHub/psrc.map/map_region.R')
+# 
+# psrc_purple_plus <- append(psrc_colors$purples_inc, '#FFFFFF', after=0)
+# 
+# map_med_income <- create_psrc_map(lyr=medinc_tract20,
+#                                   lyr_data_field=medinc_tract20$estimate,
+#                                   legend_title = "Median household income",
+#                                   legend_subtitle = "2021 $USD",
+#                                   psrc_col_pal=psrc_purple_plus)
+# map_med_income
 ```
 
 ```{r}
@@ -1080,7 +1092,7 @@ facet_1y <- facet_by_geography(data_clean21, "Region", ": Region")
 facet_1y + theme(axis.text.x = element_blank())
 ```
 
-```{r}
+```{r, include=FALSE}
 # calculate call out information
 filter <- data_clean21 %>% 
   filter(county=="Region",
@@ -1118,7 +1130,7 @@ facet_line_by_geography(data_clean, "Region", ": Region")
 # save(data_clean, file = "T:/2023April/Mary/EquityTracker/data/data_clean.rda")
 ```
 
-```{r}
+```{r, include=FALSE}
 # calculate call out information
 calc <- data_clean %>% 
   filter(county=="Region",

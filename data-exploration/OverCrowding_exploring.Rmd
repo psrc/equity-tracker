@@ -528,7 +528,7 @@ print(test)
 ### Line charts by geography
 #### High / low vulnerability
 ```{r, include=FALSE}
-facet_line_by_geography_fixed <- function(df, geography, focus.text){
+facet_line_by_geography_fixed <- function(geography, focus.text){
   # filter data
   data_clean_geo <- data_clean_oneplus %>% 
     filter(county==geography)
@@ -543,12 +543,12 @@ facet_line_by_geography_fixed <- function(df, geography, focus.text){
                           scales="fixed",
                           ncol=3,
                           title=paste0(indicator_title, focus.text),
-                          subtitle="Greater than 50 percent spent on rent",
+                          subtitle="More than 1 person per bedroom spent on rent",
                           source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
     #scale_y_continuous(limits = c(0, 30))
 }
 
-facet_line_by_geography_free <- function(df, geography, focus.text){
+facet_line_by_geography_free <- function(geography, focus.text){
   # filter data
   data_clean_geo <-  data_clean_oneplus %>% 
     filter(county==geography)
@@ -563,7 +563,7 @@ facet_line_by_geography_free <- function(df, geography, focus.text){
                           scales="free",
                           ncol=3,
                           title=paste0(indicator_title, focus.text),
-                          subtitle="Greater than 50 percent spent on rent",
+                          subtitle="More than 1 person per bedroom spent on rent",
                           source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
     #scale_y_continuous(limits = c(0, 30))
 }
@@ -588,7 +588,7 @@ facet_line_by_geography_free("Snohomish", ": Snohomish County")
 #### calculated difference b/t
 The 5 geographies are all included in the facets by geography, but they could be separated out to create 5 individual charts - one for each geography.
 ```{r}
-dif_groups <- function(df, geography, group, category){
+dif_groups <- function(geography, group, category){
   region_btgrp_dif <- data_clean_oneplus %>% 
     # dplyr::filter(county==geography) %>% 
     dplyr::filter(focus_type==group) %>% 
@@ -622,7 +622,7 @@ dif_equity <- static_facet_line_chart(t=dif_equity_groups,
                                       scales="fixed",
                                       ncol=3,
                                       title=paste0(indicator_title),
-                                      subtitle="Greater than 50 percent",
+                                      subtitle="More than 1 person per bedroom",
                           source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)") #+ theme(legend.position = "none")
 
 dif_equity
@@ -631,7 +631,7 @@ dif_equity
 ### Line charts by equity group
 #### High / low vulnerability
 ```{r, include=FALSE}
-equity_group_facet_line <- function(df, focus.type, focus.text){
+equity_group_facet_line <- function(focus.type, focus.text){
   # filter data
   data_clean_filter <- data_clean_oneplus %>% 
     filter(focus_type==focus.type)
@@ -646,7 +646,7 @@ equity_group_facet_line <- function(df, focus.type, focus.text){
                           scales="fixed",
                           ncol=3,
                           title=paste0(indicator_title, focus.text),
-                          subtitle="Greater than 50 percent",
+                          subtitle="More than 1 person per bedroom",
                           source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)") 
 }
 ```
@@ -699,7 +699,7 @@ dif_equity <- static_facet_line_chart(t=dif_equity_groups,
                                       scales="fixed",
                                       ncol=3,
                                       title=paste0(indicator_title),
-                                      subtitle="Greater than 50 percent",
+                                      subtitle="More than 1 person per bedroom",
                                       source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)") #+ theme(legend.position = "none")
 
 dif_equity
@@ -713,7 +713,7 @@ The code to make this is type of visual is long - adjust to indicator as needed 
 \
 ```{r, edu-attainment, fig.width=10}
 # get first and most recent years
-data_clean_df <- data_clean_oneplus %>% 
+data_clean_df <- data_clean %>% 
   dplyr::filter(data_year_yr==2011 |
                   data_year_yr==2021) %>% 
   dplyr::filter(county=="Region")
@@ -735,13 +735,13 @@ data_clean_df$focus_attribute_ord <- factor(data_clean_df$focus_attribute,
 
 # generate labels for data points - doesn't need to be adjusted
 right_label <- data_clean_df %>%
-  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  #distinct(indicator_fact_id, .keep_all = TRUE) %>% 
   group_by(focus_attribute_ord) %>%
   arrange(desc(fv)) %>% 
   slice(1)
 
 left_label <- data_clean_df %>%
-  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  #distinct(indicator_fact_id, .keep_all = TRUE) %>% 
   group_by(focus_attribute_ord) %>%
   arrange(desc(fv)) %>%
   slice(2)
@@ -781,7 +781,7 @@ p <- ggplot(data_clean_df, aes(fv, focus_attribute_ord)) +
        colour= "Year",
        shape="Year",
        title = paste0(indicator_title, ": Region"),
-       subtitle = "Greater than 50 percent for adults 25 years or older",
+       subtitle = "More than 1 person per bedroom",
        caption=paste("U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)", "2011 disability data not available", sep = "\n")) +
   theme(plot.title = element_text(face="bold", size=16),
         axis.text.y = element_text(face = c('plain','bold', 'plain', 'bold',
@@ -846,7 +846,7 @@ line_chart <- static_line_chart(t=data_clean_region,
                                 lwidth = 1,
                                 color = "psrc_pairs",
                                 title = "Housing cost burden: Region",
-                                subtitle = "Greater than 50 percent",
+                                subtitle = "More than 1 person per bedroom",
                                 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)") + ylim(0, 0.65)
 
 line_chart
@@ -859,7 +859,7 @@ line_chart <- interactive_line_chart(t=data_clean_region,
                                      lwidth = 1,
                                      color = "psrc_pairs",
                                      title = "Housing cost burden: Region",
-                                     subtitle = "Greater than 50 percent",
+                                     subtitle = "More than 1 person per bedroom",
                                      source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
 
 line_chart
@@ -875,7 +875,7 @@ static_facet_line_chart(t=data_clean_region,
                         scales="fixed",
                         ncol=3,
                         title=paste0(indicator_title,": Region"),
-                        subtitle="Greater than 50 percent",
+                        subtitle="More than 1 person per bedroom",
                         source="U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
 ```
 \
