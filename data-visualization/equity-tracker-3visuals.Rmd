@@ -71,11 +71,16 @@ library(echarts4r)
 library(echarts4r.assets)
 ```
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+This code will help produce the three visuals that we are going to include on the equity tracker indicator webpages. The inputs will need to be adjusted depending on the indicator characteristics. 
 
 
 # 3 visuals for webpage
 ## 1. Map of most recent data
+For the map of most recent data, there are two different approaches. 
+
+a.) The first is if the indicator is a PUMS/OPSI indicator that is accessed through Elmer. If this is the case, it requires accessing data at the regional/tract level from ACS since the Elmer dataset is already aggregated to equity group/quintile. If this is the case, please start adjusting the code around line 190. 
+
+b.) The second is easier and applies if the indicator is already available at a tract-level dataset. If this is the case, please start adjusting the code around line 320.
 ```{r legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - to get legend high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
@@ -183,7 +188,7 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 }
 ```
 
-### Using PUMS data
+### a) using PUMS/OSPI data from Elmer
 ```{r, include=FALSE}
 # Connecting to ElmerGeo for census geographies through Portal----
 tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
@@ -310,7 +315,7 @@ sort <- income_population_21 %>%
 # 53033030501 (Auburn, around 167)
 ```
 
-### Using tract level data
+### b) using tract level data from other source
 ```{r, include=FALSE}
 # simplify data
 # colnames(health_equity_quintiles20)
