@@ -766,6 +766,7 @@ facet_line_by_geography(health_equity, "King", ": King County")
 facet_line_by_geography(health_equity, "Kitsap", ": Kitsap County")
 facet_line_by_geography(health_equity, "Pierce", ": Pierce County")
 facet_line_by_geography(health_equity, "Snohomish", ": Snohomish County")
+# save(health_equity, file = "T:/2023June/Mary/EquityTracker/data/lifeexpectancy.rda")
 ```
 
 ###### By county

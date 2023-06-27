@@ -1,0 +1,427 @@
+---
+title: "Visuals for Equity Tracker"
+author: "Mary Richards"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+library(tidyverse)
+library(psrcelmer)
+library(psrccensus)
+library(psrcplot)
+library(psrctrends)
+library(rlang) #required for psrccensus
+library(emmeans) #required for rlang
+library(magrittr)
+library(kableExtra)
+library(ggplot2)
+
+library(summarytools) #freq
+library(vtable) #summary stats
+library(table1)  #nice descriptive summary table
+library(scales) #number formatting
+library(ggpubr) #graphing - ggarrange fx
+library(forcats) #for factor re-leveling
+library(plotly) #for interactive charts
+
+library(odbc) #connect to ElmerGeo
+library(DBI) #connect to ElmerGeo
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+library(raster)
+library(ggspatial)
+library(lubridate) #year formatting
+library(stringr) #add leading zero's
+library(reshape2) #formatting data
+library(readxl)
+library(RColorBrewer)
+library(gridExtra)
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+
+library(echarts)
+library(echarts4r)
+# remotes::install_github("JohnCoene/echarts",
+#                         force=TRUE)
+# remotes::install_github("JohnCoene/echarts4r",
+#                         force=TRUE)
+library(echarts4r.assets)
+```
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+
+# 3 visuals for webpage
+## 1. Map of most recent data
+```{r legend settings, include=FALSE}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - to get legend high-low with correct color order
+addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
+			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
+		  title = NULL, className = "info legend", layerId = NULL, 
+		  group = NULL, data = getMapData(map), decreasing = FALSE) {
+	position <- match.arg(position)
+	type <- "unknown"
+	na.color <- NULL
+	extra <- NULL
+	if (!missing(pal)) {
+		if (!missing(colors)) 
+			stop("You must provide either 'pal' or 'colors' (not both)")
+		if (missing(title) && inherits(values, "formula")) 
+			title <- deparse(values[[2]])
+		values <- evalFormula(values, data)
+		type <- attr(pal, "colorType", exact = TRUE)
+		args <- attr(pal, "colorArgs", exact = TRUE)
+		na.color <- args$na.color
+		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
+		    0) {
+			na.color <- NULL
+		}
+		if (type != "numeric" && !missing(bins)) 
+			warning("'bins' is ignored because the palette type is not numeric")
+		if (type == "numeric") {
+			cuts <- if (length(bins) == 1) 
+				pretty(values, bins)
+			else bins	
+			
+			if (length(bins) > 2) 
+				if (!all(abs(diff(bins, differences = 2)) <= 
+				         sqrt(.Machine$double.eps))) 
+					stop("The vector of breaks 'bins' must be equally spaced")
+			n <- length(cuts)
+			r <- range(values, na.rm = TRUE)
+			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+			n <- length(cuts)
+			p <- (cuts - r[1])/(r[2] - r[1])
+			extra <- list(p_1 = p[1], p_n = p[n])
+			p <- c("", paste0(100 * p, "%"), "")
+			if (decreasing == TRUE){
+				colors <- pal(rev(c(r[1], cuts, r[2])))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}else{
+				colors <- pal(c(r[1], cuts, r[2]))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}
+			colors <- paste(colors, p, sep = " ", collapse = ", ")
+			
+		}
+		else if (type == "bin") {
+			cuts <- args$bins
+			n <- length(cuts)
+			mids <- (cuts[-1] + cuts[-n])/2
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "bin", cuts))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "bin", cuts)
+			}
+			
+		}
+		else if (type == "quantile") {
+			p <- args$probs
+			n <- length(p)
+			cuts <- quantile(values, probs = p, na.rm = TRUE)
+			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
+				 na.rm = TRUE)
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "quantile", cuts, p))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "quantile", cuts, p)
+			}
+		}
+		else if (type == "factor") {
+			v <- sort(unique(na.omit(values)))
+			colors <- pal(v)
+			labels <- labFormat(type = "factor", v)
+			if (decreasing == TRUE){
+				colors <- pal(rev(v))
+				labels <- rev(labFormat(type = "factor", v))
+			}else{
+				colors <- pal(v)
+				labels <- labFormat(type = "factor", v)
+			}
+		}
+		else stop("Palette function not supported")
+		if (!any(is.na(values))) 
+			na.color <- NULL
+	}
+	else {
+		if (length(colors) != length(labels)) 
+			stop("'colors' and 'labels' must be of the same length")
+	}
+	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
+	               na_color = na.color, na_label = na.label, opacity = opacity, 
+	               position = position, type = type, title = title, extra = extra, 
+	               layerId = layerId, className = className, group = group)
+	invokeMethod(map, data, "addLegend", legend)
+}
+```
+
+### Using PUMS data
+```{r, include=FALSE}
+# Connecting to ElmerGeo for census geographies through Portal----
+tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+
+tracts20.lyr<-st_read(tracts20.url)
+
+nrow(tracts20.lyr) #919
+```
+
+```{r}
+x <- tidycensus::load_variables(2021,"acs5") %>% 
+  dplyr::filter(grepl("MEDIAN HOUSEHOLD INCOME", concept) & (geography=="tract"))
+
+# getting household median income data by tract
+medinc21 <- get_acs_recs(geography ='tract', 
+                         table.names = 'B19013',
+                         years = c(2021),
+                         acs.type = 'acs5')
+
+# getting population data by tract
+pop21 <- get_acs_recs(geography ='tract',
+                      table.names = 'B01003',
+                      years = c(2021),
+                      acs.type = 'acs5') %>% 
+  dplyr::rename(pop21=estimate)
+
+# merge median income data with population data
+income_population_21 <- merge(medinc21, pop21,
+                              by.x = "GEOID",
+                              by.y = "GEOID")
+
+# merge to 2020 census tract spatial file
+medinc_tract20 <- merge(tracts20.lyr, income_population_21,
+                             by.x="geoid20",
+                             by.y="GEOID", 
+                             all.x=TRUE) %>% 
+  dplyr::mutate(pop_density = pop21/(Shape__Area*3.861e-7))
+```
+
+```{r map-1y}
+# set map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# set up palettes
+health_pal <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                    domain = medinc_tract20$estimate)
+
+# set the variable
+var_name <- "Median Household <br> Income (2021 USD)"
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong>",
+  medinc_tract20$geoid20, paste("$",prettyNum((round(medinc_tract20$estimate, digits=-2)), big.mark = ","))) %>% 
+  lapply(htmltools::HTML)
+
+# map settings
+medinc_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=medinc_tract20,
+              fillColor = health_pal(medinc_tract20$estimate),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              # label = paste("$",prettyNum((round(medinc_tract20$estimate, digits=-2)), big.mark = ",")),
+              label = labels) %>% 
+
+  # legends
+  addLegend_decreasing(pal = health_pal,
+                     values = medinc_tract20$estimate,
+                     position = "bottomright",
+                     title = var_name,
+                     group = var_name,
+                     opacity = 0.7,
+                     labFormat = labelFormat(prefix = "$"),
+                     decreasing = TRUE) %>% #to get legend high-low with correct color order
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon="fa-globe", title="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+medinc_map %<>% htmlwidgets::prependContent(html_fix)      # Insert into leaflet HTML code
+
+# print map
+medinc_map
+```
+
+```{r}
+website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/economy/med-income","/")
+
+# interactive webpage output process
+htmlwidgets::saveWidget(medinc_map,
+                        file=paste0(website_dev_folder, 'medinc20.html'))
+```
+
+```{r}
+# calculate call out information
+calc <- income_population_21 %>% 
+  dplyr::mutate(inc_wt_pop = pop21*estimate) %>% 
+  dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(pop21, na.rm=TRUE))
+
+# regional median income: 104506.3
+
+sort <- income_population_21 %>% 
+  dplyr::arrange(desc(estimate))
+
+# 53033004101 (Seattle), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+
+sort <- income_population_21 %>% 
+  dplyr::arrange(estimate)
+
+# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
+# 53033030501 (Auburn, around 167)
+```
+
+### Using tract level data
+```{r, include=FALSE}
+# simplify data
+# colnames(health_equity_quintiles20)
+
+health_ind_20 <- health_equity_quintiles20 %>% 
+  dplyr::select(GEOID, estimate, data_year, geoid10, 
+                County.Name, Life.Expectancy, 
+                Life.Expectancy_num) 
+
+# merge to 2020 census tract spatial file
+health_risk_tract20 <- merge(tracts20.lyr, health_ind_20,
+                             by.x="geoid20",
+                             by.y="GEOID", 
+                             all.x=TRUE) %>% 
+  dplyr::mutate(pop_density = estimate/(Shape__Area*3.861e-7))
+
+# check/remove NAs
+# summary(health_risk_tract20$Life.Expectancy_num)
+```
+
+```{r mapping health indicator risk}
+# set map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# set up palettes
+health_pal <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                    domain = health_risk_tract20$Life.Expectancy_num)
+
+# set the variable
+var_name <- "Life Expectancy"
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong>",
+  health_risk_tract20$geoid20, paste(prettyNum((round(health_risk_tract20$Life.Expectancy_num, digits=1))), " years")) %>% 
+  lapply(htmltools::HTML)
+
+# map settings
+healthrisk_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=health_risk_tract20,
+              fillColor = health_pal(health_risk_tract20$Life.Expectancy_num),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              # label = round(health_risk_tract20$Life.Expectancy_num, digits=1),
+              label = labels) %>%
+
+  # legends
+  addLegend_decreasing(pal = health_pal,
+                       values = health_risk_tract20$Life.Expectancy_num,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat())
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon="fa-globe", title="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+healthrisk_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+healthrisk_map
+```
+
+```{r}
+website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/health/life-expec","/")
+
+# interactive webpage output process
+htmlwidgets::saveWidget(healthrisk_map,
+                        file=paste0(website_dev_folder, 'life-expec20.html'))
+```
+
+```{r, include=FALSE, eval=FALSE}
+# calculate call out information
+health_equity_quintiles20_calc <- health_equity_quintiles20 %>%
+  mutate(life.expectancy.wgt=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE)))
+# regional average life expectancy: 78.83183
+
+x<-rep(health_equity_quintiles20_calc$Life.Expectancy_num,times=health_equity_quintiles20_calc$estimate)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median life expectancy: 80.86   
+
+data <- health_risk_tract20 %>%
+  st_drop_geometry()
+
+sort <- data %>% 
+  dplyr::arrange(desc(Life.Expectancy_num))
+# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004401 (Roosevelt) and 53033004402 (U-district) King (92.14)
+
+sort <- data %>% 
+  dplyr::arrange(Life.Expectancy_num)
+
+# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
+
+#95.39-67.31=28.08
+```

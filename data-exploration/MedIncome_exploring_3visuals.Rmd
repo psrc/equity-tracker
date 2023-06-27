@@ -62,6 +62,14 @@ install_psrc_fonts()
 library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
+
+library(echarts)
+library(echarts4r)
+# remotes::install_github("JohnCoene/echarts",
+#                         force=TRUE)
+# remotes::install_github("JohnCoene/echarts4r",
+#                         force=TRUE)
+library(echarts4r.assets)
 ```
 
 # Introduction
@@ -463,6 +471,7 @@ facet_line_by_geography(data_clean, "King", ": King County")
 facet_line_by_geography(data_clean, "Kitsap", ": Kitsap County")
 facet_line_by_geography(data_clean, "Pierce", ": Pierce County")
 facet_line_by_geography(data_clean, "Snohomish", ": Snohomish County")
+# save(data_clean, file = "T:/2023June/Mary/EquityTracker/data/medincome.rda")
 ```
 \
 \
@@ -1121,8 +1130,10 @@ There are 5 charts for the different geographies: Region and the 4 counties.
 
 ##### All years
 ```{r, line-3y-full, fig.width=14.58,fig.height=10.35}
-facet_line_by_geography(data_clean, "Region", ": Region")
-# save(data_clean, file = "T:/2023April/Mary/EquityTracker/data/data_clean.rda")
+region_graphic <- facet_line_by_geography(data_clean, "Region", ": Region")
+
+region_graphic + coord_cartesian(ylim=c(0,160000)) + theme(strip.text.x = element_text(size = 11), )
+# save(data_clean, file = "T:/2023May/Mary/EquityTracker/data/data_clean.rda")
 ``` 
 
 ```{r, line-3y-twothirds, fig.width=9.71, fig.height=6.89}
@@ -1225,5 +1236,48 @@ viz
 ```
 \
 \
+
+
+### echarts with button
+```{r}
+# This allows Poppins to be used in echarts4r
+echarts4r::e_common(font_family = "Poppins")
+
+data_clean21 <- data_clean %>% 
+  filter(data_year==2021)
+
+data_clean21 %>% 
+  group_by(county_ord, vulnerability) %>% 
+  dplyr::mutate(focus_type_ord= str_wrap(focus_type_ord, 4)) %>%
+  e_charts(focus_type_ord) %>% 
+  e_bar(fact_value) %>%
+  e_bar(vulnerability) %>%
+  # e_facet(rows = 3, cols=2,
+  #         legend_pos = "top") %>% 
+  # e_legend_toggle_select("King", btn = "king_btn") %>%
+  # e_button("king_btn", "King", position="bottom") %>%
+  # e_legend_toggle_select("Kitsap", btn = "kitsap_btn") %>%
+  # e_button("kitsap_btn", "Kitsap", position="bottom") %>%
+  # e_legend_toggle_select("Pierce", btn = "pierce_btn") %>%
+  # e_button("pierce_btn", "Pierce", position="bottom") %>%
+  # e_legend_toggle_select("Snohomish", btn = "snoho_btn") %>%
+  # e_button("snoho_btn", "Snohomish", position="bottom") %>%
+  e_title("test") %>%
+  e_legend_unselect("King") %>% 
+  e_legend_unselect("Kitsap") %>% 
+  e_legend_unselect("Pierce") %>% 
+  e_legend_unselect("Snohomish") %>% 
+  # Hide Legend
+  e_legend(show=TRUE) %>% 
+  e_tooltip(formatter = e_tooltip_item_formatter("currency")) %>% 
+  e_x_axis(axisLabel = list(interval = 0, rotate = 45)) %>% 
+  e_y_axis(formatter = e_axis_formatter("currency")) #only works when legend is TRUE and buttons are turned off
+  # e_flip_coords()
+  # e_tooltip(formatter='{a}: {@fact_value}')
+
+  
+  
+# save(data_clean, file = "T:/2023June/Mary/temp/forCraig/data_clean.rda")
+```
 
 <a href="#top">Back to top of the page</a>
