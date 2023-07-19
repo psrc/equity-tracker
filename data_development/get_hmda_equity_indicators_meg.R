@@ -103,11 +103,15 @@ pierce_clean <- pierce_clean[c(6, 7, 1, 2, 3, 4, 5)]
 
 region_clean <- rbind(kitsap_clean, king_clean, pierce_clean)
 
-# plot data -----------------------------------------
+#create column for POC/Asian-POC/White
+
+class(region_clean$data_year)
+
+# plot data ----------------------------------------- Not currently working
 
 facet_chart <- static_facet_line_chart(t=region_clean,
-                        x="share_denials", y="race_ethnicity",
-                        fill="race_ethnicity", facet="median_income",
+                        x="race_ethnicity", y="share_denials",
+                        fill="share_denials", facet="median_income",
                         color="psrc_light",
                         est ="percent",
                         scales="fixed")
