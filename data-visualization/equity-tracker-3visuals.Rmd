@@ -81,7 +81,7 @@ a.) *If the indicator is a PUMS/OPSI indicator that can be accessed through Elme
 
 b.) *If the indicator is available through a tract-level data set.* Getting the data to a workable version may require some data transformation. To map data in this form, there should be a value corresponding to each census tract. Depending on the year of the data, this could be 700 rows for data at 2010 census tracts, or 900 rows for data at 2020 census tracts. If this is the case, please start adjusting the code around line 320.
 ```{r legend settings, include=FALSE}
-# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - to get legend high-low with correct color order
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
 			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
 		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
@@ -289,8 +289,8 @@ acs_map <- leaflet() %>%
   # set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
   addEasyButton(easyButton(
-    icon="fa-globe", #htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  &#127760;  
-    title="Region",
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)  
+    title ="Region",
     onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
 
 # fixing the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
@@ -349,22 +349,26 @@ nrow(tracts20.lyr) #919
 ```{r, include=FALSE}
 # accessing data from folder/csv
 folder_path <- "Y:/Equity Indicators/experimenting/R-scripts/WTN/data-from-WTN/life_expectancy_over_time/"
-life_expec_16_20 <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
+data_csv <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
 
 # Elmer crosswalk data set (this step is only necessary if the data that you are using are in 2010 census geographies, instead of 2020)
 crosswalk_10_20 <- get_table(schema="census",
                              tbl_name="v_geo_relationships_tracts")
+```
 
+```{r}
 # because its a state data set we need to filter for the census tracts we want to visualize - those in our four-county region
-life_expec_16_20 <- life_expec_16_20 %>% 
+data_csv <- data_csv %>% 
   mutate(year=2020) %>% 
   filter(County.Name=="King" |
            County.Name=="Kitsap" |
            County.Name=="Pierce" |
            County.Name=="Snohomish")
+```
 
-# join WTN health data (in 2010 census tracts) to cross walk
-health_risk_crosswalk <- merge(crosswalk_10_20, life_expec_16_20,
+```{r}
+# join cleaned data (in 2010 census tracts) to cross walk
+health_risk_crosswalk <- merge(crosswalk_10_20, data_csv,
                                by.x="geoid10",
                                by.y="Census.Tract", 
                                all.x=TRUE)
@@ -446,7 +450,8 @@ healthrisk_map <- leaflet() %>%
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
   addEasyButton(easyButton(
-    icon="fa-globe", title="Region",
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
+    title ="Region",
     onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
 
 # fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
