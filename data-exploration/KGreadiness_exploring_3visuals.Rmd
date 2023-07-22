@@ -102,7 +102,8 @@ data_full <- pums_ospi_elmer %>%
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
   filter(indicator_attribute!="Total") %>%
-  dplyr::mutate(data_year_yr=format(data_year,format="%Y"))
+  dplyr::mutate(data_year_yr=format(data_year,format="%Y")) #%>%
+  # dplyr::mutate(data_year_yr=lubridate::as_date(paste0(data_year,"-01-01")))
 ```
 
 ### Data fields
@@ -438,7 +439,7 @@ facet_by_geography <- function(df, geography, focus.text){
                             est ="percent",
                             dec=2,
                             scales="fixed",
-                            ncol=2,
+                            ncol=3,
                             title=paste0(indicator_title, focus.text),
                             subtitle="percentage of students demonstrating readiness in 6 of 6 domains*",
                             source=paste("Office of the Superintendent of Public Instruction (OSPI)", "No 2022 data available for students with limited English proficiency in Kitsap County","*Social-Emotional, Physical, Language, Cognitive, Literacy, and Math", sep="\n"))
@@ -469,12 +470,14 @@ facet_line_by_geography <- function(df, geography, focus.text){
   # make chart, adjust estimate type, subtitle
   static_facet_line_chart(t=data_clean_geo,
                           x="data_year_yr", y="fact_value",
+                          # x=lubridate::data_year_yr(x), y="fact_value",
                           fill="vulnerability", facet="focus_type_ord",
                           color="psrc_light",
                           est ="percent",
+                          dform = "%Y",
                           dec=2,
                           scales="fixed",
-                          ncol=2,
+                          ncol=3,
                           lwidth = 2,
                           title=paste0(indicator_title, focus.text),
                           subtitle="percentage of students demonstrating readiness in 6 of 6 domains*",
@@ -488,6 +491,7 @@ facet_line_by_geography(data_clean, "King", ": King County")
 facet_line_by_geography(data_clean, "Kitsap", ": Kitsap County")
 facet_line_by_geography(data_clean, "Pierce", ": Pierce County")
 facet_line_by_geography(data_clean, "Snohomish", ": Snohomish County")
+# save(data_clean, file = "T:/2023June/Mary/EquityTracker/data/kgreadiness.rda")
 ```
 \
 \
@@ -1236,6 +1240,22 @@ viz +
 #                               y="focus_attribute_ord", 
 #                               fill="data_year_yr")
 # save(data_clean_df, file = "T:/2023April/Mary/EquityTracker/data/data_clean_df.rda")
+```
+\
+\
+
+### Copy files from GitHub > website folder
+```{r, include=FALSE, eval=FALSE}
+current.folder <- "C:/Users/mrichards/Documents/GitHub/equity-tracker/data-exploration/KGreadiness_exploring_3visuals_files/figure-html"
+new.folder <- "//WEB/website_data/equity-tracker-webpages/economy/kg-readiness"
+
+list.of.files <- list.files(current.folder, full.names = T)
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          new.folder,
+          overwrite = T)
 ```
 \
 \
