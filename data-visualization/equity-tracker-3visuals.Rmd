@@ -77,9 +77,9 @@ This code will help produce the three visuals that are going to be a part of eac
 ## 1. Map of most recent data
 To create the map of the most recent data, there are two different approaches that will depend on the indicator's data source. 
 
-a.) *If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.* If this is the case, it requires accessing data at the regional/tract level from ACS since the Elmer dataset is already aggregated to equity group/quintile. If this is the case, please start adjusting the code around line 190. 
+a.) **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** If this is the case, it requires accessing data at the regional/tract level from ACS since the Elmer dataset is already aggregated to equity group/quintile. If this is the case, please start adjusting the code around line 190. 
 
-b.) *If the indicator is available through a tract-level data set.* Getting the data to a workable version may require some data transformation. To map data in this form, there should be a value corresponding to each census tract. Depending on the year of the data, this could be 700 rows for data at 2010 census tracts, or 900 rows for data at 2020 census tracts. If this is the case, please start adjusting the code around line 320.
+b.) **If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To map data in this form, there should be a value corresponding to each census tract. Depending on the year of the data, this could be 700 rows for data at 2010 census tracts, or 900 rows for data at 2020 census tracts. If this is the case, please start adjusting the code around line 320.
 ```{r legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
@@ -188,19 +188,19 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```
 
 ### a) using PUMS/OSPI data from Elmer
-```{r, include=FALSE}
+```{r census tract spatial data, include=FALSE}
 # Connecting to ElmerGeo for census geographies through Portal----
 tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
-# tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
 
 tracts20.lyr<-st_read(tracts20.url)
-# tracts10.lyr<-st_read(tracts10.url)
+tracts10.lyr<-st_read(tracts10.url)
 
 nrow(tracts20.lyr) #919
-# nrow(tracts10.lyr) #773
+nrow(tracts10.lyr) #773
 ```
 
-```{r}
+```{r data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step----
 x <- tidycensus::load_variables(2021,"acs5") %>% 
   dplyr::filter(grepl("median household income",
@@ -212,6 +212,9 @@ acs_data <- get_acs_recs(geography ='tract',
                          table.names = 'B19013', #subject table code
                          years = c(2021),
                          acs.type = 'acs5')
+
+# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
+
 
 # getting population data by tract - this is to be able to calculate regional/weighted value for call outs
 acs_population <- get_acs_recs(geography ='tract',
@@ -232,7 +235,7 @@ acs_data_tract <- merge(tracts20.lyr, acs_pop,
                         all.x=TRUE)
 ```
 
-```{r map-1y}
+```{r map}
 # setting map extent
 map.lat<- 47.615
 map.lon<- -122.257
@@ -246,7 +249,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
 var_name <- "Median Household <br> Income (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
-  paste("$",
+  paste("$", # if doesn't require prefix, this can be removed
         prettyNum((round(acs_data_tract$estimate, digits=-2)),
                   big.mark = ","))) %>%
   lapply(htmltools::HTML)
@@ -302,7 +305,7 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 acs_map
 ```
 
-```{r}
+```{r, include=FALSE}
 website_dev_folder <- '//WEB/website_data/equity-tracker-webpages/economy/med-income/'
 map_name <- 'medinc20.html'
   
@@ -310,8 +313,11 @@ map_name <- 'medinc20.html'
 htmlwidgets::saveWidget(acs_map,
                         file=paste0(website_dev_folder, map_name))
 ```
+\
+\
 
-```{r}
+#### Data call outs
+```{r, include=FALSE, eval=FALSE}
 # calculate call out information
 calc <- acs_data_tract %>% 
   dplyr::mutate(inc_wt_pop = pop21*estimate) %>% 
@@ -330,34 +336,46 @@ sort <- acs_data_tract %>%
 # 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
 # 53033030501 (Auburn, around 167)
 ```
+
+1. $104,500: The region's median household income
+2. $250,000: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
+3. $21,000: The lowest median income in the region
+
+\
+
+#### Insights & Analysis
+
+* 
+* 
+* 
+* 
+
 \
 \
 
 ### b) using tract level data from other source
-```{r, include=FALSE}
+```{r census tract spatial data, include=FALSE}
 # Connecting to ElmerGeo for census geographies through Portal----
 tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
-# tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
 
 tracts20.lyr<-st_read(tracts20.url)
-# tracts10.lyr<-st_read(tracts10.url)
+tracts10.lyr<-st_read(tracts10.url)
 
 nrow(tracts20.lyr) #919
-# nrow(tracts10.lyr) #773
+nrow(tracts10.lyr) #773
 ```
 
-```{r, include=FALSE}
-# accessing data from folder/csv
+```{r data, include=FALSE}
+# accessing tract-level data from folder/csv
 folder_path <- "Y:/Equity Indicators/experimenting/R-scripts/WTN/data-from-WTN/life_expectancy_over_time/"
 data_csv <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
 
-# Elmer crosswalk data set (this step is only necessary if the data that you are using are in 2010 census geographies, instead of 2020)
-crosswalk_10_20 <- get_table(schema="census",
-                             tbl_name="v_geo_relationships_tracts")
-```
+# any data transformations that you need to do - any issues that you may have found through the exploration step should be applied here
+head(data_csv) # to look through data set
+nrow(data_csv) # check number of tracts available - if more than the expected number (700 or 900), it could be more tracts than the region or multiple years
 
-```{r}
-# because its a state data set we need to filter for the census tracts we want to visualize - those in our four-county region
+# for example, because this is a state data set we need to filter for the census tracts we want to visualize - those in our four-county region, and for this map we want to show the most recent data available
 data_csv <- data_csv %>% 
   mutate(year=2020) %>% 
   filter(County.Name=="King" |
@@ -366,86 +384,110 @@ data_csv <- data_csv %>%
            County.Name=="Snohomish")
 ```
 
-```{r}
-# join cleaned data (in 2010 census tracts) to cross walk
-health_risk_crosswalk <- merge(crosswalk_10_20, data_csv,
-                               by.x="geoid10",
-                               by.y="Census.Tract", 
-                               all.x=TRUE)
-
-# join WTN health data/crosswalk to equity quintiles (on 2020 census tracts)
-# health_risk_equity_tracts <- merge(health_risk_crosswalk, equity_tracts_20,
-#                                    by.x="geoid20",
-#                                    by.y="geoid", 
-#                                    all.x=TRUE)
-
-
-health_risk_crosswalk <- health_risk_crosswalk %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
-
-# simplify data
-# colnames(health_equity_quintiles20)
-
-health_ind_20 <- health_risk_crosswalk %>% 
-  dplyr::select(GEOID, estimate, data_year, geoid10, 
-                County.Name, Life.Expectancy, 
-                Life.Expectancy_num) 
-
-# merge to 2020 census tract spatial file
-health_risk_tract20 <- merge(tracts20.lyr, health_ind_20,
-                             by.x="geoid20",
-                             by.y="GEOID", 
-                             all.x=TRUE) %>% 
-  dplyr::mutate(pop_density = estimate/(Shape__Area*3.861e-7))
-
-# check/remove NAs
-# summary(health_risk_tract20$Life.Expectancy_num)
+```{r, include=FALSE}
+# # Elmer crosswalk data set (this step is only necessary if the data that you are using are in 2010 census geographies, instead of 2020)
+# crosswalk_10_20 <- get_table(schema="census",
+#                              tbl_name="v_geo_relationships_tracts")
+# 
+# # join cleaned tract-level data (in 2010 census tracts) to cross walk (comment out this step if the data is already in 2020 geographies)
+# data_crosswalk <- merge(crosswalk_10_20, data_csv,
+#                         by.x="geoid10",
+#                         by.y="Census.Tract", # this will need to be adjusted based on the field name
+#                         all.x=TRUE)
 ```
 
-```{r mapping health indicator risk}
+```{r, include=FALSE}
+# cleaning data (if the crosswalk WAS required)
+# data_set <- data_crosswalk %>% 
+#   dplyr::mutate(data_year=format(year,format="%Y")) %>% 
+#   dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
+
+# cleaning data (if the crosswalk WAS NOT required)
+data_set <- data_csv %>%
+  dplyr::mutate(data_year=format(year,format="%Y")) %>%
+  dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
+
+```
+
+```{r, include=FALSE}
+# simplify data by selecting only those necessary for mapping
+colnames(data_set)
+
+data_set <- data_set %>% 
+  dplyr::select(Census.Tract, data_year, 
+                County.Name, Life.Expectancy, 
+                estimate) 
+
+# merge to census tract spatial file
+data_tract <- merge(tracts10.lyr, data_set,
+                    by.x="geoid10",
+                    by.y="Census.Tract", # this will need to be adjusted based on the field name 
+                    all.x=TRUE) %>% 
+  dplyr::mutate(pop_density_mi2 = total_pop10/(Shape__Area*3.861e-7))
+
+# check/remove NAs
+# summary(health_risk_tract20$estimate)
+```
+
+```{r map}
 # set map extent
 map.lat<- 47.615
 map.lon<- -122.257
 map.zoom<- 8.5
 
 # set up palettes
-health_pal <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
-                                    domain = health_risk_tract20$Life.Expectancy_num)
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = data_tract$estimate)
 
 # set the variable
 var_name <- "Life Expectancy"
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>",
-  health_risk_tract20$geoid20, paste(prettyNum((round(health_risk_tract20$Life.Expectancy_num, digits=1))), " years")) %>% 
+  "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$geoid10, # the code in <> makes the geoid value italic 
+  paste(prettyNum((round(data_tract$estimate, digits=1))), " years")) %>% 
   lapply(htmltools::HTML)
 
+# if the label required a prefix, for example a $, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$Census.Tract, # the code in <> makes the geoid value italic
+#   paste("$",
+#         prettyNum((round(data_tract$estimate, digits=-2)),
+#                   big.mark = ","))) %>%
+#   lapply(htmltools::HTML)
+
+# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$Census.Tract,
+#   paste(prettyNum((round(data_tract$estimate, digits=2)), #the digits would probably be 2 for %
+#               big.mark = ","), #this wouldn't be necessary to include for %s    
+#         '%')) %>%
+#   lapply(htmltools::HTML)
+
 # map settings
-healthrisk_map <- leaflet() %>%
+tract_map <- leaflet() %>%
   leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
   leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
   leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
   leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
-  addPolygons(data=health_risk_tract20,
-              fillColor = health_pal(health_risk_tract20$Life.Expectancy_num),
+  addPolygons(data=data_tract,
+              fillColor = psrc_palette(data_tract$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
               group = var_name,
-              # label = round(health_risk_tract20$Life.Expectancy_num, digits=1),
+              # label = round(data_tract$estimate, digits=1),
               label = labels) %>%
 
   # legends
-  addLegend_decreasing(pal = health_pal,
-                       values = health_risk_tract20$Life.Expectancy_num,
+  addLegend_decreasing(pal = psrc_palette,
+                       values = data_tract$estimate,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
                        decreasing = TRUE,
-                       labFormat = labelFormat())
+                       labFormat = labelFormat()) %>% 
   
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
@@ -457,44 +499,89 @@ healthrisk_map <- leaflet() %>%
 # fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
 css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
 html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
-healthrisk_map %<>% htmlwidgets::prependContent(html_fix)
+tract_map %<>% htmlwidgets::prependContent(html_fix)
 
 # print map
-healthrisk_map
+tract_map
 ```
 
-```{r}
-website_dev_folder <- paste0("//WEB/website_data/equity-tracker-webpages/health/life-expec","/")
-
+```{r, include=FALSE}
+website_dev_folder <- '//WEB/website_data/equity-tracker-webpages/economy/med-income/'
+map_name <- 'lifeexpec20.html'
+  
 # interactive webpage output process
-htmlwidgets::saveWidget(healthrisk_map,
-                        file=paste0(website_dev_folder, 'life-expec20.html'))
+htmlwidgets::saveWidget(tract_map,
+                        file=paste0(website_dev_folder, map_name))
 ```
+\
+\
 
+#### Data call outs
 ```{r, include=FALSE, eval=FALSE}
 # calculate call out information
-health_equity_quintiles20_calc <- health_equity_quintiles20 %>%
-  mutate(life.expectancy.wgt=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE)))
-# regional average life expectancy: 78.83183
+data_tract_calc <- data_tract %>%
+  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+# regional average life expectancy: 78.79492
 
-x<-rep(health_equity_quintiles20_calc$Life.Expectancy_num,times=health_equity_quintiles20_calc$estimate)
+x<-rep(data_tract_calc$estimate,times=data_tract_calc$total_pop20)
 df1<-data.frame(x)
 summary(df1$x)
 median(df1$x, na.rm=TRUE)
 hist(df1$x)
-# regional median life expectancy: 80.86   
+# regional median life expectancy: 80.81  
 
-data <- health_risk_tract20 %>%
+data <- data_tract %>%
   st_drop_geometry()
 
 sort <- data %>% 
-  dplyr::arrange(desc(Life.Expectancy_num))
+  dplyr::arrange(desc(estimate))
 # 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004401 (Roosevelt) and 53033004402 (U-district) King (92.14)
 
 sort <- data %>% 
-  dplyr::arrange(Life.Expectancy_num)
+  dplyr::arrange(estimate)
 
 # 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
 
 #95.39-67.31=28.08
+```
+
+1. 78.8 years: The region's average life expectancy
+2. 80.8 years: The region's median life expectancy
+3. 28.1 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+
+\
+
+#### Insights & Analysis
+
+* 
+* 
+* 
+* 
+
+\
+\
+
+## 2. Facet of most recent data
+### a.) 
+### b.) 
+```{r, include=FALSE}
+# # Elmer equity quintile tracts 
+# equity_tracts <- get_table(schema="equity", tbl_name="v_tract_shares")
+# 
+# # filter for data year of interest
+# equity_tracts_20 <- equity_tracts %>% 
+#   dplyr::filter(data_year==2020)
+# 
+# 
+# # join WTN health data WITH crosswalk to equity quintiles
+# health_risk_equity_tracts <- merge(health_risk_crosswalk, equity_tracts_20,
+#                                    by.x="geoid20",
+#                                    by.y="geoid", # this will need to be adjusted based on the field name
+#                                    all.x=TRUE)
+# 
+# # join WTN health data WIHTOUT crosswalk to equity quintiles
+# health_risk_equity_tracts <- merge(data_csv, equity_tracts_20,
+#                                    by.x="Census.Tract", # this will need to be adjusted based on the field name
+#                                    by.y="geoid", 
+#                                    all.x=TRUE)
 ```

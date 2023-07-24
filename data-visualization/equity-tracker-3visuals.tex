@@ -1,0 +1,210 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{lmodern}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math}
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{wrapfig}
+\usepackage{float}
+\usepackage{colortbl}
+\usepackage{pdflscape}
+\usepackage{tabu}
+\usepackage{threeparttable}
+\usepackage{threeparttablex}
+\usepackage[normalem]{ulem}
+\usepackage{makecell}
+\usepackage{xcolor}
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same} % disable monospaced font for URLs
+\hypersetup{
+  pdftitle={Visuals for Equity Tracker},
+  pdfauthor={Mary Richards},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Visuals for Equity Tracker}
+\author{Mary Richards}
+\date{July 24, 2023}
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{6}
+\tableofcontents
+}
+\hypertarget{visuals-for-webpage}{%
+\section{3 visuals for webpage}\label{visuals-for-webpage}}
+
+This code will help produce the three visuals that are going to be a
+part of each equity tracker indicator webpage: regional map (tract
+level) of most recent data, chart of the most recent data, chart of
+trends over time. The inputs/variables will need to be adjusted
+depending on the indicator characteristics - data source and value type.
+
+\hypertarget{map-of-most-recent-data}{%
+\subsection{1. Map of most recent data}\label{map-of-most-recent-data}}
+
+To create the map of the most recent data, there are two different
+approaches that will depend on the indicator's data source.
+
+a.) \emph{If the indicator is a PUMS/OPSI indicator that can be accessed
+through Elmer.} If this is the case, it requires accessing data at the
+regional/tract level from ACS since the Elmer dataset is already
+aggregated to equity group/quintile. If this is the case, please start
+adjusting the code around line 190.
+
+b.) \emph{If the indicator is available through a tract-level data set.}
+Getting the data to a workable version may require some data
+transformation. To map data in this form, there should be a value
+corresponding to each census tract. Depending on the year of the data,
+this could be 700 rows for data at 2010 census tracts, or 900 rows for
+data at 2020 census tracts. If this is the case, please start adjusting
+the code around line 320.
+
+\hypertarget{a-using-pumsospi-data-from-elmer}{%
+\subsubsection{a) using PUMS/OSPI data from
+Elmer}\label{a-using-pumsospi-data-from-elmer}}
+
+\includegraphics{equity-tracker-3visuals_files/figure-latex/map-1y-1.pdf}
+
+\hfill\break
+\hfill\break
+
+\hypertarget{data-call-outs}{%
+\paragraph{Data call outs}\label{data-call-outs}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \$104,500: The region's median household income
+\item
+  \$250,000: The highest median income for five tracts in Seattle,
+  Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
+\item
+  \$21,000: The lowest median income in the region
+\end{enumerate}
+
+\hfill\break
+
+\hypertarget{insights-analysis}{%
+\paragraph{Insights \& Analysis}\label{insights-analysis}}
+
+\begin{itemize}
+\tightlist
+\item
+\item
+\item
+\item
+\end{itemize}
+
+\hfill\break
+\hfill\break
+
+\hypertarget{b-using-tract-level-data-from-other-source}{%
+\subsubsection{b) using tract level data from other
+source}\label{b-using-tract-level-data-from-other-source}}
+
+\begin{verbatim}
+##  [1] "geoid10"         "geog_type"       "geoid20"         "County.Name"    
+##  [5] "Life.Expectancy" "Lower.CI"        "Upper.CI"        "year"           
+##  [9] "data_year"       "estimate"
+\end{verbatim}
+
+\includegraphics{equity-tracker-3visuals_files/figure-latex/mapping health indicator risk-1.pdf}
+
+\hfill\break
+\hfill\break
+
+\hypertarget{data-call-outs-1}{%
+\paragraph{Data call outs}\label{data-call-outs-1}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  78.8 years: The region's average life expectancy
+\item
+  80.8 years: The region's median life expectancy
+\item
+  28.1 years: The difference in the number of years between those living
+  in the census tracts with the highest and lowest life expectancy
+\end{enumerate}
+
+\hfill\break
+
+\hypertarget{insights-analysis-1}{%
+\paragraph{Insights \& Analysis}\label{insights-analysis-1}}
+
+\begin{itemize}
+\tightlist
+\item
+\item
+\item
+\item
+\end{itemize}
+
+\hfill\break
+\hfill\break
+
+\hypertarget{facet-of-most-recent-data}{%
+\subsection{2. Facet of most recent
+data}\label{facet-of-most-recent-data}}
+
+\end{document}
