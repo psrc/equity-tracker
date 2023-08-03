@@ -12,6 +12,16 @@ output:
   pdf_document:
     toc: yes
     toc_depth: '6'
+  word_document:
+  redoc::redoc: null
+
+# title: " "
+# pagetitle: "Median Household Income"  
+# knit: (function(inputFile, encoding) {
+#       out_dir <- "output-visuals";
+#       rmarkdown::render(inputFile,
+#                         encoding=encoding,
+#                         output_dir=file.path(dirname(inputFile), out_dir))})
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -188,7 +198,7 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```
 
 ### a) using PUMS/OSPI data from Elmer
-```{r census tract spatial data, include=FALSE}
+```{r census tract spatial data - for pums, include=FALSE}
 # Connecting to ElmerGeo for census geographies through Portal----
 tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
 tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
@@ -200,7 +210,7 @@ nrow(tracts20.lyr) #919
 nrow(tracts10.lyr) #773
 ```
 
-```{r data, include=FALSE}
+```{r acs data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step----
 x <- tidycensus::load_variables(2021,"acs5") %>% 
   dplyr::filter(grepl("median household income",
@@ -235,7 +245,7 @@ acs_data_tract <- merge(tracts20.lyr, acs_pop,
                         all.x=TRUE)
 ```
 
-```{r map}
+```{r acs map}
 # setting map extent
 map.lat<- 47.615
 map.lon<- -122.257
@@ -354,7 +364,7 @@ sort <- acs_data_tract %>%
 \
 
 ### b) using tract level data from other source
-```{r census tract spatial data, include=FALSE}
+```{r census tract spatial data - for tract data, include=FALSE}
 # Connecting to ElmerGeo for census geographies through Portal----
 tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
 tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
@@ -366,14 +376,14 @@ nrow(tracts20.lyr) #919
 nrow(tracts10.lyr) #773
 ```
 
-```{r data, include=FALSE}
+```{r tract data, include=FALSE}
 # accessing tract-level data from folder/csv
 folder_path <- "Y:/Equity Indicators/experimenting/R-scripts/WTN/data-from-WTN/life_expectancy_over_time/"
 data_csv <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
 
 # any data transformations that you need to do - any issues that you may have found through the exploration step should be applied here
 head(data_csv) # to look through data set
-nrow(data_csv) # check number of tracts available - if more than the expected number (700 or 900), it could be more tracts than the region or multiple years
+nrow(data_csv) # check number of tracts available - if more than the expected number (700 or 900), it could be more tracts beyond the region or multiple years of data
 
 # for example, because this is a state data set we need to filter for the census tracts we want to visualize - those in our four-county region, and for this map we want to show the most recent data available
 data_csv <- data_csv %>% 
@@ -385,31 +395,11 @@ data_csv <- data_csv %>%
 ```
 
 ```{r, include=FALSE}
-# # Elmer crosswalk data set (this step is only necessary if the data that you are using are in 2010 census geographies, instead of 2020)
-# crosswalk_10_20 <- get_table(schema="census",
-#                              tbl_name="v_geo_relationships_tracts")
-# 
-# # join cleaned tract-level data (in 2010 census tracts) to cross walk (comment out this step if the data is already in 2020 geographies)
-# data_crosswalk <- merge(crosswalk_10_20, data_csv,
-#                         by.x="geoid10",
-#                         by.y="Census.Tract", # this will need to be adjusted based on the field name
-#                         all.x=TRUE)
-```
-
-```{r, include=FALSE}
-# cleaning data (if the crosswalk WAS required)
-# data_set <- data_crosswalk %>% 
-#   dplyr::mutate(data_year=format(year,format="%Y")) %>% 
-#   dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
-
-# cleaning data (if the crosswalk WAS NOT required)
+# cleaning data
 data_set <- data_csv %>%
   dplyr::mutate(data_year=format(year,format="%Y")) %>%
   dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
 
-```
-
-```{r, include=FALSE}
 # simplify data by selecting only those necessary for mapping
 colnames(data_set)
 
@@ -429,7 +419,7 @@ data_tract <- merge(tracts10.lyr, data_set,
 # summary(health_risk_tract20$estimate)
 ```
 
-```{r map}
+```{r tract data map}
 # set map extent
 map.lat<- 47.615
 map.lon<- -122.257
@@ -563,6 +553,168 @@ sort <- data %>%
 
 ## 2. Facet of most recent data
 ### a.) 
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r setup, include=FALSE}
+source("C:/Users/mrichards/Documents/GitHub/equity-tracker-charts/equity-tracker-chart-functions.R")
+
+# Load data
+# PUMS/OSPI data set
+pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
+
+
+indicator_measure <- 'median_household_income'
+indicator_title <- 'Median household income'
+
+# clean data set
+data_full <- pums_ospi_elmer %>% 
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>%
+  dplyr::filter(indicator_type==indicator_measure) %>% 
+  dplyr::filter(focus_type!="Total") %>% 
+  filter(focus_attribute!="Total") %>%
+  filter(indicator_attribute!="Total") %>%
+  dplyr::mutate(data_year_yr=format(data_year,format="%Y")) 
+
+# renaming labels ----
+# data_clean <- data_full %>% 
+#   mutate(focus_type_edit = case_when(focus_type=="POC_cat"~"Race/Ethnicity",
+#                                      focus_type=="Disability_cat"~"Disability Status",
+#                                      focus_type=="LEP_cat"~"English Proficiency",
+#                                      focus_type=="Income_cat"~"Low Income",
+#                                      focus_type=="Youth_cat"~"Households with Youth <18",
+#                                      focus_type=="Older_cat"~"Households with Older Adults 65+"))
+data_clean <- data_full %>% 
+  mutate(focus_type_edit = case_when(focus_type=="POC_cat"~"People of Color",
+                                     focus_type=="Disability_cat"~"People with a Disability",
+                                     focus_type=="LEP_cat"~"People with Limited English Proficiency",
+                                     focus_type=="Income_cat"~"Households with Lower Income",
+                                     focus_type=="Youth_cat"~"Households with Youth <18",
+                                     focus_type=="Older_cat"~"Households with Older Adults 65+"),
+         focus_attribute_edit = case_when(focus_attribute== "POC"~ "People of color",
+                                          focus_attribute== "Non-POC"~ "White non-Hispanic",
+                                          focus_attribute== "Low Income"~ "Households with lower income",
+                                          focus_attribute== "Non-Low Income"~ "Other households",
+                                          focus_attribute== "With disability"~ "With a disability",
+                                          focus_attribute== "Without disability"~ "Without a disability",
+                                          focus_attribute== "Limited English proficiency"~ "Limited English proficiency",
+                                          focus_attribute== "English proficient"~ "English proficient",
+                                          focus_attribute== "Household with youth"~ "Households with youth",
+                                          focus_attribute== "Household without youth"~ "Other households 2",
+                                          focus_attribute== "Household with older adult"~ "Households with older adults",
+                                          focus_attribute== "Household without older adult"~ "Other households 3"))
+
+
+
+# re-ordering variables ----
+
+# data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
+#                                     levels = c("Race/Ethnicity",
+#                                                "Low Income",
+#                                                "Disability Status",
+#                                                "English Proficiency",
+#                                                "Households with Youth <18",
+#                                                "Households with Older Adults 65+"))
+data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
+                                    levels = c("People of Color", 
+                                               "Households with Lower Income", 
+                                               "People with a Disability",
+                                               "People with Limited English Proficiency", 
+                                               "Households with Youth <18", 
+                                               "Households with Older Adults 65+"))
+# data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute,
+#                                          levels = c("POC",
+#                                                     "Non-POC",
+#                                                     "Low Income",
+#                                                     "Non-Low Income",
+#                                                     "With disability",
+#                                                     "Without disability",
+#                                                     "Limited English proficiency",
+#                                                     "English proficient",
+#                                                     "Household with youth",
+#                                                     "Household without youth",
+#                                                     "Household with older adult",
+#                                                     "Household without older adult",
+#                                                     "Total"))
+data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute_edit,
+                                         levels = c("People of color", "White non-Hispanic",
+                                                    "Households with lower income", "Other households",
+                                                    "With a disability", "Without a disability",
+                                                    "Limited English proficiency", "English proficient",
+                                                    "Households with youth", "Other households 2",
+                                                    "Households with older adults", "Other households 3"))
+data_clean$county_ord <- factor(data_clean$county,
+                                levels = c("King",
+                                           "Kitsap",
+                                           "Pierce",
+                                           "Snohomish",
+                                           "Region"))
+
+
+
+# Order for various factors
+quintile_order <- c("Low", "Low\nMedium", "Medium", "Medium\nHigh", "High")
+
+county_order <- c("King", "Kitsap", "Pierce", "Snohomish", "Region")
+
+# efa_order <- c("Race/Ethnicity", "Low Income", "Disability Status", 
+#                "English Proficiency", "Households with Youth <18", 
+#                "Households with Older Adults 65+")
+
+efa_order <- c("People of Color", "Households with Lower Income", "People with a Disability", 
+               "People with Limited English Proficiency", "Households with Youth <18", 
+               "Households with Older Adults 65+")
+
+# focus_attribute_order <- c("POC", "Non-POC", "Low Income", "Non-Low\nIncome", 
+#                            "With\ndisability", "Without\ndisability",
+#                            "Limited\nEnglish\nproficiency", "English\nproficient",
+#                            "Household\nwith youth", "Household\nwithout\nyouth",
+#                            "Household\nwith older\nadult", "Household\nwithout\nolder adult")
+
+focus_attribute_order <- c("People of\ncolor", "White\nnon-Hispanic", 
+                           "Households with\nlower income", "Other\nhouseholds", 
+                           "With a\ndisability", "Without a\ndisability",
+                           "Limited\nEnglish\nproficiency", "English\nproficient",
+                           "Households\nwith youth", "Other\nhouseholds 2",
+                           "Households\nwith older\nadult", "Other\nhouseholds 3")
+
+data_clean <- data_clean %>%
+  arrange(county_ord, focus_type_ord, focus_attribute_ord)
+```
+
+```{r}
+# Create Facet Column Chart
+chart <- equity_tracker_column_facet(df = data_clean,
+                                     geo = "county_ord",
+                                     x = "focus_attribute_ord",
+                                     y = "fact_value",
+                                     facet = "focus_type_ord",
+                                     title = "Median Household Income",
+                                     y_min = 0,
+                                     y_max = 180000,
+                                     dec = 0,
+                                     esttype = "currency",
+                                     color = "purples")
+
+```
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+Median Household Income  
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+values are adjusted to 2021 dollars  
+</p>
+```{r chart, echo=FALSE}
+chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+Source: U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)
+</p> 
+
+
 ### b.) 
 ```{r, include=FALSE}
 # # Elmer equity quintile tracts 
@@ -584,4 +736,16 @@ sort <- data %>%
 #                                    by.x="Census.Tract", # this will need to be adjusted based on the field name
 #                                    by.y="geoid", 
 #                                    all.x=TRUE)
+```
+
+```{r, include=FALSE}
+# # Elmer crosswalk data set (this step is only necessary if the data that you are using are in 2010 census geographies, instead of 2020)
+# crosswalk_10_20 <- get_table(schema="census",
+#                              tbl_name="v_geo_relationships_tracts")
+# 
+# # join cleaned tract-level data (in 2010 census tracts) to cross walk (comment out this step if the data is already in 2020 geographies)
+# data_crosswalk <- merge(crosswalk_10_20, data_csv,
+#                         by.x="geoid10",
+#                         by.y="Census.Tract", # this will need to be adjusted based on the field name
+#                         all.x=TRUE)
 ```
