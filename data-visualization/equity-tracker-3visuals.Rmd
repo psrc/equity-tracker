@@ -9,11 +9,7 @@ output:
     toc: yes
     toc_depth: 6
     toc_float: yes
-  pdf_document:
-    toc: yes
-    toc_depth: '6'
   word_document:
-  redoc::redoc: null
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -33,7 +29,6 @@ library(psrctrends)
 library(rlang) #required for psrccensus
 library(emmeans) #required for rlang
 library(magrittr)
-# library(kableExtra)
 library(ggplot2)
 
 library(summarytools) #freq
@@ -56,7 +51,6 @@ library(lubridate) #year formatting
 library(stringr) #add leading zero's
 library(reshape2) #formatting data
 library(readxl)
-# library(RColorBrewer)
 library(gridExtra)
 
 install_psrc_fonts()
@@ -71,8 +65,14 @@ library(echarts4r)
 # remotes::install_github("JohnCoene/echarts4r",
 #                         force=TRUE)
 library(echarts4r.assets)
+
+library(webshot2) #static image creation
 ```
 
+```{r, choose output type}
+output_type <- "word"
+# output_type <- "html"
+```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. The inputs/variables will need to be adjusted depending on the indicator characteristics - data source and value type. 
 
@@ -308,18 +308,21 @@ acs_map
 ```
 
 ```{r generate acs map html, include=FALSE}
-website_dev_folder <- '//WEB/website_data/equity-tracker-webpages/economy/med-income'
-map_name <- 'medinc20.html'
+# to save html visual to folder, you must create an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\html-outputs
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'f-economy'
+ind_dir <- 'f01-median-income'
+map_name <- 'f01-median-income-map.html'
   
 # interactive webpage output process
-# htmlwidgets::saveWidget(acs_map,
-#                         file=file.path(website_dev_folder, map_name))
+htmlwidgets::saveWidget(acs_map,
+                        file=file.path(base_dir,theme_dir,ind_dir, 'html-outputs', map_name))
 ```
 \
 \
 
 #### Data call outs
-```{r map calculations, include=FALSE, eval=FALSE}
+```{r map calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 calc <- acs_data_tract %>% 
   dplyr::mutate(inc_wt_pop = pop21*estimate) %>% 
@@ -358,60 +361,68 @@ sort <- acs_data_tract %>%
 ### b) using tract level data from other source
 ```{r census tract spatial data - for tract data, include=FALSE}
 # Connecting to ElmerGeo for census geographies through Portal----
-tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
-tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
-
-tracts20.lyr<-st_read(tracts20.url)
-tracts10.lyr<-st_read(tracts10.url)
-
-nrow(tracts20.lyr) #919
-nrow(tracts10.lyr) #773
+# tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+# tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+# 
+# tracts20.lyr<-st_read(tracts20.url)
+# tracts10.lyr<-st_read(tracts10.url)
+# 
+# nrow(tracts20.lyr) #919
+# nrow(tracts10.lyr) #773
 ```
 
 ```{r tract data, include=FALSE}
 # accessing tract-level data from folder/csv
-folder_path <- "Y:/Equity Indicators/experimenting/R-scripts/WTN/data-from-WTN/life_expectancy_over_time/"
-data_csv <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
-
-# data_csv <- readr::read_delim(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"), delim = ",")
+# folder_path <- "Y:/Equity Indicators/experimenting/R-scripts/WTN/data-from-WTN/life_expectancy_over_time/"
+# data_csv <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
 
 # any data transformations that you need to do - any issues that you may have found through the exploration step should be applied here
-head(data_csv) # to look through data set
-nrow(data_csv) # check number of tracts available - if more than the expected number (700 or 900), it could be more tracts beyond the region or multiple years of data
+# head(data_csv) # to look through data set
+# nrow(data_csv) # check number of tracts available - if more than the expected number (700 or 900), it could be more tracts beyond the region or multiple years of data
 
 # for example, because this is a state data set we need to filter for the census tracts we want to visualize - those in our four-county region, and for this map we want to show the most recent data available
-data_csv <- data_csv %>% 
-  mutate(year=2020) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
+# data_csv <- data_csv %>% 
+#   mutate(year=2020) %>% 
+#   filter(County.Name=="King" |
+#            County.Name=="Kitsap" |
+#            County.Name=="Pierce" |
+#            County.Name=="Snohomish")
 ```
 
 ```{r clean for map, include=FALSE}
-# cleaning data
-data_set <- data_csv %>%
-  dplyr::mutate(data_year=format(year,format="%Y")) %>%
-  dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
-
-# simplify data by selecting only those necessary for mapping
-colnames(data_set)
-
-data_set <- data_set %>% 
-  dplyr::select(Census.Tract, data_year, 
-                County.Name, Life.Expectancy, 
-                estimate) 
-
-# merge to census tract spatial file
-data_tract <- merge(tracts10.lyr, data_set,
-                    by.x="geoid10",
-                    by.y="Census.Tract", # this will need to be adjusted based on the field name 
-                    all.x=TRUE) %>% 
-  dplyr::mutate(pop_density_mi2 = total_pop10/(Shape__Area*3.861e-7))
+# # cleaning data
+# data_set <- data_csv %>%
+#   dplyr::mutate(data_year=format(year,format="%Y")) %>%
+#   dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
+# 
+# # simplify data by selecting only those necessary for mapping
+# colnames(data_set)
+# 
+# data_set <- data_set %>% 
+#   dplyr::select(Census.Tract, data_year, 
+#                 County.Name, Life.Expectancy, 
+#                 estimate) 
+# 
+# # merge to census tract spatial file
+# data_tract <- merge(tracts10.lyr, data_set,
+#                     by.x="geoid10",
+#                     by.y="Census.Tract", # this will need to be adjusted based on the field name 
+#                     all.x=TRUE) %>% 
+#   dplyr::mutate(pop_density_mi2 = total_pop10/(Shape__Area*3.861e-7))
 
 # check/remove NAs
 # summary(health_risk_tract20$estimate)
 ```
+
+```{r}
+# load map .rda
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a01-life-expectancy'
+rda <- 'a01-life-expectancy-map-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,rda))
+``` 
 
 ```{r tract data map}
 # set map extent
@@ -490,18 +501,21 @@ tract_map
 ```
 
 ```{r generate tract map html, include=FALSE}
-website_dev_folder <- '//WEB/website_data/equity-tracker-webpages/economy/med-income'
-map_name <- 'lifeexpec20.html'
+# to save html visual to folder, you must create an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\html-outputs
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a01-life-expectancy'
+map_name <- 'a01-life-expectancy-map.html'
   
 # interactive webpage output process
-# htmlwidgets::saveWidget(tract_map,
-#                         file=file.path(website_dev_folder, map_name))
+htmlwidgets::saveWidget(tract_map,
+                        file=file.path(base_dir,theme_dir,ind_dir, 'html-outputs', map_name))
 ```
 \
 \
 
 #### Data call outs
-```{r column facet calculations, include=FALSE, eval=FALSE}
+```{r map calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 data_tract_calc <- data_tract %>%
   mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
@@ -546,7 +560,7 @@ sort <- data %>%
 \
 
 ## 2. Facet of most recent data
-### a.) 
+### a.) using PUMS/OSPI data from Elmer
 <style type="text/css">
 .main-container {
   max-width: 100% !important;
@@ -556,6 +570,7 @@ sort <- data %>%
 
 ```{r data setup, include=FALSE}
 source("X:/DSA/equity-tracker/functions/equity-tracker-chart-functions.R")
+# data_clean <- load(file='my_data.rda')
 
 # Load data
 # PUMS/OSPI data set
@@ -573,14 +588,7 @@ data_full <- pums_ospi_elmer %>%
   filter(indicator_attribute!="Total") %>%
   dplyr::mutate(data_year_yr=format(data_year,format="%Y")) 
 
-# renaming labels ----
-# data_clean <- data_full %>% 
-#   mutate(focus_type_edit = case_when(focus_type=="POC_cat"~"Race/Ethnicity",
-#                                      focus_type=="Disability_cat"~"Disability Status",
-#                                      focus_type=="LEP_cat"~"English Proficiency",
-#                                      focus_type=="Income_cat"~"Low Income",
-#                                      focus_type=="Youth_cat"~"Households with Youth <18",
-#                                      focus_type=="Older_cat"~"Households with Older Adults 65+"))
+
 data_clean <- data_full %>% 
   mutate(focus_type_edit = case_when(focus_type=="POC_cat"~"People of Color",
                                      focus_type=="Disability_cat"~"People with a Disability",
@@ -605,13 +613,6 @@ data_clean <- data_full %>%
 
 # re-ordering variables ----
 
-# data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
-#                                     levels = c("Race/Ethnicity",
-#                                                "Low Income",
-#                                                "Disability Status",
-#                                                "English Proficiency",
-#                                                "Households with Youth <18",
-#                                                "Households with Older Adults 65+"))
 data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
                                     levels = c("People of Color", 
                                                "Households with Lower Income", 
@@ -619,20 +620,7 @@ data_clean$focus_type_ord <- factor(data_clean$focus_type_edit,
                                                "People with Limited English Proficiency", 
                                                "Households with Youth <18", 
                                                "Households with Older Adults 65+"))
-# data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute,
-#                                          levels = c("POC",
-#                                                     "Non-POC",
-#                                                     "Low Income",
-#                                                     "Non-Low Income",
-#                                                     "With disability",
-#                                                     "Without disability",
-#                                                     "Limited English proficiency",
-#                                                     "English proficient",
-#                                                     "Household with youth",
-#                                                     "Household without youth",
-#                                                     "Household with older adult",
-#                                                     "Household without older adult",
-#                                                     "Total"))
+
 data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute_edit,
                                          levels = c("People of color", "White non-Hispanic",
                                                     "Households with lower income", "Other households",
@@ -641,11 +629,11 @@ data_clean$focus_attribute_ord <- factor(data_clean$focus_attribute_edit,
                                                     "Households with youth", "Other households 2",
                                                     "Households with older adults", "Other households 3"))
 data_clean$county_ord <- factor(data_clean$county,
-                                levels = c("King",
+                                levels = c("Region",
+                                           "King",
                                            "Kitsap",
                                            "Pierce",
-                                           "Snohomish",
-                                           "Region"))
+                                           "Snohomish"))
 
 
 
@@ -654,19 +642,9 @@ quintile_order <- c("Low", "Low\nMedium", "Medium", "Medium\nHigh", "High")
 
 county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
 
-# efa_order <- c("Race/Ethnicity", "Low Income", "Disability Status", 
-#                "English Proficiency", "Households with Youth <18", 
-#                "Households with Older Adults 65+")
-
 efa_order <- c("People of Color", "Households with Lower Income", "People with a Disability", 
                "People with Limited English Proficiency", "Households with Youth <18", 
                "Households with Older Adults 65+")
-
-# focus_attribute_order <- c("POC", "Non-POC", "Low Income", "Non-Low\nIncome", 
-#                            "With\ndisability", "Without\ndisability",
-#                            "Limited\nEnglish\nproficiency", "English\nproficient",
-#                            "Household\nwith youth", "Household\nwithout\nyouth",
-#                            "Household\nwith older\nadult", "Household\nwithout\nolder adult")
 
 focus_attribute_order <- c("People of\ncolor", "White\nnon-Hispanic", 
                            "Households with\nlower income", "Other\nhouseholds", 
@@ -677,11 +655,12 @@ focus_attribute_order <- c("People of\ncolor", "White\nnon-Hispanic",
 
 data_clean <- data_clean %>%
   arrange(county_ord, focus_type_ord, focus_attribute_ord, data_year)
+
+data_clean$data_year <- as.character(data_clean$data_year)
 ```
 
-```{r column facet}
+```{r column facet - pums}
 # Create Facet Column Chart
-data_clean$data_year <- as.character(data_clean$data_year)
 
 # set variables 
 df = data_clean
@@ -712,25 +691,16 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             color = color)
 
 ```
-<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
-`r title`
-</p>
-<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-`r subtitle`
-</p>
-```{r bar chart, echo=FALSE}
-column_chart
-```
-<p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
-</p> 
 
-```{r output-final-bar-chart, include=FALSE}
+```{r output final column chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\html-outputs
 
-base_dir <- 'T:/2023August/equity-tracker-charts/html-outputs'
-ind_dir <- 'economy'
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'f-economy'
+ind_dir <- 'f01-median-income'
+file_name <- 'f01-median-income-column'
 
-# Bar Chart
+# column Chart - html for interactive
 rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
@@ -745,10 +715,67 @@ rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
-                  output_file = 'median-income-bar.html',
-                  output_dir = file.path(base_dir,ind_dir))
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'html-outputs'))
 
+# Column Chart - png for use in static file
+# need to create a 'static-images' sub-folder in theme sub-folder if not already existing
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
 
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r column chart output - pums, echo=FALSE}
+
+if (output_type == "html") {
+
+  column_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+
+# column_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r column facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+data_tract_calc <- data_tract %>%
+  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+# regional average life expectancy: 78.79492
+
+x<-rep(data_tract_calc$estimate,times=data_tract_calc$total_pop20)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median life expectancy: 80.81  
+
+data <- data_tract %>%
+  st_drop_geometry()
+
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004401 (Roosevelt) and 53033004402 (U-district) King (92.14)
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+
+# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
+
+#95.39-67.31=28.08
 ```
 
 1. 78.8 years: The region's average life expectancy
@@ -767,13 +794,7 @@ rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.
 \
 \
 
-### b.) 
-
-
-
-
-## 3. Facet of trend data
-### a.) 
+### b.) using tract level data from other source
 <style type="text/css">
 .main-container {
   max-width: 100% !important;
@@ -781,121 +802,227 @@ rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.
 }
 </style>
 
-```{r line facet, include=FALSE}
-# Create Facet Line Chart
-# trend_chart <- equity_tracker_line_facet(df = data_clean,
-#                                          geo = "county_ord",
-#                                          x = "data_year",
-#                                          y = "fact_value",
-#                                          fill = "focus_attribute_ord",
-#                                          facet = "focus_type_ord",
-#                                          title = "Median Household Income",
-#                                          y_min = 0,
-#                                          y_max = 180000,
-#                                          dec = 0,
-#                                          esttype = "currency",
-#                                          color = psrc_colors$purples_inc,
-#                                          width = '420px',
-#                                          height = '380px')
+```{r load rda for chart, include=FALSE}
+source("X:/DSA/equity-tracker/functions/equity-tracker-chart-functions.R")
 
-# chart <- equity_tracker_line_facet(df = df,
-#                                    geo = geo,
-#                                    x = x,
-#                                    y = y,
-#                                    fill = fill,
-#                                    facet = facet,
-#                                    title = title,
-#                                    y_min = y_min,
-#                                    y_max = y_max,
-#                                    dec = dec,
-#                                    esttype = esttype,
-#                                    color = color)
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a01-life-expectancy'
+rda <- 'a01-life-expectancy-data.rda'
 
-line_chart <- equity_tracker_line_facet(df = data_clean,
-                                        geo = geo,
-                                        x = "data_year",
-                                        y = "fact_value",
-                                        fill = "focus_attribute_ord",
-                                        facet = "focus_type_ord",
-                                        title = "Median Household Income",
-                                        y_min = 0,
-                                        y_max = 180000,
-                                        dec = 0,
-                                        esttype = "currency",
-                                        color = color,
-                                        width = '420px',
-                                        height = '380px')
-
-# chart <- equity_tracker_line_facet(df = data_clean,
-#                                    geo = "county_ord",
-#                                    x = "data_year",
-#                                    y = "fact_value",
-#                                    fill = "focus_attribute_ord",
-#                                    facet = "focus_type_ord",
-#                                    title = "Median Household Income",
-#                                    y_min = 0,
-#                                    y_max = 180000,
-#                                    dec = 0,
-#                                    esttype = "currency",
-#                                    color = psrc_colors$purples_inc,
-#                                    width = '420px',
-#                                    height = '380px')
+load(file=file.path(base_dir,theme_dir,ind_dir,rda))
 ```
+
+```{r, clean data, include=FALSE, eval=FALSE}
+# join tract-level data set to equity quintile data
+# connect to Elmer equity quintile tracts using psrcelmer() and crosswalk
+# equity_tracts <- get_table(schema="equity", tbl_name="v_tract_shares")
+# table(equity_tracts$data_year)
+# 
+# crosswalk_10_20 <- get_table(schema="census",
+#                              tbl_name="v_geo_relationships_tracts")
+# 
+# 
+
+# data_tract
+# # Load data
+# # PUMS/OSPI data set
+# pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
+# 
+# indicator_measure <- 'median_household_income'
+# indicator_title <- 'Median household income'
+# 
+# # clean data set
+# data_full <- pums_ospi_elmer %>% 
+#   # distinct(indicator_fact_id, .keep_all = TRUE) %>%
+#   dplyr::filter(indicator_type==indicator_measure) %>% 
+#   dplyr::filter(focus_type!="Total") %>% 
+#   filter(focus_attribute!="Total") %>%
+#   filter(indicator_attribute!="Total") %>%
+#   dplyr::mutate(data_year_yr=format(data_year,format="%Y")) 
+# 
+# 
+# data_clean <- data_full %>% 
+#   mutate(focus_type_edit = case_when(focus_type=="POC_cat"~"People of Color",
+#                                      focus_type=="Disability_cat"~"People with a Disability",
+#                                      focus_type=="LEP_cat"~"People with Limited English Proficiency",
+#                                      focus_type=="Income_cat"~"Households with Lower Income",
+#                                      focus_type=="Youth_cat"~"Households with Youth <18",
+#                                      focus_type=="Older_cat"~"Households with Older Adults 65+"),
+#          focus_attribute_edit = case_when(focus_attribute== "POC"~ "People of color",
+#                                           focus_attribute== "Non-POC"~ "White non-Hispanic",
+#                                           focus_attribute== "Low Income"~ "Households with lower income",
+#                                           focus_attribute== "Non-Low Income"~ "Other households",
+#                                           focus_attribute== "With disability"~ "With a disability",
+#                                           focus_attribute== "Without disability"~ "Without a disability",
+#                                           focus_attribute== "Limited English proficiency"~ "Limited English proficiency",
+#                                           focus_attribute== "English proficient"~ "English proficient",
+#                                           focus_attribute== "Household with youth"~ "Households with youth",
+#                                           focus_attribute== "Household without youth"~ "Other households 2",
+#                                           focus_attribute== "Household with older adult"~ "Households with older adults",
+#                                           focus_attribute== "Household without older adult"~ "Other households 3"))
+
+
+
+# re-ordering variables ----
+# data_clean$equity_group_ord <- factor(data_clean$equity_group_edit,
+#                                     levels = c("People of Color", 
+#                                                "Households with Lower Income", 
+# #                                                "People with a Disability",
+# #                                                "People with Limited English Proficiency", 
+# #                                                "Households with Youth <18", 
+# #                                                "Households with Older Adults 65+"))
+# # 
+# # data_clean$county_ord <- factor(data_clean$county,
+# #                                 levels = c("Region",
+# #                                            "King",
+# #                                            "Kitsap",
+# #                                            "Pierce",
+# #                                            "Snohomish"))
+# 
+# 
+# 
+# # Order for various factors
+# quintile_order <- c("Low", "Low\nMedium", "Medium", "Medium\nHigh", "High")
+# 
+# county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
+# 
+# efa_order <- c("People of Color", "Households with Lower Income", "People with a Disability", 
+#                "People with Limited English Proficiency", "Households with Youth <18", 
+#                "Households with Older Adults 65+")
+# 
+# focus_attribute_order <- c("People of\ncolor", "White\nnon-Hispanic", 
+#                            "Households with\nlower income", "Other\nhouseholds", 
+#                            "With a\ndisability", "Without a\ndisability",
+#                            "Limited\nEnglish\nproficiency", "English\nproficient",
+#                            "Households\nwith youth", "Other\nhouseholds 2",
+#                            "Households\nwith older\nadult", "Other\nhouseholds 3")
+# 
+# data_clean <- data_clean %>%
+#   arrange(county_ord, focus_type_ord, focus_attribute_ord, data_year)
+# 
+# data_clean$data_year <- as.character(data_clean$data_year)
+```
+
+```{r column facet - tract}
+# Create Facet Column Chart
+data_clean_column <- data_clean %>% 
+  dplyr::filter(data_year=="2020") #filter on most recent year
+
+# set variables 
+df = data_clean_column
+geo = "county_ord"
+x = "quintile_ord"
+y = "estimate"
+facet = "equity_group_ord"
+fill = "quintile_ord"
+y_min = 0
+y_max = 95
+dec = 1
+esttype = "number"
+color = "purples"
+title = "Life Expectancy"
+subtitle = "values are adjusted to 2021 dollars"
+source = paste("Sources: Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+
+column_chart <- equity_tracker_column_facet(df = df,
+                                            geo = geo,
+                                            x = x,
+                                            y = y,
+                                            facet = facet,
+                                            title = title,
+                                            y_min = y_min,
+                                            y_max = y_max,
+                                            dec = dec,
+                                            esttype = esttype,
+                                            color = color)
+
+```
+
+```{r output final column chart - tract, include=FALSE}
+# to save html visual to folder, there must be an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\html-outputs
+
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a01-life-expectancy'
+file_name <- 'a01-life-expectancy-column'
+
+# column Chart - html for interactive
+rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                title = title,
+                                source = source,
+                                subtitle = subtitle),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'html-outputs'))
+
+# Column Chart - png for use in static file
+# need to create a 'static-images' sub-folder in theme sub-folder if not already existing
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
 `r title`
 </p>
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
 `r subtitle`
 </p>
-```{r line chart, echo=FALSE}
-line_chart
+```{r column chart output - tract, echo=FALSE}
+
+if (output_type == "html") {
+
+  column_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+
+# column_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
 `r source`
 </p> 
 
-```{r output-final-line-chart, include=FALSE}
+#### Data call outs
+```{r column facet calculations - tract, include=FALSE, eval=FALSE}
+# calculate call out information
+data_tract_calc <- data_tract %>%
+  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+# regional average life expectancy: 78.79492
 
-# base_dir <- 'T:/2023August/equity-tracker-charts/html-outputs'
-# ind_dir <- 'economy'
+x<-rep(data_tract_calc$estimate,times=data_tract_calc$total_pop20)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median life expectancy: 80.81  
 
-# Line Chart
-# rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
-#                   params = list(df = df,
-#                                 geo = geo,
-#                                 x = x,
-#                                 y = y,
-#                                 fill = fill,
-#                                 facet = facet,
-#                                 y_min = y_min,
-#                                 y_max = y_max,
-#                                 dec = dec,
-#                                 esttype = esttype,
-#                                 color = color,
-#                                 title = title,
-#                                 source = source,
-#                                 subtitle = subtitle),
-#                   output_file = 'median-income-line.html',
-#                   output_dir = file.path(base_dir,ind_dir))
+data <- data_tract %>%
+  st_drop_geometry()
 
-rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
-                  params = list(df = data_clean,
-                                geo = "county_ord",
-                                x = "data_year",
-                                y = "fact_value",
-                                fill = "focus_attribute_ord",
-                                facet = "focus_type_ord",
-                                title = "Median Household Income",
-                                y_min = 0,
-                                y_max = 180000,
-                                dec = 0,
-                                esttype = "currency",
-                                color = color,
-                                width = '420px',
-                                height = '380px',
-                                charttype = "line"),
-                  output_file = 'median-income-line.html',
-                  output_dir = file.path(base_dir,ind_dir))
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004401 (Roosevelt) and 53033004402 (U-district) King (92.14)
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+
+# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
+
+#95.39-67.31=28.08
 ```
 
 1. 78.8 years: The region's average life expectancy
@@ -913,3 +1040,290 @@ rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.
 
 \
 \
+
+
+## 3. Facet of trend data
+### a.) using PUMS/OSPI data from Elmer
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r line facet - pums, include=FALSE}
+# Create Facet Line Chart
+
+# set variables
+df = data_clean
+x = "data_year" # different from variables for facet column
+fill = "focus_attribute_ord" # different from variables for facet column
+color = "purples"
+
+line_chart <- equity_tracker_line_facet(df = df,
+                                        geo = geo,
+                                        x = x,
+                                        y = y,
+                                        fill = fill,
+                                        facet = facet,
+                                        y_min = y_min,
+                                        y_max = y_max,
+                                        dec = dec,
+                                        esttype = esttype,
+                                        color = color,
+                                        width = '420px',
+                                        height = '380px')
+```
+
+```{r output final line chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\html-outputs
+
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'f-economy'
+ind_dir <- 'f01-median-income'
+file_name <- 'f01-median-income-line'
+
+# Line Chart - html for interactive
+rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                fill = fill,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                width = '420px',
+                                height = '380px',
+                                charttype = "line"),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'html-outputs'))
+
+# Line Chart - png for use in static file
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r line chart - pums, echo=FALSE}
+if (output_type == "html") {
+
+  line_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+# line_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r line facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+data_tract_calc <- data_tract %>%
+  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+# regional average life expectancy: 78.79492
+
+x<-rep(data_tract_calc$estimate,times=data_tract_calc$total_pop20)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median life expectancy: 80.81  
+
+data <- data_tract %>%
+  st_drop_geometry()
+
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004401 (Roosevelt) and 53033004402 (U-district) King (92.14)
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+
+# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
+
+#95.39-67.31=28.08
+```
+
+1. 78.8 years: The region's average life expectancy
+2. 80.8 years: The region's median life expectancy
+3. 28.1 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+
+\
+
+#### Insights & Analysis
+
+* 
+* 
+* 
+* 
+
+\
+\
+
+### b.) using tract level data from other source
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r line facet - tract, include=FALSE}
+# Create Facet Line Chart
+
+# set variables
+df = data_clean
+x = "data_year" # different from variables for facet column
+fill = "quintile_ord" # different from variables for facet column
+color = "purples"
+
+line_chart <- equity_tracker_line_facet(df = df,
+                                        geo = geo,
+                                        x = x,
+                                        y = y,
+                                        fill = fill,
+                                        facet = facet,
+                                        y_min = y_min,
+                                        y_max = y_max,
+                                        dec = dec,
+                                        esttype = esttype,
+                                        color = color,
+                                        width = '420px',
+                                        height = '380px')
+```
+
+```{r output final line chart - tract, include=FALSE}
+# to save html visual to folder, there must be an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\html-outputs
+
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a01-life-expectancy'
+file_name <- 'a01-life-expectancy-line'
+
+# Line Chart - html for interactive
+rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                fill = fill,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                width = '420px',
+                                height = '380px',
+                                charttype = "line"),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'html-outputs'))
+
+# Line Chart - png for use in static file
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r line chart - tract, echo=FALSE}
+if (output_type == "html") {
+
+  line_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+# line_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r line facet calculations - tract, include=FALSE, eval=FALSE}
+# calculate call out information
+data_tract_calc <- data_tract %>%
+  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+# regional average life expectancy: 78.79492
+
+x<-rep(data_tract_calc$estimate,times=data_tract_calc$total_pop20)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median life expectancy: 80.81  
+
+data <- data_tract %>%
+  st_drop_geometry()
+
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004401 (Roosevelt) and 53033004402 (U-district) King (92.14)
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+
+# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
+
+#95.39-67.31=28.08
+```
+
+1. 78.8 years: The region's average life expectancy
+2. 80.8 years: The region's median life expectancy
+3. 28.1 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+
+\
+
+#### Insights & Analysis
+
+* 
+* 
+* 
+* 
+
+\
+\
+
+# Copy files from Y drive > website folder
+```{r, include=FALSE, eval=FALSE}
+base.folder <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme.folder <- 'f-economy' # this needs to be adjusted based on indicator
+current.folder <- file.path(base.folder,theme.folder,'html-outputs')
+
+web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+new.folder <- file.path(web.base.folder,theme.folder)
+
+list.of.files <- list.files(current.folder, 
+                            full.names = T)
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          new.folder,
+          overwrite = T)
+```
+
+<a href="#top">Back to top of the page</a>
