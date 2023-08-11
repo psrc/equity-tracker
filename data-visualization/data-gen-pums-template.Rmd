@@ -1,5 +1,6 @@
 ---
-title: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
+title: "Median Income" 
+subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
