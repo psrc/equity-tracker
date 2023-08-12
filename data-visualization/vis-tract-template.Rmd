@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -44,8 +44,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -674,9 +674,9 @@ filter <- data_clean %>%
 
 # Copy files from Y drive > website folder
 ```{r web dev folder, include=FALSE, eval=FALSE}
-# base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-# theme_dir <- 'a-regional-health-collaboration' # this needs to be adjusted based on indicator
-# ind_dir <- 'a01-life-expectancy'
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration' # this needs to be adjusted based on indicator
+ind_dir <- 'a01-life-expectancy'
 current_folder <- file.path(base_dir,theme_dir,ind_dir,'html-outputs')
 
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
