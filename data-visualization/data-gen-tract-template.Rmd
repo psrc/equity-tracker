@@ -76,11 +76,11 @@ library(webshot2) #static image creation
 ## Primary data 
 Data comes from [WTN](https://fortress.wa.gov/doh/wtn/WTNPortal#!q0=655). Separate CSVs at the census tract geography are available (manual download) for 5y time spans at 1y increments, starting in 2000, until 2020.
 ```{r, include=FALSE}
-folder_path <- "Y:/Equity Indicators/experimenting/R-scripts/WTN/data-from-WTN/life_expectancy_over_time/"
-life_expec_01_05 <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
-life_expec_06_10 <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
-life_expec_11_15 <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_11_15.csv"))
-life_expec_16_20 <- read.csv(paste0(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
+folder_path <- "Y:/Equity Indicators/tracker-webpage-content/a-regional-health-collaboration/a01-life-expectancy/raw-data"
+life_expec_01_05 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
+life_expec_06_10 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
+life_expec_11_15 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_11_15.csv"))
+life_expec_16_20 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
 ```
 \
 Although there are 4 possible data sets (*2001-2005, 2006-2010, 2011-2015, 2016-2020*), we will be using the three more recent data sets to keep it to 2010 and onward. 
@@ -482,7 +482,7 @@ pop20 <- pop20_crosswalk %>%
   dplyr::group_by(geoid10) %>% 
   dplyr::summarise(total_pop20=sum(pop20))
 
-# merge 2020 population by 2010 tracts to life expectancy data
+# merge 2020 population by 2010 tracts to life expectancy data - this is for eventual weighting (which may not be necessary depending on the indicator)
 data_tract <- merge(data_tract, pop20, 
                          by.x="geoid10",
                          by.y="geoid10", 
@@ -499,7 +499,7 @@ file_name <- 'a01-life-expectancy-map-data'
 # save final data set as .rda
 save(data_tract, file = file.path(base_dir,
                                   theme_dir,
-                                  ind_dir,
+                                  ind_dir, "rda-data",
                                   paste0(file_name,'.rda')))
 ```
 
@@ -516,7 +516,7 @@ data_equity_tracts <- merge(life_expec_06_10, equity_tracts_10,
                             by.y="geoid", 
                             all.x=TRUE)
 
-# join 2010 acs population data to WTN data
+# join 2010 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
 data_equity_tract10 <- merge(tract.10, data_equity_tracts,
                              by.x="GEOID",
                              by.y="Census.Tract", 
@@ -538,7 +538,7 @@ data_equity_tracts <- merge(life_expec_11_15, equity_tracts_15,
                             by.y="geoid", 
                             all.x=TRUE)
 
-# join 2015 acs population data to WTN data
+# join 2015 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
 data_equity_tract15 <- merge(tract.15, data_equity_tracts,
                              by.x="GEOID",
                              by.y="Census.Tract", 
@@ -566,7 +566,7 @@ data_equity_tracts <- merge(data_crosswalk, equity_tracts_20,
                             by.y="geoid", 
                             all.x=TRUE)
 
-# join 2020 acs population data to WTN data
+# join 2020 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
 data_equity_tract20 <- merge(tract.20, data_equity_tracts,
                              by.x="GEOID",
                              by.y="geoid20", 
@@ -847,7 +847,7 @@ file_name <- 'a01-life-expectancy-data'
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,
                                   theme_dir,
-                                  ind_dir,
+                                  ind_dir, "rda-data",
                                   paste0(file_name,'.rda')))
 ```
 

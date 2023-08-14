@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -44,8 +44,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -170,7 +170,7 @@ theme_dir <- 'a-regional-health-collaboration'
 ind_dir <- 'a01-life-expectancy'
 rda <- 'a01-life-expectancy-map-data.rda'
 
-load(file=file.path(base_dir,theme_dir,ind_dir,rda))
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
 
 ```{r tract data map}
@@ -250,7 +250,7 @@ tract_map
 ```
 
 ```{r generate tract map html, include=FALSE}
-# to save html visual to folder, you must create an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\html-outputs
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
 # base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 # theme_dir <- 'a-regional-health-collaboration'
@@ -259,7 +259,7 @@ map_name <- 'a01-life-expectancy-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(tract_map,
-                        file=file.path(base_dir,theme_dir,ind_dir, 'html-outputs', map_name))
+                        file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
 ```
 \
 \
@@ -334,7 +334,7 @@ source("X:/DSA/equity-tracker/functions/equity-tracker-chart-functions.R")
 # ind_dir <- 'a01-life-expectancy'
 rda <- 'a01-life-expectancy-data.rda'
 
-load(file=file.path(base_dir,theme_dir,ind_dir,rda))
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
 
 ```{r column facet - tract}
@@ -373,7 +373,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 ```
 
 ```{r output final column chart - tract, include=FALSE}
-# to save html visual to folder, there must be an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\html-outputs
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
@@ -397,11 +397,11 @@ rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.
                                 source = source,
                                 subtitle = subtitle),
                   output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'html-outputs'))
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
 
 # Column Chart - png for use in static file
 # need to create a 'static-images' sub-folder in theme sub-folder if not already existing
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'html-outputs', paste0(file_name, '.html')), 
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
                   file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
                   vwidth = 1920, vheight = 1080)
 ```
@@ -534,7 +534,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 ```
 
 ```{r output final line chart - tract, include=FALSE}
-# to save html visual to folder, there must be an 'html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\html-outputs
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
@@ -562,10 +562,10 @@ rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.
                                 height = '380px',
                                 charttype = "line"),
                   output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'html-outputs'))
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
 
 # Line Chart - png for use in static file
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'html-outputs', paste0(file_name, '.html')), 
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
                   file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
                   vwidth = 1920, vheight = 1080)
 ```
@@ -677,7 +677,7 @@ filter <- data_clean %>%
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 theme_dir <- 'a-regional-health-collaboration' # this needs to be adjusted based on indicator
 ind_dir <- 'a01-life-expectancy'
-current_folder <- file.path(base_dir,theme_dir,ind_dir,'html-outputs')
+current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
 
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
 new.folder <- file.path(web.base.folder,theme_dir)

@@ -445,7 +445,7 @@ file_name <- 'f01-median-income-data'
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,
                                   theme_dir,
-                                  ind_dir,
+                                  ind_dir, "rda-data",
                                   paste0(file_name,'.rda')))
 ```
 
@@ -466,7 +466,7 @@ nrow(tracts20.lyr) #919
 nrow(tracts10.lyr) #773
 ```
 
-### Corresponding ACS table
+#### Corresponding ACS table
 ```{r acs data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 x <- tidycensus::load_variables(2021,"acs5") %>% 
@@ -487,27 +487,8 @@ acs_data <- acs_data %>%
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
 ```
 
-### ACS population numbers
-```{r}
-# # getting population data by tract - this is to be able to calculate regional/weighted value for call outs
-# acs_population <- get_acs_recs(geography ='tract',
-#                                table.names = 'B01003',
-#                                years = c(2021),
-#                                acs.type = 'acs5')
-# 
-# # filter only fields of interest - census tract and population
-# acs_population <- acs_population %>% 
-#   dplyr::select(GEOID, estimate) %>%
-#   dplyr::rename(total_pop20=estimate) # don't want to confuse with median income 'estimate' field
-```
-
 ### Joining data
 ```{r}
-# merge median income data with population data
-# acs_pop <- merge(acs_data, acs_population,
-#                  by.x = "GEOID",
-#                  by.y = "GEOID")
-
 # merge to 2020 census tract spatial file
 acs_data_tract <- merge(tracts20.lyr, acs_data,
                         by.x="geoid20",
@@ -529,7 +510,7 @@ file_name <- 'f01-median-income-map-data'
 # save final data set as .rda
 save(acs_data_tract, file = file.path(base_dir,
                                       theme_dir,
-                                      ind_dir,
+                                      ind_dir, "rda-data",
                                       paste0(file_name,'.rda')))
 ```
 
