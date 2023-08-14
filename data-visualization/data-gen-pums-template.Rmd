@@ -60,10 +60,7 @@ library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 
-library(echarts)
 library(echarts4r)
-# remotes::install_github("JohnCoene/echarts",
-#                         force=TRUE)
 # remotes::install_github("JohnCoene/echarts4r",
 #                         force=TRUE)
 library(echarts4r.assets)
@@ -437,16 +434,18 @@ data_clean <- data_clean %>%
 Save final data set (.rda) for charts
 ```{r}
 # set folder structure
-base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
+# base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+# theme_dir <- 'f-economy'
+# ind_dir <- 'f01-median-income'
 file_name <- 'f01-median-income-data'
 
 # save final data set as .rda
-save(data_clean, file = file.path(base_dir,
-                                  theme_dir,
-                                  ind_dir, "rda-data",
+save(data_tract, file = file.path(getwd(), "rda-data",
                                   paste0(file_name,'.rda')))
+# save(data_clean, file = file.path(base_dir,
+#                                   theme_dir,
+#                                   ind_dir, "rda-data",
+#                                   paste0(file_name,'.rda')))
 ```
 
 
@@ -503,15 +502,17 @@ Save final data set (.rda) for map
 
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-file_name <- 'f01-median-income-map-data'
+# theme_dir <- 'f-economy'
+# ind_dir <- 'f01-median-income'
+# file_name <- 'f01-median-income-map-data'
 
 # save final data set as .rda
-save(acs_data_tract, file = file.path(base_dir,
-                                      theme_dir,
-                                      ind_dir, "rda-data",
-                                      paste0(file_name,'.rda')))
+save(data_tract, file = file.path(getwd(), "rda-data",
+                                  paste0(file_name,'.rda')))
+# save(acs_data_tract, file = file.path(base_dir,
+#                                       theme_dir,
+#                                       ind_dir, "rda-data",
+#                                       paste0(file_name,'.rda')))
 ```
 
 <a href="#top">Back to top of the page</a>

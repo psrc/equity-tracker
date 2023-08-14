@@ -36,7 +36,7 @@ library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 
-library(echarts)
+# library(echarts)
 library(echarts4r)
 library(echarts4r.assets)
 
@@ -336,7 +336,8 @@ coutny_acs_data <- coutny_acs_data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source("X:/DSA/equity-tracker/functions/equity-tracker-chart-functions.R")
+source("equity-tracker-chart-functions.R")
+# source("X:/DSA/equity-tracker/functions/equity-tracker-chart-functions.R")
 
 # base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 # theme_dir <- 'f-economy'
@@ -391,7 +392,8 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'f01-median-income-column'
 
 # column Chart - html for interactive
-rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
+                  # "X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -560,7 +562,8 @@ line_chart <- equity_tracker_line_facet(df = df,
 file_name <- 'f01-median-income-line'
 
 # Line Chart - html for interactive
-rmarkdown::render("X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
+                  # "X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,

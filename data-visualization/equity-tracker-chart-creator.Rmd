@@ -1,0 +1,90 @@
+---
+title: " "
+output: html_document
+params:
+  df: data/life_expectancy_data.rds
+  geo: county_ord
+  x: quintile_ord
+  y: wt_life_expec
+  fill: quintile_ord
+  facet: equity_group_ord
+  y_min: 50
+  y_max: 90
+  dec: 1
+  esttype: number
+  color: greens
+  width: 420px
+  height: 380px
+  title: Life Expectancy
+  subtitle: Weighted Average Life Expectancy by Census Tract
+  source: Washington State Department of Health
+  charttype: bar
+---
+
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r, include=FALSE}
+
+# Load basic libraries
+library(tidyverse)
+library(echarts4r)
+library(psrcplot)
+
+# Load chart functions
+source("equity-tracker-chart-functions.R")
+
+if (params$charttype == "bar") {
+  
+  chart <- equity_tracker_column_facet(df = params$df,
+                                     geo = params$geo,
+                                     x = params$x,
+                                     y = params$y,
+                                     facet = params$facet,
+                                     title = params$title,
+                                     y_min = params$y_min,
+                                     y_max = params$y_max,
+                                     dec = params$dec,
+                                     esttype = params$esttype,
+                                     color = params$color,
+                                     width = params$width,
+                                     height = params$height)
+}
+
+if (params$charttype == "line") {
+  
+  chart <- equity_tracker_line_facet(df = params$df,
+                                     geo = params$geo,
+                                     x = params$x,
+                                     y = params$y,
+                                     fill = params$fill,
+                                     facet = params$facet,
+                                     title = params$title,
+                                     y_min = params$y_min,
+                                     y_max = params$y_max,
+                                     dec = params$dec,
+                                     esttype = params$esttype,
+                                     color = params$color,
+                                     width = params$width,
+                                     height = params$height)
+  
+}
+
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r params$title` 
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r params$subtitle`  
+</p>
+```{r, echo=FALSE}
+chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+Source: `r params$source`
+</p> 
