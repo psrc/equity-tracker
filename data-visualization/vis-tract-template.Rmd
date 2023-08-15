@@ -17,6 +17,9 @@ output:
 knitr::opts_chunk$set(echo=FALSE, 
                       warning=FALSE, 
                       message=FALSE) # formatting
+
+# to reference chart functions in Github
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
 ```{r library setup, include=FALSE}
@@ -252,9 +255,7 @@ tract_map
 ```{r generate tract map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
-# base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-# theme_dir <- 'a-regional-health-collaboration'
-# ind_dir <- 'a01-life-expectancy'
+# set folder structure
 map_name <- 'a01-life-expectancy-map.html'
   
 # interactive webpage output process
@@ -327,12 +328,9 @@ by_county <- data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source("equity-tracker-chart-functions.R")
-# source("X:/DSA/equity-tracker/functions/equity-tracker-chart-functions.R")
+source('equity-tracker-chart-functions.R')
 
-# base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-# theme_dir <- 'a-regional-health-collaboration'
-# ind_dir <- 'a01-life-expectancy'
+# set folder structure
 rda <- 'a01-life-expectancy-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
@@ -377,14 +375,11 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
-# base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-# theme_dir <- 'a-regional-health-collaboration'
-# ind_dir <- 'a01-life-expectancy'
+# set folder structure
 file_name <- 'a01-life-expectancy-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
-                  # "X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -539,14 +534,11 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
-# base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-# theme_dir <- 'a-regional-health-collaboration'
-# ind_dir <- 'a01-life-expectancy'
+# set folder structure
 file_name <- 'a01-life-expectancy-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
-                  # "X:/DSA/equity-tracker/functions/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -675,11 +667,38 @@ filter <- data_clean %>%
 \
 \
 
-# Copy files from Y drive > website folder
-```{r web dev folder, include=FALSE, eval=FALSE}
-base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'a-regional-health-collaboration' # this needs to be adjusted based on indicator
-ind_dir <- 'a01-life-expectancy'
+# Transfer files
+## Copy files from Github > Y drive
+```{r to y drive, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(getwd())
+y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+
+# isolate files in Github
+list.of.files <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$")
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          y.drive.folder,
+          overwrite = T)
+
+# keep only .Rmd files in Github (cleaner)
+files.in.dir <- list.files(current_folder, 
+                            full.names = T)
+files.to.keep <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.Rmd$")
+files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
+                                                              files.in.dir, value=TRUE))])
+do.call(unlink, files.to.remove)
+```
+
+## Copy files from Y drive > website folder
+```{r to web dev folder, include=FALSE, eval=FALSE}
+# set folder structure
 current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
 
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'

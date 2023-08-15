@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -389,7 +389,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'f01-median-income-column'
 
 # column Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD",
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -556,7 +556,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 file_name <- 'f01-median-income-line'
 
 # Line Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD",
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -688,7 +688,6 @@ filter <- data_clean %>%
 
 \
 \
-
 
 # Transfer files
 ## Copy files from Github > Y drive

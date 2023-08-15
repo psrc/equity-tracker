@@ -481,18 +481,16 @@ data_tract <- merge(data_tract, pop20,
 
 ```{r}
 # set folder structure
-# base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-# theme_dir <- 'a-regional-health-collaboration'
-# ind_dir <- 'a01-life-expectancy'
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a01-life-expectancy'
 file_name <- 'a01-life-expectancy-map-data'
 
 # save final data set as .rda
-save(data_tract, file = file.path(getwd(), "rda-data",
+save(data_tract, file = file.path(base_dir,
+                                  theme_dir,
+                                  ind_dir, "rda-data",
                                   paste0(file_name,'.rda')))
-# save(data_tract, file = file.path(base_dir,
-#                                   theme_dir,
-#                                   ind_dir, "rda-data",
-#                                   paste0(file_name,'.rda')))
 ```
 
 # Explore data by equity quintile
@@ -831,18 +829,13 @@ data_clean <- data_clean %>%
 Save final data set for charts (.rda)
 ```{r}
 # set folder structure
-# base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-# theme_dir <- 'a-regional-health-collaboration'
-# ind_dir <- 'a01-life-expectancy'
 file_name <- 'a01-life-expectancy-data'
 
 # save final data set as .rda
-save(data_tract, file = file.path(getwd(), "rda-data",
+save(data_clean, file = file.path(base_dir,
+                                  theme_dir,
+                                  ind_dir, "rda-data",
                                   paste0(file_name,'.rda')))
-# save(data_clean, file = file.path(base_dir,
-#                                   theme_dir,
-#                                   ind_dir, "rda-data",
-#                                   paste0(file_name,'.rda')))
 ```
 
 <a href="#top">Back to top of the page</a>
