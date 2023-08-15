@@ -59,13 +59,6 @@ install_psrc_fonts()
 library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
-
-library(echarts4r)
-# remotes::install_github("JohnCoene/echarts4r",
-#                         force=TRUE)
-library(echarts4r.assets)
-
-library(webshot2) #static image creation
 ```
 
 **Median Income**

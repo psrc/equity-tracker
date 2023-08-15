@@ -36,9 +36,9 @@ library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 
-# library(echarts)
 library(echarts4r)
-library(echarts4r.assets)
+# remotes::install_github("JohnCoene/echarts4r",
+#                         force=TRUE)
 
 library(webshot2) #static image creation
 ```
