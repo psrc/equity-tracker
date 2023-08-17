@@ -65,7 +65,7 @@ library(showtextdb) #required for showtext
 
 # Download data 
 ## Primary data 
-The data set referenced in this script is generated from the American Community Survey (ACS) and the Washington Office of Superintendent of Public Instruction [(OSPI)](https://www.k12.wa.us/data-reporting/data-portal). These data sets provide data at the **person-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
+The data set referenced in this script is generated from the American Community Survey (ACS) and the Washington Office of Superintendent of Public Instruction [(OSPI)](https://www.k12.wa.us/data-reporting/data-portal). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
 ```{r, include=FALSE}
 # PUMS/OSPI data set
 pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
@@ -92,7 +92,7 @@ indicator_title <- 'Median household income'
 ```
 
 ## 1. Explore data
-*In this section we make sure that the data set makes sense.*  
+*In this section we make sure that the data set has the correct dimensions - year, geography, equity focus group, etc.*  
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
@@ -109,7 +109,7 @@ data_full <- pums_ospi_elmer %>%
 
 * There should be 5 geographies - the 4 counties and the Region. 
 * There should be 6 equity focus categories - POC, income, disability, youth, older adult, and LEP
-    + 2 sub-categories per focus group (e.g. people of color, non-people of color)
+    + 2 sub-groups in each of the 6 equity focus group (e.g. people of color, non-people of color)
 ```{r}
 # geographies
 num_county <- length(unique(data_full$county)) #5
