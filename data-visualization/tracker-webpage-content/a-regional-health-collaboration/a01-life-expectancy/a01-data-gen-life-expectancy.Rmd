@@ -313,7 +313,6 @@ addLegend_decreasing <-
 
 ```
 
-
 ```{r tract data map}
 # set map extent
 map.lat<- 47.615
