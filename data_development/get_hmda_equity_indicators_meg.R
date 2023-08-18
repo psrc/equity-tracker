@@ -2,6 +2,7 @@ library(magrittr)
 library(data.table)
 library(httr)
 library(jsonlite)
+library(dplyr)
 
 # packages that are from github that host functions for pulling data (do the install in R Gui, not RStudio)
 
@@ -22,23 +23,13 @@ install_psrc_fonts()
 # Helper attributes / functions from Michael -------------------------------------
 
 races_vector <- c("Asian",                                                                         # Races listed on HMDA
-                  "Native Hawaiian or Other Pacific Islander",
-                  "Free Form Text Only",
-                  "Race Not Available",
-                  "American Indian or Alaska Native",
                   "Black or African American",
-                  "2 or more minority races",
-                  "White",
-                  "Joint")                                                                        # Re-code spaces, etc.
+                  "Hispanic or Latino",
+                  "White")                                                                        # Re-code spaces, etc.
 
 # run these after installing github changes through R Gui
 
-library(psrc.travelsurvey)
-library(psrccensus)
-library(psrcplot)
-library(psrctrends)
-
-install_psrc_fonts()poc_vector <- paste0(races_vector[c(1:3,5:6,9)], collapse=",") %>% c("White") %>%
+poc_vector <- paste0(races_vector[c(1:3,5:6,9)], collapse=",") %>% c("White") %>%
   lapply(URLencode)
 
 ethnicities_vector <- c("Hispanic or Latino",
@@ -48,10 +39,19 @@ ethnicities_vector <- c("Hispanic or Latino",
                        "Free Form Text Only") 
 
 # Pull csv in from site and download ------- 2018
+#BremSilverPOrchard_raw_18 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2018/MSAMD14740_BremertonSilverdalePortOrchard.csv")
+#SeattleBellevue_raw_18 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2018/MSAMD42644_SeattleBellevueKent.csv")
+#TacomaLake_raw_18 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2018/MSAMD45104_TacomaLakewood.csv")
 
 # Pull csv in from site and download ------- 2019
+#BremSilverPOrchard_raw_19 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2019/MSAMD14740_BremertonSilverdalePortOrchard.csv")
+#SeattleBellevue_raw_19 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2019/MSAMD42644_SeattleBellevueKent.csv")
+#TacomaLake_raw_19 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2019/MSAMD45104_TacomaLakewood.csv")
 
 # Pull csv in from site and download ------- 2020
+#BremSilverPOrchard_raw_20 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2020/MSAMD14740_BremertonSilverdalePortOrchard.csv")
+#SeattleBellevue_raw_20 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2020/MSAMD42644_SeattleBellevueKent.csv")
+#TacomaLake_raw_20 <- read.csv("J:/Projects/V2050/Housing/Monitoring/2023Update/Loan Denials- FFIEC/2020/MSAMD45104_TacomaLakewood.csv")
 
 # Pull csv in from site and download ------- 2021
 ## MAKE SURE TO ADD COLUMN TO THE LEFT HAND SIDE AND ADD MEDIAN INCOME TO LEFT COLUMN
@@ -131,7 +131,65 @@ TacomaLake_clean <- TacomaLake_clean[c(6, 7, 1, 2, 3, 4, 5)]
 
 region_clean <- rbind(BremSilverPOrchard_clean, SeattleBellevue_clean, TacomaLake_clean)
 
-#create column for POC/Non-POC
+#create column for specific charts/plots ---------------------------------
+
+# chart #1 ----------------------------------
+region_race_21 <- region_clean[region_clean$race_ethnicity %in% c("American Indian or Alaska Native", "Asian",
+                                                                  "Black or African American", "Hispanic or Latino",
+                                                                  "Native Hawaiian or Other Pacific Islander",
+                                                                  "2 or more minority races", "White"), ] %>%
+  mutate(race_ethnicity= case_when(race_ethnicity == "Black or African American" ~ "Black",
+                                   race_ethnicity == "2 or more minority races" ~ "Two or more non-white races",
+                                   TRUE ~ as.character(race_ethnicity))) %>%
+  mutate(race_ethnicity = fct_relevel(race_ethnicity, 
+                                      "American Indian or Alaska Native", "Asian",
+                                      "Black", "Hispanic or Latino",
+                                      "Native Hawaiian or Other Pacific Islander",
+                                      "Two or more non-white races", "White")) %>%
+  group_by(race_ethnicity)%>%
+  summarise(received=sum(received),
+            denied=(sum(denied)))
+
+region_race_21$share_denials_race <- region_race_21$denied/region_race_21$received
+
+race_21_bar <- static_bar_chart(t= region_race_21,
+                                x = "share_denials_race",
+                                y = "race_ethnicity",
+                                fill = "race_ethnicity",
+                                title = "Loan Denial Rates by Race and Ethnicity (2021)",
+                                subtitle = "Federal Financial Institutions Examination Council (FFIEC), 
+Home Mortgage DIsclosure Act (HMDA) Database",
+                                             color = "psrc_light")
+
+race_21_bar
+
+# chart #3 ----------------------------------  
+region_21 <- region_clean[region_clean$race_ethnicity %in% c("White", "Asian","Black or African American",
+                                                             "Hispanic or Latino"), ] %>%
+  mutate(median_income = fct_relevel(median_income, 
+                                     "less than 50%", "50-79%", "80-99%", "100-119%", "120% or more")) %>%
+  group_by(median_income, race_ethnicity)%>%
+  summarise(received=sum(received),
+            denied=(sum(denied)))
+
+region_21$share_denials_race <- region_21$denied/region_21$received
+
+region_21$data_year <- 2021
+region_21$region <- "Region"
+region_21 <- region_21[c(6, 7, 1, 2, 3, 4, 5)]
+
+race_income_21_column <- static_column_chart(t= region_21,
+                                             x = "median_income",
+                                             y = "share_denials_race",
+                                             fill = "race_ethnicity",
+                                             title = "Loan Denial Rates by Income Bracket and Race/Ethnicity (2021)",
+                                             subtitle = "Federal Financial Institutions Examination Council (FFIEC), 
+Home Mortgage DIsclosure Act (HMDA) Database",
+                                             color = "psrc_light")
+
+race_income_21_column
+
+
 
 region_clean_POC <- region_clean %>% 
   mutate(POC = case_when(race_ethnicity == "White" ~"Non POC",
@@ -139,7 +197,7 @@ region_clean_POC <- region_clean %>%
 
 # plot data ----------------------------------------- Not currently working
 
-facet_chart <- static_facet_line_chart(t=region_clean_POC,
+facet_chart <- static_facet_line_chart(t=region_clean,
                         x="data_year", y= "share_denials_race",
                         fill="data_year", facet="median_income",
                         color="psrc_light",
