@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -501,7 +501,7 @@ filter <- data_clean_column %>%
 
 1. \$25,400: The regional household median income of those who are below 200% of the poverty level
 2. \$58,400: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
-3. \$39,300 years: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
+3. \$39,300: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
 
 \
 

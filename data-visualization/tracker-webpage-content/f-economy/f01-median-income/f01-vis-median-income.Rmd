@@ -500,7 +500,7 @@ filter <- data_clean_column %>%
 
 1. \$25,400: The regional household median income of those who are below 200% of the poverty level
 2. \$58,400: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
-3. \$39,300 years: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
+3. \$39,300: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
 
 \
 
