@@ -1,5 +1,5 @@
 ---
-title: "Median Income" 
+title: "Kindergarten Readiness" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -61,11 +61,11 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 ```
 
-**Median Income**
+**Kindergarten Readiness**
 
 # Download data 
 ## Primary data 
-The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
+The data set referenced in this script is generated from the American Community Survey (ACS) and the Washington Office of Superintendent of Public Instruction [(OSPI)](https://www.k12.wa.us/data-reporting/data-portal). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
 ```{r, include=FALSE}
 # PUMS/OSPI data set
 pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
@@ -87,16 +87,16 @@ unique(pums_ospi_elmer$data_year)
 
 ```{r indicator specific information, include=FALSE}
 # set indicator information
-indicator_measure <- 'median_household_income'
-indicator_title <- 'Median household income'
+indicator_measure <- 'Kindergarten readiness'
+indicator_title <- 'Kindergarten readiness'
 ```
 
 ## 1. Explore data
-*In this section we make sure that the data set makes sense.*  
+*In this section we make sure that the data set has the correct dimensions - year, geography, equity focus group, etc.*  
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
-  # distinct(indicator_fact_id, .keep_all = TRUE) %>%
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
   dplyr::filter(indicator_type==indicator_measure) %>% 
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
@@ -109,14 +109,14 @@ data_full <- pums_ospi_elmer %>%
 
 * There should be 5 geographies - the 4 counties and the Region. 
 * There should be 6 equity focus categories - POC, income, disability, youth, older adult, and LEP
-    + 2 sub-categories per focus group (e.g. people of color, non-people of color)
+    + 2 sub-groups in each of the 6 equity focus group (e.g. people of color, non-people of color)
 ```{r}
 # geographies
 num_county <- length(unique(data_full$county)) #5
 unique(data_full$county)
 
 # equity focus groups
-num_group <- length(unique(data_full$focus_type)) #6
+num_group <- length(unique(data_full$focus_type)) #4 - age groups not included for this data set
 unique(data_full$focus_type)
 ```
 \
@@ -130,25 +130,24 @@ These fields will vary by indicator:
 * Number of indicator-specific categories - this can vary depending on the indicator of interest, ranging from N/A (*median income*) to multiple levels (*crowding, housing cost burden*)
 ```{r}
 # metric
-unique(data_full$fact_type) #median
+unique(data_full$fact_type) #fraction 6 for 6
 
 # years
-num_yr <- length(unique(data_full$data_year)) #3
+num_yr <- length(unique(data_full$data_year)) #11
 unique(data_full$data_year)
-time_period <- '2011, 2016, 2021'
 
 # indicator attributes
 num_indatt <- length(unique(data_full$indicator_attribute)) #1
-unique(data_full$indicator_attribute) #N/A
+unique(data_full$indicator_attribute) #6 for 6 dimensions
 
 # calculate expected number of rows
-num_row <- num_yr*num_county*num_group*2*num_indatt #180
+num_row <- num_yr*num_county*num_group*2*num_indatt #440
 ```
 
 There are **`r num_county`** geographies and **`r num_group`** equity focus groups (each with **2** subgroups). There are **`r num_yr`** years in the data set and the indicator specific field has **`r num_indatt`** attribute(s), which means there should be a total of **`r num_row`** rows.
 ```{r}
 # count number of rows
-nrow(data_full) #170
+nrow(data_full) #420
 ```
 <span style="color: #00A7A0">There are some missing data.</span> 
 \
@@ -157,7 +156,7 @@ nrow(data_full) #170
 #### *checking for missing data*
 ##### Year / geography
 ```{r}
-num_yr_geo <- num_group*2*num_indatt #12
+num_yr_geo <- num_group*2*num_indatt #8
 ```
 If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
 ```{r, include=FALSE, eval=FALSE}
@@ -165,7 +164,7 @@ table(data_full$data_year,
       data_full$county)
 ```
 <span style="color: #00A7A0">
-2011 is missing some data for all geographies.
+There is missing data in Kitsap and Snohomish in the earlier years.
 </span> 
 \
 \
@@ -180,7 +179,7 @@ table(data_full$data_year,
       data_full$focus_type)
 ```
 <span style="color: #00A7A0">
-The disability category is missing all data in 2011.
+All of the categories are missing data in the earlier years (up throguh 2014).
 </span> 
 \
 \
@@ -199,7 +198,7 @@ table(data_full$data_year,
 
 ##### Year / indicator attribute
 ```{r}
-num_yr_ind <- num_county*num_group*2 #60
+num_yr_ind <- num_county*num_group*2 #40
 ```
 If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
 ```{r}
@@ -216,7 +215,7 @@ To check for *0*s and *NULL*s
 summary(data_full$fact_value)
 ```
 <span style="color: #00A7A0">
-There are no 0s or nulls.
+There are 0s, but no nulls.
 </span> 
 \
 \
@@ -484,6 +483,169 @@ acs_data_tract <- merge(tracts20.lyr, acs_data,
                         by.x="geoid20",
                         by.y="GEOID",
                         all.x=TRUE)
+```
+
+### Explore map/acs data
+```{r map legend settings, include=FALSE}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
+addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
+			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
+		  title = NULL, className = "info legend", layerId = NULL, 
+		  group = NULL, data = getMapData(map), decreasing = FALSE) {
+	position <- match.arg(position)
+	type <- "unknown"
+	na.color <- NULL
+	extra <- NULL
+	if (!missing(pal)) {
+		if (!missing(colors)) 
+			stop("You must provide either 'pal' or 'colors' (not both)")
+		if (missing(title) && inherits(values, "formula")) 
+			title <- deparse(values[[2]])
+		values <- evalFormula(values, data)
+		type <- attr(pal, "colorType", exact = TRUE)
+		args <- attr(pal, "colorArgs", exact = TRUE)
+		na.color <- args$na.color
+		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
+		    0) {
+			na.color <- NULL
+		}
+		if (type != "numeric" && !missing(bins)) 
+			warning("'bins' is ignored because the palette type is not numeric")
+		if (type == "numeric") {
+			cuts <- if (length(bins) == 1) 
+				pretty(values, bins)
+			else bins	
+			
+			if (length(bins) > 2) 
+				if (!all(abs(diff(bins, differences = 2)) <= 
+				         sqrt(.Machine$double.eps))) 
+					stop("The vector of breaks 'bins' must be equally spaced")
+			n <- length(cuts)
+			r <- range(values, na.rm = TRUE)
+			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+			n <- length(cuts)
+			p <- (cuts - r[1])/(r[2] - r[1])
+			extra <- list(p_1 = p[1], p_n = p[n])
+			p <- c("", paste0(100 * p, "%"), "")
+			if (decreasing == TRUE){
+				colors <- pal(rev(c(r[1], cuts, r[2])))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}else{
+				colors <- pal(c(r[1], cuts, r[2]))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}
+			colors <- paste(colors, p, sep = " ", collapse = ", ")
+			
+		}
+		else if (type == "bin") {
+			cuts <- args$bins
+			n <- length(cuts)
+			mids <- (cuts[-1] + cuts[-n])/2
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "bin", cuts))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "bin", cuts)
+			}
+			
+		}
+		else if (type == "quantile") {
+			p <- args$probs
+			n <- length(p)
+			cuts <- quantile(values, probs = p, na.rm = TRUE)
+			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
+				 na.rm = TRUE)
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "quantile", cuts, p))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "quantile", cuts, p)
+			}
+		}
+		else if (type == "factor") {
+			v <- sort(unique(na.omit(values)))
+			colors <- pal(v)
+			labels <- labFormat(type = "factor", v)
+			if (decreasing == TRUE){
+				colors <- pal(rev(v))
+				labels <- rev(labFormat(type = "factor", v))
+			}else{
+				colors <- pal(v)
+				labels <- labFormat(type = "factor", v)
+			}
+		}
+		else stop("Palette function not supported")
+		if (!any(is.na(values))) 
+			na.color <- NULL
+	}
+	else {
+		if (length(colors) != length(labels)) 
+			stop("'colors' and 'labels' must be of the same length")
+	}
+	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
+	               na_color = na.color, na_label = na.label, opacity = opacity, 
+	               position = position, type = type, title = title, extra = extra, 
+	               layerId = layerId, className = className, group = group)
+	invokeMethod(map, data, "addLegend", legend)
+}
+```
+
+```{r explore map}
+# set map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = acs_data_tract$estimate)
+
+# set the variable
+var_name <- "Median Income"
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=acs_data_tract,
+              fillColor = psrc_palette(acs_data_tract$estimate),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = round(acs_data_tract$estimate, digits=1)) %>%
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = acs_data_tract$estimate,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat()) %>% 
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
 ```
 
 # **MAP .rda**

@@ -65,7 +65,7 @@ library(showtextdb) #required for showtext
 
 # Download data 
 ## Primary data 
-The data set referenced in this script is generated from the American Community Survey (ACS) and the Washington Office of Superintendent of Public Instruction [(OSPI)](https://www.k12.wa.us/data-reporting/data-portal). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
+The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
 ```{r, include=FALSE}
 # PUMS/OSPI data set
 pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
@@ -96,7 +96,7 @@ indicator_title <- 'Median household income'
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
-  # distinct(indicator_fact_id, .keep_all = TRUE) %>%
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
   dplyr::filter(indicator_type==indicator_measure) %>% 
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
@@ -135,7 +135,6 @@ unique(data_full$fact_type) #median
 # years
 num_yr <- length(unique(data_full$data_year)) #3
 unique(data_full$data_year)
-time_period <- '2011, 2016, 2021'
 
 # indicator attributes
 num_indatt <- length(unique(data_full$indicator_attribute)) #1
@@ -318,6 +317,7 @@ These charts also help to confirm that the shares add up to 100% - only relevant
 *The colors of the charts may not be consistent between the years depending on missing data.* 
 \
 ```{r}
+# the years below reflect the years that are available from unique(data_year)
 just_region_11 <- data_clean %>% 
   filter(county=="Region") %>% 
   filter(data_year==2011) %>% 
@@ -331,7 +331,7 @@ just_region_21 <- data_clean %>%
   filter(data_year==2021)%>% 
   arrange(focus_attribute_ord)
 
-# check est type
+# check est type - make sure it corresponds to your indicator (percent, currency, or number)
 facet_chart <- static_facet_column_chart(t=just_region_11,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
@@ -352,7 +352,7 @@ facet_chart <- static_facet_column_chart(t=just_region_16,
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
-                                         title = paste0(indicator_title, ": Region (2011)"),
+                                         title = paste0(indicator_title, ": Region (2016)"),
                                          subtitle = "by equity focus group",
                                          source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
 facet_chart
@@ -364,7 +364,7 @@ facet_chart <- static_facet_column_chart(t=just_region_21,
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
-                                         title = paste0(indicator_title, ": Region (2011)"),
+                                         title = paste0(indicator_title, ": Region (2021)"),
                                          subtitle = "by equity focus group",
                                          source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
 
