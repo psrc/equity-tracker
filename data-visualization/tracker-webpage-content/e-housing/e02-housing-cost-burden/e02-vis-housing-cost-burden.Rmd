@@ -1,7 +1,7 @@
 ---
-title: "Median Income"
+title: "Housing Cost Burden"
 subtitle: "Visuals for Equity Tracker (PUMS data)"
-author: "Mary Richards"
+author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
@@ -169,9 +169,9 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```{r map .rda}
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-rda <- 'f01-median-income-map-data.rda'
+theme_dir <- 'e-housing'
+ind_dir <- 'e02-housing-cost-burden'
+rda <- 'e02-housing-cost-burden-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
