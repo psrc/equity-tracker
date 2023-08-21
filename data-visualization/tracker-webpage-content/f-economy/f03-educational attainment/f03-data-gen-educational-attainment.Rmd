@@ -465,18 +465,18 @@ nrow(tracts10.lyr) #773
 #### Corresponding ACS table
 ```{r acs data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
-x <- tidycensus::load_variables(2021,"acs5") %>% 
-  dplyr::filter(grepl("median household income",
-                      concept, ignore.case=TRUE) & 
-                  (geography=="tract"))
+# x <- tidycensus::load_variables(2021,"acs5") %>% 
+#   dplyr::filter(grepl("education attainment",
+#                       concept, ignore.case=TRUE) & 
+#                   (geography=="tract"))
 
 # getting data by tract
 acs_data <- get_acs_recs(geography ='tract', 
-                         table.names = 'B19013', #subject table code
+                         table.names = 'S1501', #subject table code
                          years = c(2021),
                          acs.type = 'acs5')
 
-# filter only fields of interest - census tract and population
+# filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations)
 acs_data <- acs_data %>% 
   dplyr::select(GEOID, estimate)
 
