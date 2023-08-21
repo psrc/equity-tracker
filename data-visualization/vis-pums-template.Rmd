@@ -339,7 +339,7 @@ coutny_acs_data <- coutny_acs_data %>%
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
 source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R')
+source('equity-tracker-chart-functions.R') 
 
 # set folder structure
 rda <- 'f01-median-income-data.rda'
@@ -352,7 +352,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 data_clean_column <- data_clean %>% 
   dplyr::filter(data_year=="2021") #filter on most recent year
 
-# set variables 
+# set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
 geo = "county"
 x = "focus_attribute_ord"
@@ -682,7 +682,7 @@ filter <- data_clean %>%
 
 #### Insights & Analysis
 
-* The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (+16.1%) and Kitsap County (-18.9%), while almost doubling in Pierce County (91.0%), and decreasing significantly in Snohomish County (-74,1%)
+* The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (+16.1%) and Kitsap County (-18.9%), while almost doubling in Pierce County (91.0%), and decreasing significantly in Snohomish County (-74.1%)
 * The median income of households below 200% of the poverty line stayed relatively static over time, while the the median income of households above 200% of the poverty line increased between 2011 and 2021, especially in King County (\$52,000) and Snohomish County (\$33,500)
 * The difference in median income of people with a disability compared to those without a disability between 2016 and 2021 stayed the same in all counties, except for King County, where the difference increased (\$13,900)
 

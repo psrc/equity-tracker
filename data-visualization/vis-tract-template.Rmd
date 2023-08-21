@@ -342,14 +342,14 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 data_clean_column <- data_clean %>% 
   dplyr::filter(data_year=="2020") #filter on most recent year
 
-# set variables 
+# set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
 geo = "county_ord"
 x = "quintile_ord"
 y = "estimate"
 facet = "equity_group_ord"
 fill = "quintile_ord"
-y_min = 0
+y_min = 0 
 y_max = 95
 dec = 1
 esttype = "number"
