@@ -268,6 +268,33 @@ sort <- data %>%
 
 # Snoqualmie Valley School District (80.508%), Federal Way School District (40.255%)
 80.508-40.255=40.253
+
+# filter by county
+filter <- data %>% 
+  filter(county=="King") %>% 
+  mutate(cntyavg=sum(Numerator,na.rm=TRUE)/sum(Denominator, na.rm=TRUE)) %>% #0.5899207 (19 districts)
+  mutate(total_students=sum(Denominator, na.rm=TRUE)) #18672 students
+filter <- data %>% 
+  filter(county=="Kitsap") %>% 
+  mutate(cntyavg=sum(Numerator,na.rm=TRUE)/sum(Denominator, na.rm=TRUE)) %>%  #0.5249448 (5 districts)
+  mutate(total_students=sum(Denominator, na.rm=TRUE)) #2265 students
+filter <- data %>% 
+  filter(county=="Pierce") %>% 
+  mutate(cntyavg=sum(Numerator,na.rm=TRUE)/sum(Denominator, na.rm=TRUE)) %>% #0.4713206 (15 districts)
+  mutate(total_students=sum(Denominator, na.rm=TRUE)) #9397 students
+filter <- data %>% 
+  filter(county=="Snohomish") %>% 
+  mutate(cntyavg=sum(Numerator,na.rm=TRUE)/sum(Denominator, na.rm=TRUE)) %>%#0.4643527 (14 districts)
+  mutate(total_students=sum(Denominator, na.rm=TRUE)) #7462 students
+# 18672+2265+9397+7462=37796
+# 18672/37796=0.4940205
+# 2265/37796=0.05992698
+# 9397/37796=0.2486242
+# 7462/37796=0.1974283
+
+# suppressed data
+filter <- data %>% 
+  filter(is.na(Denominator)) #2: Index School District and Skykomish School District
 ```
 
 1. 53%: The percentage of students ready for kindergarten in the region
@@ -278,9 +305,10 @@ sort <- data %>%
 
 #### Insights & Analysis
 
-* King County has the highest median income (\$106,300), followed by Snohomish (\$95,600), Kitsap (\$84,600), and Pierce (\$82,600)
-* The five census tracts tied with the highest median income (\$250,000) are in King County: Laurelhurst neighborhood in Seattle, Clyde Hill/Yarrow Point/Hunts Point, Bellevue, and two tracts on Mercer Island
-* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000), downtown Tacoma (\$26,400), and Auburn around Route 167 (\$28,400)
+* King County has the highest proportion of students who are kindergarten ready (59%), followed by Kitsap (52%), Pierce (47%), and Snohomish (46%)
+* Of the 37,800 kindergarten students in the four-county region, almost half of them are in King County (49%), one-quarter are in Pierce (25%), one-fifth are in Snohomish (20%), and the remaining are in Kitsap (6%)
+* There are 6 school districts that overlap 2 counties, 3 of which are both in the PSRC region: Auburn School District (King and Pierce), Fife School District (King and Pierce), and Northshore School District (King and Snohomish); and 3 extend outside the region: Darrington School District (Skagit and Snohomish), Eatonville School District (Lewis and Pierce), and	Stanwood-Camano School District (Island and Snohomish)
+* Index School District (Snohomish County) and Skykomish School District (King County) are the only two districts with suppressed data
 
 \
 \
@@ -400,12 +428,9 @@ if (output_type == "html") {
 #### Data call outs
 ```{r column facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
-filter <- data_clean %>% 
-  filter(data_year==2022,
-         county=="Region",
-         focus_type=="Income_cat",
-         vulnerability=="low vulnerability")
-
+filter <- data_clean22 %>% 
+  filter(county=="Region",
+         focus_type=="Income_cat")
 # region low income households: 0.3687869	
 # region high income households: 0.6051601
 # 37% of students from households below 200% of the poverty level are kindergarten ready
@@ -413,28 +438,54 @@ filter <- data_clean %>%
 filter <- data_clean22 %>% 
   filter(county=="Region",
          focus_type=="Disability_cat")
-
 # region disability households (low vuln-high vuln): 0.5626604 - 0.2313319 = 0.3313285
 
 filter <- data_clean22 %>% 
   filter(county=="Region",
          focus_type=="POC_cat")
-
 # region youth households (high vuln-low vuln): 0.5978134 - 0.4865695 = 0.1112439
+
+filter <- data_clean22 %>% 
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  filter(county!="Region",
+         focus_type=="POC_cat")
+# King (low-high): 0.6942598-0.5349209=0.1593389
+# Kitsap (low-high): 0.5538618-0.5211268=0.032735
+# Pierce (low-high): 0.5315075-0.4173088=0.1141987
+# Snohomish (low-high): 0.5093509-0.4215891=0.0877618
+
+filter <- data_clean22 %>% 
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  filter(county!="Region",
+         focus_type=="Income_cat",
+         vulnerability=="high vulnerability")
+# King (high): 0.3845549
+# Kitsap (high): 0.4823529
+# Pierce (high): 0.3690716
+# Snohomish (high): 0.3172962
+
+filter <- data_clean22 %>% 
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  filter(county!="Region",
+         focus_type=="Disability_cat")
+# King (low-high): 0.6214344-0.2489768=0.3724576
+# Kitsap (low-high): 0.5665796-0.2901235=0.2764561
+# Pierce (low-high): 0.4968431-0.2199571=0.276886
+# Snohomish (low-high): 0.4932916-0.1969487=0.2963429
 ```
 
-1. 37%: The regional household median income of those who are below 200% of the poverty level
-2. 33%: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
-3. 11%: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
+1. 37%: The percentage of students from households below 200% of the poverty level who are kindergarten ready
+2. 33%: In 2022, the percentage of students ready for kindergarten was 33% lower for students with disabilities
+3. 11%: In 2022, fewer students of color were ready for kindergarten than their white non-Hispanic counterparts, a difference of 11%
 
 \
 
 #### Insights & Analysis
 
-* The smallest difference in median income between people of color and white non-Hispanic is in Snohomish County (\$4,100), while the largest difference is in King County (\$19,400)
-* For households who are below 200% of the poverty level, the median income is lowest in King County (\$24,100), followed by Snohomish and Kitsap (\$26,100), and Pierce (\$27,700)
-* The largest difference in median income between people with and without a disability is in King County (\$53,100), while the smallest difference is in County (\$20,100)
-* Snohomish County is the only county where Non-English proficient households have higher median incomes (\$67,800) than the region's Non-English proficient households (\$58,300)
+* The smallest difference in kindergarten readiness between students of color and white non-Hispanic students is in Kitsap County (3%), while the largest difference is in King County (16%) - Pierce (11%) and Snohomish (9%) fall in the middle
+* For students who belong to households below 200% of the poverty level, kindergarten readiness is lowest in Snohomish County (32%), followed by Pierce (37%), King (38%), and Kitsap (48%)
+* The largest difference in kindergarten readiness between students with and without a disability is in King County (37%), while the smallest difference is in Kitsap and Pierce Counties (28%)
+* Available data are too limited to accurately report kindergarten readiness for limited English proficient students in Kitsap County
 
 \
 \
@@ -561,6 +612,124 @@ calc <- data_clean %>%
 # dif in 2011: 0.4294447- 0.2038217 = 0.225623
 # dif in 2022: 0.5626604- 0.2313319 = 0.3313285
 # %gap over 10 years: ((0.3313285-0.225623)/0.225623)*100 >>> 46.8505% decrease
+
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2022")
+# 2022 poc: 0.49
+# 2022 non-poc: 0.60
+# 0.60-0.49=0.11
+# 2011 poc: 0.38
+# 2011 non-poc: 0.59
+# 0.59-0.38=0.21
+# ((0.11-0.21)/(0.21))*100: -47.61905% change
+
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2022")
+# 2022 poc: 0.49
+# 2022 non-poc: 0.60
+# 0.60-0.49=0.11
+# 2011 poc: 0.38
+# 2011 non-poc: 0.59
+# 0.59-0.38=0.21
+# ((0.11-0.21)/(0.21))*100: -47.61905% change
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2022")
+# 2022 poc: 0.42
+# 2022 non-poc: 0.51
+# 0.51-0.42=0.09
+# 2011 poc: 0.51
+# 2011 non-poc: 0.59
+# 0.59-0.51=0.08
+# ((0.09-0.08)/(0.08))*100: 12.5% change
+
+filter <- data_clean %>%
+  filter(county=="King",
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2022")
+# 2022 poc: 0.53
+# 2022 non-poc: 0.69
+# 0.69-0.53=0.16
+# 2011 poc: 0.33
+# 2011 non-poc: 0.49
+# 0.49-0.33=0.16
+# ((0.16-0.16)/(0.16))*100: 0% change
+
+filter <- data_clean %>%
+  filter(county=="Pierce",
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2022")
+# 2022 poc: 0.42
+# 2022 non-poc: 0.53
+# 0.53-0.42=0.11
+# 2011 poc: 0.51
+# 2011 non-poc: 0.65
+# 0.65-0.51=0.14
+# ((0.11-0.14)/(0.14))*100: -21.42857% change
+
+filter <- data_clean %>%
+  filter(county=="King",
+         focus_type=="Disability_cat",
+         data_year=="2011" |
+           data_year=="2022")
+# 2022 dis: 0.25
+# 2022 non-dis: 0.62
+# 0.62-0.25=0.37
+# 2011 dis: 0.15
+# 2011 non-dis: 0.34
+# 0.34-0.15=0.19
+# ((0.37-0.19)/(0.19))*100: 94.73684% change
+
+filter <- data_clean %>%
+  filter(county=="Kitsap",
+         focus_type=="Disability_cat",
+         data_year=="2015" |
+           data_year=="2022")
+# 2022 dis: 0.29
+# 2022 non-dis: 0.57
+# 0.57-0.29=0.28
+# 2015 dis: 0.26
+# 2015 non-dis: 0.56
+# 0.56-0.26=0.3
+# ((0.28-0.3)/(0.3))*100: -6.666667% change
+
+filter <- data_clean %>%
+  filter(county=="Pierce",
+         focus_type=="Disability_cat",
+         data_year=="2011" |
+           data_year=="2022")
+# 2022 dis: 0.22
+# 2022 non-dis: 0.50
+# 0.50-0.22=0.28
+# 2011 dis: 0.31
+# 2011 non-dis: 0.62
+# 0.62-0.31=0.31
+# ((0.28-0.31)/(0.31))*100: -9.677419% change
+
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="Disability_cat",
+         data_year=="2015" |
+           data_year=="2022")
+# 2022 dis: 0.22
+# 2022 non-dis: 0.50
+# 0.50-0.22=0.28
+# 2015 dis: 0.31
+# 2015 non-dis: 0.62
+# 0.62-0.31=0.31
+# ((0.28-0.31)/(0.31))*100: -9.677419% change
 ```
 
 1. 10%: Students of color are less likely to be prepared for kindergarten compared to white non-Hispanic students, a gap of 10% and a decrease of 48% over the past decade
@@ -571,9 +740,9 @@ calc <- data_clean %>%
 
 #### Insights & Analysis
 
-* The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (+16.1%) and Kitsap County (-18.9%), while almost doubling in Pierce County (91.0%), and decreasing significantly in Snohomish County (-74,1%)
-* The median income of households below 200% of the poverty line stayed relatively static over time, while the the median income of households above 200% of the poverty line increased between 2011 and 2021, especially in King County (\$52,000) and Snohomish County (\$33,500)
-* The difference in median income of people with a disability compared to those without a disability between 2016 and 2021 stayed the same in all counties, except for King County, where the difference increased (\$13,900)
+* The difference in kindergarten readiness between students of color and white non-Hispanic over time has decreased regionally (-47.6%), with the most noticeable increase in in Snohomish County (+12.5%) and the most noticeable decrease in King County (-21.4%)
+* The percentage of students prepared for kindergarten decreased over the past decade for all groups in Pierce and Snohomish Counties, while kindergarten readiness seemed in increase for all groups in King County.
+* In King County, the difference in kindergarten readiness between students with and without a disability almost doubled over the past decade (+95%), while Snohomish and Pierce Counties , respecitively. Kitsap County didn't report data for students with disabilities until 2015 and in the past half decade, the difference has decreased slightly (-6.7%) 
 
 
 \
