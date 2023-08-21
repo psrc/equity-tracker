@@ -482,8 +482,7 @@ acs_data <- base_acs_data %>%
                   variable=="S1501_C01_006") %>% 
   dplyr::select(GEOID, estimate, label)
 
-# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
-
+# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
 acs_data <- acs_data %>% 
   pivot_wider(names_from = label, values_from = estimate) %>% 
   dplyr::rename(bach_plus="Estimate!!Total!!AGE BY EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Bachelor's degree or higher",

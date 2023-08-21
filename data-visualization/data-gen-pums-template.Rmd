@@ -476,7 +476,7 @@ base_acs_data <- get_acs_recs(geography ='tract',
 acs_data <- base_acs_data %>% 
   dplyr::select(GEOID, estimate)
 
-# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
+# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
 ```
 
 ### Joining data
