@@ -467,13 +467,13 @@ x <- tidycensus::load_variables(2021,"acs5") %>%
                   (geography=="tract"))
 
 # getting data by tract
-acs_data <- get_acs_recs(geography ='tract', 
-                         table.names = 'B19013', #subject table code
-                         years = c(2021),
-                         acs.type = 'acs5')
+base_acs_data <- get_acs_recs(geography ='tract', 
+                              table.names = 'B19013', #subject table code
+                              years = c(2021),
+                              acs.type = 'acs5')
 
 # filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
-acs_data <- acs_data %>% 
+acs_data <- base_acs_data %>% 
   dplyr::select(GEOID, estimate)
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
