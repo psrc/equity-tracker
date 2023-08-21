@@ -1,7 +1,7 @@
 ---
-title: "Median Income" 
+title: "Housing Cost Burden" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
-author: "Mary Richards"
+author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   word_document:
@@ -61,7 +61,7 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 ```
 
-**Median Income**
+**Housing Cost Burden**
 
 # Download data 
 ## Primary data 
@@ -87,8 +87,8 @@ unique(pums_ospi_elmer$data_year)
 
 ```{r indicator specific information, include=FALSE}
 # set indicator information
-indicator_measure <- 'median_household_income'
-indicator_title <- 'Median household income'
+indicator_measure <- 'rent_burden'
+indicator_title <- 'Rent Burden'
 ```
 
 ## 1. Explore data
@@ -130,24 +130,24 @@ These fields will vary by indicator:
 * Number of indicator-specific categories - this can vary depending on the indicator of interest, ranging from N/A (*median income*) to multiple levels (*crowding, housing cost burden*)
 ```{r}
 # metric
-unique(data_full$fact_type) #median
+unique(data_full$fact_type) #share of pop
 
 # years
 num_yr <- length(unique(data_full$data_year)) #3
 unique(data_full$data_year)
 
 # indicator attributes
-num_indatt <- length(unique(data_full$indicator_attribute)) #1
+num_indatt <- length(unique(data_full$indicator_attribute)) #3
 unique(data_full$indicator_attribute) #N/A
 
 # calculate expected number of rows
-num_row <- num_yr*num_county*num_group*2*num_indatt #180
+num_row <- num_yr*num_county*num_group*2*num_indatt #540
 ```
 
 There are **`r num_county`** geographies and **`r num_group`** equity focus groups (each with **2** subgroups). There are **`r num_yr`** years in the data set and the indicator specific field has **`r num_indatt`** attribute(s), which means there should be a total of **`r num_row`** rows.
 ```{r}
 # count number of rows
-nrow(data_full) #170
+nrow(data_full) #480
 ```
 <span style="color: #00A7A0">There are some missing data.</span> 
 \
@@ -156,7 +156,7 @@ nrow(data_full) #170
 #### *checking for missing data*
 ##### Year / geography
 ```{r}
-num_yr_geo <- num_group*2*num_indatt #12
+num_yr_geo <- num_group*2*num_indatt #36
 ```
 If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
 ```{r, include=FALSE, eval=FALSE}
@@ -171,7 +171,7 @@ table(data_full$data_year,
 
 ##### Year / equity focus group
 ```{r}
-num_yr_grp <- num_county*2*num_indatt #10
+num_yr_grp <- num_county*2*num_indatt #30
 ```
 If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
 ```{r}
@@ -179,14 +179,14 @@ table(data_full$data_year,
       data_full$focus_type)
 ```
 <span style="color: #00A7A0">
-The disability category is missing all data in 2011.
+The disability and LEP categories are missing all data in 2011.
 </span> 
 \
 \
 
 ##### Year / equity focus sub-group
 ```{r}
-num_yr_subgrp <- num_county*num_indatt #5
+num_yr_subgrp <- num_county*num_indatt #15
 ```
 If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
 ```{r}
@@ -300,10 +300,17 @@ data_clean <- data_clean %>%
 ```
 
 ```{r}
-# indicator specific re-ordering - median income is N/A so this step is unnecessary
-# data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
-#                                     levels = c("Less than a Bachelor's degree",
-#                                                "Bachelor's degree or higher"))
+# indicator specific re-ordering and mutating
+data_clean <- data_clean %>%
+  mutate(indicator_attribute = case_when(indicator_attribute == "Greater than 50 percent" |
+                                                       indicator_attribute == "Between 30 and 50 percent"
+                                                     ~ "Cost Burdened (More than or Equal to 30 percent)",
+                                                     TRUE~ indicator_attribute))%>% 
+  dplyr::select(-indicator_fact_id)%>%
+  dplyr::group_by(across(!c(fact_value, margin_of_error)))%>%
+  dplyr::summarise(fact_value = sum(fact_value, na.rm = TRUE))
+                   
+#                   margin_of_error = moe_sum(margin_of_error, estimate = fact_value, na.rm = TRUE))
 ```
 \
 
@@ -335,10 +342,10 @@ just_region_21 <- data_clean %>%
 facet_chart <- static_facet_column_chart(t=just_region_11,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
-                                         ncol=3,
+                                         ncol=2,
                                          title = paste0(indicator_title, ": Region (2011)"),
                                          subtitle = "by equity focus group",
                                          source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
@@ -348,7 +355,7 @@ facet_chart
 facet_chart <- static_facet_column_chart(t=just_region_16,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
@@ -360,7 +367,7 @@ facet_chart
 facet_chart <- static_facet_column_chart(t=just_region_21,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
@@ -400,19 +407,19 @@ qplot(focus_type_ord, fact_value,
       colour = county, shape = vulnerability, 
       data = data_clean11, 
       main = paste0(indicator_title, ": 2011")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
       data = data_clean16,
       main = paste0(indicator_title, ": 2016")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
       data = data_clean21, 
       main = paste0(indicator_title, ": 2021")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 ```
 
 # **CHART .rda**
@@ -428,9 +435,9 @@ Save final data set (.rda) for charts
 ```{r}
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-file_name <- 'f01-median-income-data'
+theme_dir <- 'e-housing'
+ind_dir <- 'e02-housing-cost-burden'
+file_name <- 'e02-housing-cost-burden-data'
 
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,
@@ -460,19 +467,40 @@ nrow(tracts10.lyr) #773
 ```{r acs data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 x <- tidycensus::load_variables(2021,"acs5") %>% 
-  dplyr::filter(grepl("median household income",
+  dplyr::filter(grepl("housing cost burden",
                       concept, ignore.case=TRUE) & 
                   (geography=="tract"))
 
 # getting data by tract
 acs_data <- get_acs_recs(geography ='tract', 
-                         table.names = 'B19013', #subject table code
+                         table.names = 'B25070', #subject table code
                          years = c(2021),
                          acs.type = 'acs5')
 
-# filter only fields of interest - census tract and population
-acs_data <- acs_data %>% 
+# data wrangling for grouping >30% and under 30% - census tract and population
+acs_data <- acs_data$label %>% 
+  dplyr::mutate(label = factor(label,
+  case_when(grepl("^(Less than 10.0 percent|10.0 to 14.9 percent|15.0 to 19.9 percent|20.0 t 24.9 percent|
+                    25.0 to 29.9 percent)" ~ "Less than 30 percent",
+                    grepl("^(30.0 to 34.9 percent|35.0 to 39.9 percent|35.0 to 39.9 percent|40.0 to 49.9 percent|
+                    50.0 percent or more)" ~ "Cost Burdened (More than or Equal to 30 percent)"))))) %>%
+  filter(label != "Total")
+
+
   dplyr::select(GEOID, estimate)
+  
+  mutate(
+  ESR= factor(
+    case_when(grepl("^(Armed forces, at work|Civilian employed, at work|Armed forces, with a job but not at work|
+                    Civilian employed, with a job but not at work)" ~ "Employed",
+              grepl("^(Not in labor force|Unemployed" ~ "Unemployed"))),
+
+# filter only fields of interest - census tract and estimate (gross_median_rent)
+acs_data <- acs_data %>% 
+  dplyr::select(GEOID, estimate)%>%
+  filter(!is.na(estimate))%>%
+  dplyr::group_by(GEOID)%>%
+  dplyr::summarise(estimate=mean(estimate))
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
 ```
