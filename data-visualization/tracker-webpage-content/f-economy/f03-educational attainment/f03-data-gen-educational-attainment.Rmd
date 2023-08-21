@@ -1,5 +1,5 @@
 ---
-title: "Median Income" 
+title: "Educational Attainment" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -61,7 +61,7 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 ```
 
-**Median Income**
+**Educational Attainment**
 
 # Download data 
 ## Primary data 
@@ -87,8 +87,8 @@ unique(pums_ospi_elmer$data_year)
 
 ```{r indicator specific information, include=FALSE}
 # set indicator information
-indicator_measure <- 'median_household_income'
-indicator_title <- 'Median household income'
+indicator_measure <- 'educational_attainment'
+indicator_title <- 'Educational attainment'
 ```
 
 ## 1. Explore data
@@ -130,24 +130,24 @@ These fields will vary by indicator:
 * Number of indicator-specific categories - this can vary depending on the indicator of interest, ranging from N/A (*median income*) to multiple levels (*crowding, housing cost burden*)
 ```{r}
 # metric
-unique(data_full$fact_type) #median
+unique(data_full$fact_type) #share of population
 
 # years
 num_yr <- length(unique(data_full$data_year)) #3
-unique(data_full$data_year)
+unique(data_full$data_year) #2011, 2016, 2021
 
 # indicator attributes
-num_indatt <- length(unique(data_full$indicator_attribute)) #1
-unique(data_full$indicator_attribute) #N/A
+num_indatt <- length(unique(data_full$indicator_attribute)) #2
+unique(data_full$indicator_attribute) #"Bachelor's degree or higher"   "Less than a Bachelor's degree"
 
 # calculate expected number of rows
-num_row <- num_yr*num_county*num_group*2*num_indatt #180
+num_row <- num_yr*num_county*num_group*2*num_indatt #360
 ```
 
 There are **`r num_county`** geographies and **`r num_group`** equity focus groups (each with **2** subgroups). There are **`r num_yr`** years in the data set and the indicator specific field has **`r num_indatt`** attribute(s), which means there should be a total of **`r num_row`** rows.
 ```{r}
 # count number of rows
-nrow(data_full) #170
+nrow(data_full) #340
 ```
 <span style="color: #00A7A0">There are some missing data.</span> 
 \
@@ -156,7 +156,7 @@ nrow(data_full) #170
 #### *checking for missing data*
 ##### Year / geography
 ```{r}
-num_yr_geo <- num_group*2*num_indatt #12
+num_yr_geo <- num_group*2*num_indatt #24
 ```
 If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
 ```{r, include=FALSE, eval=FALSE}
@@ -171,7 +171,7 @@ table(data_full$data_year,
 
 ##### Year / equity focus group
 ```{r}
-num_yr_grp <- num_county*2*num_indatt #10
+num_yr_grp <- num_county*2*num_indatt #20
 ```
 If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
 ```{r}
@@ -186,7 +186,7 @@ The disability category is missing all data in 2011.
 
 ##### Year / equity focus sub-group
 ```{r}
-num_yr_subgrp <- num_county*num_indatt #5
+num_yr_subgrp <- num_county*num_indatt #10
 ```
 If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
 ```{r}
@@ -301,9 +301,13 @@ data_clean <- data_clean %>%
 
 ```{r}
 # indicator specific re-ordering - median income is N/A so this step is unnecessary
-# data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
-#                                     levels = c("Less than a Bachelor's degree",
-#                                                "Bachelor's degree or higher"))
+data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
+                                    levels = c("Less than a Bachelor's degree",
+                                               "Bachelor's degree or higher"))
+
+# filter to "Bachelor's degree or higher"
+data_clean <- data_clean %>% 
+  filter(indicator_attribute=="Bachelor's degree or higher")
 ```
 \
 
@@ -335,7 +339,7 @@ just_region_21 <- data_clean %>%
 facet_chart <- static_facet_column_chart(t=just_region_11,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
@@ -348,7 +352,7 @@ facet_chart
 facet_chart <- static_facet_column_chart(t=just_region_16,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
@@ -360,7 +364,7 @@ facet_chart
 facet_chart <- static_facet_column_chart(t=just_region_21,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
@@ -400,19 +404,19 @@ qplot(focus_type_ord, fact_value,
       colour = county, shape = vulnerability, 
       data = data_clean11, 
       main = paste0(indicator_title, ": 2011")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
       data = data_clean16,
       main = paste0(indicator_title, ": 2016")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
       data = data_clean21, 
       main = paste0(indicator_title, ": 2021")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 ```
 
 # **CHART .rda**
@@ -422,7 +426,7 @@ head(data_clean) # make sure this is the correct data set
 # make any additional edits 
 data_clean <- data_clean %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=-2)) #round median income value to hundreds - retain consistent name
+  mutate(fact_value=round(fact_value, digits=2)) #round educational attainment value to hundredths - retain consistent name
 
 data_clean #check to make sure the rounding worked - if not will need to go back to generate data set in chunk around line 245
 ```
