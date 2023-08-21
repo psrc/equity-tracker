@@ -472,7 +472,7 @@ acs_data <- get_acs_recs(geography ='tract',
                          years = c(2021),
                          acs.type = 'acs5')
 
-# filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations)
+# filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
 acs_data <- acs_data %>% 
   dplyr::select(GEOID, estimate)
 
