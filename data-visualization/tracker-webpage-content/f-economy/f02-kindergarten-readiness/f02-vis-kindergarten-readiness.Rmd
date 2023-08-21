@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -723,13 +723,13 @@ filter <- data_clean %>%
          focus_type=="Disability_cat",
          data_year=="2015" |
            data_year=="2022")
-# 2022 dis: 0.22
-# 2022 non-dis: 0.50
-# 0.50-0.22=0.28
-# 2015 dis: 0.31
-# 2015 non-dis: 0.62
-# 0.62-0.31=0.31
-# ((0.28-0.31)/(0.31))*100: -9.677419% change
+# 2022 dis: 0.20
+# 2022 non-dis: 0.49
+# 0.49-0.20=0.29
+# 2015 dis: 0.21
+# 2015 non-dis: 0.49
+# 0.49-0.21=0.28
+# ((0.29-0.28)/(0.28))*100: 3.571429% change
 ```
 
 1. 10%: Students of color are less likely to be prepared for kindergarten compared to white non-Hispanic students, a gap of 10% and a decrease of 48% over the past decade
@@ -740,9 +740,9 @@ filter <- data_clean %>%
 
 #### Insights & Analysis
 
-* The difference in kindergarten readiness between students of color and white non-Hispanic over time has decreased regionally (-47.6%), with the most noticeable increase in in Snohomish County (+12.5%) and the most noticeable decrease in King County (-21.4%)
+* The difference in kindergarten readiness between students of color and white non-Hispanic over time has decreased regionally (-48%), with the most noticeable increase in in Snohomish County (+13%) and the most noticeable decrease in King County (-21%)
 * The percentage of students prepared for kindergarten decreased over the past decade for all groups in Pierce and Snohomish Counties, while kindergarten readiness seemed in increase for all groups in King County.
-* In King County, the difference in kindergarten readiness between students with and without a disability almost doubled over the past decade (+95%), while Snohomish and Pierce Counties , respecitively. Kitsap County didn't report data for students with disabilities until 2015 and in the past half decade, the difference has decreased slightly (-6.7%) 
+* In King County, the difference in kindergarten readiness between students with and without a disability almost doubled over the past decade (+95%), while the difference slightly increased in Snohomish County (4%) and decreased in Pierce County (-10%). Kitsap County didn't report data for students with disabilities until 2015 and in the past half decade, the difference has decreased slightly (-7%) 
 
 
 \
