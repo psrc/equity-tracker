@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -170,11 +170,18 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-rda <- 'f01-median-income-map-data.rda'
+ind_dir <- 'f03-educational-attainment'
+rda <- 'f03-educational-attainment-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
+
+```{r}
+# need to convert estimate from decimal to whole number % for map to show correct value
+acs_data_tract <- acs_data_tract %>% 
+  rename(estimate_dec=estimate) %>% 
+  dplyr::mutate(estimate=estimate_dec*100)
+```
 
 ```{r acs map}
 # setting map extent
@@ -187,21 +194,14 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Median Household <br> Income (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
-labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
-  paste("$", # if doesn't require prefix, this can be removed
-        prettyNum((round(acs_data_tract$estimate, digits=-2)),
-                  big.mark = ","))) %>%
-  lapply(htmltools::HTML)
+var_name <- "Educational <br> Attainment" # the <br> could be adjusted depending on the length/spacing of the name
 
 # if the label required a suffix instead of a prefix, for example a %, the code would look like this:
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
-#               big.mark = ","), #this wouldn't be necessary to include for %s    
-#         '%')) %>%
-#   lapply(htmltools::HTML)
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+  paste(prettyNum(round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
+        '%')) %>%
+  lapply(htmltools::HTML)
 
 
 # map settings
@@ -227,7 +227,7 @@ acs_map <- leaflet() %>%
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
-                       labFormat = labelFormat(prefix = "$"),
+                       labFormat = labelFormat(suffix = "%"),
                        decreasing = TRUE) %>% #to get legend high-low with correct color order
   
   # set view extent
@@ -250,7 +250,7 @@ acs_map
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
 # set folder structure
-map_name <- 'f01-median-income-map.html'
+map_name <- 'f03-educational-attainment-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
@@ -266,62 +266,43 @@ data <- acs_data_tract %>%
   st_drop_geometry()
 
 # calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
+calc <- data %>%
+  dplyr::mutate(reg_bach = sum(bach_plus, na.rm=TRUE)/sum(pop_25_plus, na.rm=TRUE))
+# regional bach of 25+ pop: 0.4371736
 
-# x<-rep(data$estimate,times=data$total_pop20)
-# df1<-data.frame(x)
-# summary(df1$x)
-# median(df1$x, na.rm=TRUE)
-# hist(df1$x)
-# regional median life expectancy: 80.86 
-
-# getting data by region from PUMS
-pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
-                           level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
-# regional median income: 96453.13
+x<-rep(data$estimate,times=data$pop_25_plus)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median educational attainment: 39.379 
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+# 53033004101 (Laurelhurst neighborhood in Seattle) - 95.087719%, 53033006701 (Westlake neighborhood in Seattle) - 92.924375%, [53033023702 (Bel-Red neighborhood in Bellevue) - 92.222222% - low population number in census tract (630 25+)] 53033005401 (Northlake neighborhood in Seattle) - 89.115143%
 
 sort <- data %>% 
   dplyr::arrange(estimate)
-# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
-# 53033030501 (Auburn, around 167)
+# 53061052211 (Monroe, Snohomish) - 4.941947%, 53053072000 (Tillicum and Joint Base Lewis–McChor, Pierce) - 5.639535%, 53053071416 (Spanaway and Loveland, Pierce) - 6.163435%
 
-# this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
-
-# getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B19013', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
-  dplyr::arrange(desc(estimate))
+by_county <- data %>%
+  dplyr::group_by(county_name) %>%
+  dplyr::summarise(cnt_bach = sum(bach_plus, na.rm=TRUE)/sum(pop_25_plus, na.rm=TRUE)) %>%
+  dplyr::arrange(desc(cnt_bach))
+# King (54%), Kitsap (35%), Snohomish (34%), Pierce (28%)
 ```
 
-1. $96,500: The region's median household income
-2. $250,000: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
-3. $21,000: The lowest median income census tract in the region
+1. 44%: The region's educational attainment
+2. 95%: The region's highest educational attainment is in the Laurelhurst neighborhood
+3. 5%: The lowest educational attainment in the region is in a census tract in Monroe, Snohomish County
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest median income (\$106,300), followed by Snohomish (\$95,600), Kitsap (\$84,600), and Pierce (\$82,600)
-* The five census tracts tied with the highest median income (\$250,000) are in King County: Laurelhurst neighborhood in Seattle, Clyde Hill/Yarrow Point/Hunts Point, Bellevue, and two tracts on Mercer Island
-* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000), downtown Tacoma (\$26,400), and Auburn around Route 167 (\$28,400)
+* King County has the highest educational attainment (54%), followed by Kitsap (35%), Snohomish (34%), and Pierce (28%)
+* The 50 census tracts with the highest educational attainment are in King County - the first four census tracts are in the Laurelhurst neighborhood (Seattle), Westlake neighborhood (Seattle), Bellevue, and Northlake neighborhood (Seattle)
+* The first census tract with the highest educational attainment not located in King County includes the Lynwood and Fletcher Bay neighborhoods on Bainbridge Island in Kitsap County (82%)
 
 \
 \
@@ -342,7 +323,7 @@ source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/eq
 source('equity-tracker-chart-functions.R') 
 
 # set folder structure
-rda <- 'f01-median-income-data.rda'
+rda <- 'f03-educational-attainment-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -360,12 +341,12 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 180000
+y_max = 1
 dec = 0
-esttype = "currency"
+esttype = "percent"
 color = "purples"
-title = "Median Household Income"
-subtitle = "values are adjusted to 2021 dollars"
+title = "Educational Attainment"
+subtitle = "Bachelor's degree or higher"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -387,7 +368,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-column'
+file_name <- 'f03-educational-attainment-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -442,75 +423,59 @@ if (output_type == "html") {
 ```{r column facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Income_cat")
-
-# region low income households: 25409.57	
-# region non-low income households: 135561.35
-# 135561.35-25409.57=110151.8
+  filter(focus_type=="POC_cat",
+         county!="Region")
+# King no poc-poc: 0.5713854-0.4861901=0.0851953
+# Kitsap no poc-poc: 0.3655688-0.2784608=0.087108
+# Pierce no poc-poc: 0.3034835-0.2330582=0.0704253
+# Snohomish no poc-poc: 0.3320712-0.3706851=-0.0386139
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
          county=="Region")
-# region lep households: 58284.83	
-# region non-lep households: 116673.43
-# 116673.43-58284.83=58388.6
+# lep: 0.2935020
+# non lep: 0.4468569
+# 0.4468569-0.2935020=0.1533549
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         vulnerability=="high vulnerability")
-
-# region lep households: 58284.83	
-# snohomish lep households: 67832.94
-# 71.45515-63.50990=7.94525
-
-filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Youth_cat")
-
-# region youth households: 141389.8	
-# region non-youth households: 102097.0
-# 141389.8-102097.0=39292.8
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="POC_cat")
-# snohomish poc: 108886.4
-# snohomish non-poc: 112974.4
-# 112974.4-108886.4=4088
-
-# king poc: 111529.77
-# king non-poc: 130977.15
-# 130977.15-111529.77=19447.38
+  filter(county!="Region",
+         focus_type=="Income_cat")
+# King not low inc-low inc: 0.5888835-0.2776186=0.3112649
+# Kitsap not low inc-low inc: 0.3875144-0.1811566=0.2063578
+# Pierce not low inc-low inc: 0.3181438-0.1379590=0.1801848
+# Snohomish not low inc-low inc: 0.3793164-0.1703160=0.2090004
 
 filter <- data_clean_column %>% 
   filter(focus_type=="Disability_cat")
-# kitsap dis: 84171.34
-# kitsap non-dis: 104284.10
-# 104284.10-84171.34=20112.76
-
-# king dis: 81508.16
-# king non-dis: 134637.12
-# 134637.12-81508.16=53128.96
+# region dis: 0.2553356
+# region no dis: 0.4660190
+# 0.4660190-0.2553356=0.2106834
+# King no dis-dis: 0.5693938-0.3180987=0.2512951
+# Kitsap no dis-dis: 0.3772126-0.2192018=0.1580108
+# Pierce no dis-dis: 0.3014983-0.1903546=0.1111437
+# Snohomish no dis-dis: 0.3668158-0.2054530=0.1613628
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="Income_cat",
-         vulnerability=="high vulnerability") %>% 
-  dplyr::arrange(desc(fact_value))
-
+  filter(focus_type=="LEP_cat",
+         county!="Region")
+# King: 0.5557650-0.3244048=0.2313602
+# Kitsap: 0.3518236-0.2574751=0.0943485
+# Pierce: 0.2885311-0.1582440=0.1302871
+# Snohomish 0.3499894-0.2690853=0.0809041
 ```
 
-1. \$25,400: The regional household median income of those who are below 200% of the poverty level
-2. \$58,400: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
-3. \$39,300: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
+1. 9% The difference in educational attainment between people of color and white non-Hispanic in King and Kitsap Counties
+2. 26%: The educational attainment of those who are below 200% of the poverty level is 26% lower than those who are above 200% of the poverty level
+3. 29%: The percentage of Non-English proficient individuals who have a bachelor's degree or higher, 15% lower than English-proficient individuals
 
 \
 
 #### Insights & Analysis
 
-* The smallest difference in median income between people of color and white non-Hispanic is in Snohomish County (\$4,100), while the largest difference is in King County (\$19,400)
-* For households who are below 200% of the poverty level, the median income is lowest in King County (\$24,100), followed by Snohomish and Kitsap (\$26,100), and Pierce (\$27,700)
-* The largest difference in median income between people with and without a disability is in King County (\$53,100), while the smallest difference is in County (\$20,100)
-* Snohomish County is the only county where Non-English proficient households have higher median incomes (\$67,800) than the region's Non-English proficient households (\$58,300)
+* Snohomish County is the only county where people of color (37%) have a higher educational attainment than white non-Hispanic people (33%)
+* The smallest difference in educational attainment between people below and above 200% of the poverty line is in Pierce County (18%), followed by Kitsap and Snohomish Counties (21%), and King County (31%)
+* When comparing the difference in educational attainment between people with and without disabilities, King County is the only county with a larger difference (25%) than the regional average (21%)
+* The largest difference in educational attainment between people with and without limited English proficiency is in King County (23%), while the smallest difference is in Snohomish County (8%)
 
 \
 \
@@ -554,7 +519,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-line'
+file_name <- 'f03-educational-attainment-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
