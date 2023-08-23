@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -176,7 +176,7 @@ rda <- 'f03-educational-attainment-map-data.rda'
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
 
-```{r}
+```{r transform data}
 # need to convert estimate from decimal to whole number % for map to show correct value
 acs_data_tract <- acs_data_tract %>% 
   rename(estimate_dec=estimate) %>% 
@@ -576,80 +576,87 @@ if (output_type == "html") {
 # calculate call out information
 filter <- data_clean %>%
   filter(county=="Region",
-         focus_type=="Income_cat")
-# 2021 low income: 25409.57
-# 2021 non-low income: 135561.35
-# 135561.35-25409.57=110151.8
-# 2011 low income: 24829.81
-# 2011 non-low income: 106454.25
-# 106454.25-24829.81=81624.44
-# ((110151.8-81624.44)/(81624.44))*100: 34.94953% change
-
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2011 non-poc-poc: 0.3208931-0.2869044=0.0339887
+# 2021 non-poc-poc: 0.4481251-0.4128432=0.0352819
 
 filter <- data_clean %>%
   filter(county=="Region",
-         focus_type=="POC_cat")
-# 2021 poc: 102481.29
-# 2021 non-poc: 118053.44
-# 118053.44-102481.29=15572.15
+         focus_type=="Income_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2011 non-low inc-low inc: 0.3576682-0.1314919=0.2261763
+# 2021 non-low inc-low inc: 0.4820102-0.2180978=0.2639124
+# ((0.2639124-0.2261763)/(0.2261763))*100: 16.68437% change
 
 filter <- data_clean %>%
   filter(county=="Region",
-         focus_type=="Older_cat")
-# 2021 older: 83306.58
-# 2021 non-older: 124514.77
-# 124514.77-83306.58=41208.19
-# 2011 older: 62308.22
-# 2011 non-older: 94026.28
-# 94026.28-62308.22= 31718.06
-# ((41208.19-31718.06)/(31718.06))*100: 29.92027% change
-
-filter <- data_clean %>%
-  filter(county != "Region",
-         focus_type=="Disability_cat")
-# 2016 king disability-no disability: 102202.57-62990.64=39211.93
-# 2021 king disability-no disability: 134637.12-81508.16=53128.96
-# 53128.96-39211.93=13917.03
+         focus_type=="LEP_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2011 no lep-lep: 0.3226593-0.1797292=0.1429301
+# 2021 no lep-lep: 0.4468569-0.2935020=0.1533549
 
 filter <- data_clean %>%
   filter(county=="Snohomish",
          focus_type=="POC_cat",
          data_year=="2011" |
            data_year=="2021")
-# 2011 king:82987.29-66233.98=16753.31
-# 2021 king:130977.15-111529.7=19447.45
-# ((19447.45-16753.31)/(16753.31))*100: 16.08124% change
-# 2011 kitsap:101045.37-78865.29=22180.08
-# 2021 kitsap:103185.85-85187.57=17998.28
-# ((17998.28-22180.08)/(22180.08))*100: -18.85385% change
-# 2011 pierce:87650.57-77922.34=9728.23
-# 2021 pierce:103124.26-84547.06=18577.2
-# ((18577.2-9728.23)/(9728.23))*100: 90.96177% change
-# 2011 snohomish:80736.67-64959.63=15777.04
-# 2021 snohomish:112974.44-108886.37=4088.07
-# ((4088.07-15777.04)/(15777.04))*100: -74.08849% change
+# king 2021-2011 poc: 0.4861901-0.1820523=0.3041378
+# king 2021-2011 non poc: 0.5713854-0.2375673=0.3338181
+# kitsap 2021-2011 poc: 0.2784608-0.3274597=-0.0489989
+# kitsap 2021-2011 non poc: 0.3655688-0.4000690=-0.0345002
+# pierce 2021-2011 poc: 0.2330582-0.2927964=-0.0597382
+# pierce 2021-2011 non poc: 0.3034835-0.2759653=0.0275182
+# snohomish 2021-2011 poc: 0.3706851-0.2231951=0.14749
+# snohomish 2021-2011 non poc: 0.3320712-0.3012554=0.0308158
 
 filter <- data_clean %>%
   filter(county=="Snohomish",
          focus_type=="Income_cat",
-         vulnerability=="low vulnerability",
          data_year=="2011" |
            data_year=="2021")
-# king non-low income:150511.89-98506.82=52005.07
-# Snohomish non-low income:130900.06-97445.42=33454.64
+# 2011 king non low inc-low inc:0.2614591-0.1036778=0.1577813
+# 2021 king non low inc-low inc:0.5888835-0.2776186=0.3112649
+# ((0.3112649-0.1577813)/(0.1577813))*100: 97.27617% change
+# 2011 kitsap non low inc-low inc:0.4290973-0.1512846=0.2778127
+# 2021 kitsap non low inc-low inc:0.3875144-0.1811566=0.2063578
+# ((0.2063578-0.2778127)/(0.2778127))*100: -25.72053% change
+# 2011 pierce non low inc-low inc:0.3180013-0.1264586=0.1915427
+# 2021 pierce non low inc-low inc:0.3181438-0.1379590=0.1801848
+# ((0.1801848-0.1915427)/(0.1915427))*100: -5.929696% change
+# 2011 snohomish non low inc-low inc:0.3328700-0.1273150=0.205555
+# 2021 snohomish non low inc-low inc:0.3793164-0.1703160=0.2090004
+# ((0.2090004-0.205555)/(0.205555))*100: 1.676145% change
+
+filter <- data_clean %>%
+  filter(county == "Snohomish",
+         focus_type=="Disability_cat",
+         data_year=="2016" |
+           data_year=="2021")
+# 2016 king no dis-dis: 0.5201209-0.2604894=0.2596315
+# 2021 king no dis-dis: 0.5693938-0.3180987=0.2512951
+# 2016 kitsap no dis-dis: 0.3486004-0.1825632=0.1660372
+# 2021 kitsap no dis-dis: 0.3772126-0.2192018=0.1580108
+# 2016 pierce no dis-dis: 0.2764090-0.1501056=0.1263034
+# 2021 pierce no dis-dis: 0.3014983-0.1903546=0.1111437
+# 2016 snohomish no dis-dis: 0.3336177-0.1731793=0.1604384
+# 2021 snohomish no dis-dis: 0.3668158-0.2054530=0.1613628
 ```
 
-1. \$110,200: In 2021, households in the region who were below 200% of the poverty line made \$110,200 less than households above the 200% poverty line, a 34.9% larger gap than in 2011
-2. \$15,600: Regionally, people of color have median households incomes \$15,600 lower than white non-Hispanic households, a gap which has remained relatively consistent in the last ten years
-3. \$36,600: The median household income of households in the region with older adults is $36,600 lower than households without older adults, an increase of 29.9% from 2011
+1. 41%: Regionally, educational attainment among people of color is slightly lower (41%) than white non-Hispanic individuals (44%), a gap which has remained relatively consistent in the last ten years
+2. 17%: In 2021, people in households making below 200% of the poverty line earned bachelor's degrees at lower rates (22%) than people in households making more than 200% of the poverty line (48%), a 17% larger difference than in 2011
+3. 15%: The difference in educational attainment between people with limited English proficiency and those who are English proficient has remained consistently around 15% between 2011 and 2021
 
 \
 
 #### Insights & Analysis
 
-* The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (+16.1%) and Kitsap County (-18.9%), while almost doubling in Pierce County (91.0%), and decreasing significantly in Snohomish County (-74.1%)
-* The median income of households below 200% of the poverty line stayed relatively static over time, while the the median income of households above 200% of the poverty line increased between 2011 and 2021, especially in King County (\$52,000) and Snohomish County (\$33,500)
-* The difference in median income of people with a disability compared to those without a disability between 2016 and 2021 stayed the same in all counties, except for King County, where the difference increased (\$13,900)
+* In Kitsap County, the percentage of individuals (25 years or older) with a bachelor's degree or higher has decreased for people of color (5%) and white non-Hispanic individuals (3%) over the past decade. There was also a decrease among people of color (6%) in Pierce County.
+* The difference in educational attainment between people in households above the 200% of the poverty line and and those above it has differed greatly over the past decade between counties: almost doubling in King County (+97%), decreasing in Kitsap County (-26%) and Pierce County (-6%), and only slightly increasing in Snohomish County (+2%)
+* The difference in educational attainment between people with a disability and those without a disability between 2016 and 2021 stayed consistent in all counties - between 1-2%
 
 
 \
