@@ -467,7 +467,7 @@ nrow(tracts10.lyr) #773
 ```{r acs data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 x <- tidycensus::load_variables(2021,"acs5") %>% 
-  dplyr::filter(grepl("housing cost burden",
+  dplyr::filter(grepl("percent",
                       concept, ignore.case=TRUE) & 
                   (geography=="tract"))
 
@@ -478,28 +478,23 @@ acs_data <- get_acs_recs(geography ='tract',
                          acs.type = 'acs5')
 
 # data wrangling for grouping >30% and under 30% - census tract and population
-acs_data <- acs_data$label %>% 
-  dplyr::mutate(label = factor(label,
-  case_when(grepl("^(Less than 10.0 percent|10.0 to 14.9 percent|15.0 to 19.9 percent|20.0 t 24.9 percent|
-                    25.0 to 29.9 percent)" ~ "Less than 30 percent",
-                    grepl("^(30.0 to 34.9 percent|35.0 to 39.9 percent|35.0 to 39.9 percent|40.0 to 49.9 percent|
-                    50.0 percent or more)" ~ "Cost Burdened (More than or Equal to 30 percent)"))))) %>%
-  filter(label != "Total")
+acs_data <- acs_data %>% rename_at('label', ~'rent_burden')
 
-
-  dplyr::select(GEOID, estimate)
-  
-  mutate(
-  ESR= factor(
-    case_when(grepl("^(Armed forces, at work|Civilian employed, at work|Armed forces, with a job but not at work|
-                    Civilian employed, with a job but not at work)" ~ "Employed",
-              grepl("^(Not in labor force|Unemployed" ~ "Unemployed"))),
+# Create variables
+acs_data <- acs_data %>% 
+    mutate(rent_burden=factor(
+             case_when(grepl("Less than 10.0 percent|10.0 to 14.9 percent|15.0 to 19.9 percent|20.0 to 24.9 percent|25.0 to 29.9 percent", rent_burden) ~
+                         "Less than 30 percent",
+                       grepl("30.0 to 34.9 percent|35.0 to 39.9 percent|35.0 to 39.9 percent|40.0 to 49.9 percent|50.0 percent or more", rent_burden) ~ 
+                         "Cost Burdened (More than 30 percent)",
+                       grepl("Not computed", rent_burden) ~ "Not computed",
+                       !is.na(rent_burden) ~ "Total")))
 
 # filter only fields of interest - census tract and estimate (gross_median_rent)
 acs_data <- acs_data %>% 
-  dplyr::select(GEOID, estimate)%>%
-  filter(!is.na(estimate))%>%
-  dplyr::group_by(GEOID)%>%
+  dplyr::select(GEOID, rent_burden, estimate)%>%
+  dplyr::filter(!is.na(estimate))%>%
+  dplyr::group_by(GEOID, rent_burden)%>%
   dplyr::summarise(estimate=mean(estimate))
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
@@ -512,6 +507,12 @@ acs_data_tract <- merge(tracts20.lyr, acs_data,
                         by.x="geoid20",
                         by.y="GEOID",
                         all.x=TRUE)
+
+# calculating percentage/share of population per tract instead of integer
+acs_data_tract <- dplyr::filter(acs_data_tract,rent_burden == "Cost Burdened (More than 30 percent)")
+
+acs_data_tract <- acs_data_tract %>% rename_at('estimate', ~'population')
+acs_data_tract <- acs_data_tract %>% dplyr::mutate(estimate = (total_pop20/sum(population))*100)
 ```
 
 ### Explore map/acs data
@@ -633,7 +634,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate)
 
 # set the variable
-var_name <- "Median Income"
+var_name <- "Rent Burdened (Percentage)"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -683,7 +684,7 @@ Save final data set (.rda) for map
 # This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
 
 # set folder structure
-file_name <- 'f01-median-income-map-data'
+file_name <- 'e02-housing-cost-burden-map-data'
 
 # save final data set as .rda
 save(acs_data_tract, file = file.path(base_dir,
