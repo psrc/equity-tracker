@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -245,7 +245,7 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 # printing map
 acs_map
 ```
-
+Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
@@ -293,8 +293,7 @@ sort <- data %>%
 
 sort <- data %>% 
   dplyr::arrange(estimate)
-# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
-# 53033030501 (Auburn, around 167)
+# 53033005304 (Seattle UW) $21042, 53033005305 (Seattle UW) $26417, 53053061601 (Tacoma) $28359, 53033030501 (Auburn, around 167) $32803
 
 # this calculation doesn't work for median income because median is unique - need to retrieve from census 
 # by_county <- data %>% 
@@ -321,7 +320,7 @@ coutny_acs_data <- coutny_acs_data %>%
 
 * King County has the highest median income (\$106,300), followed by Snohomish (\$95,600), Kitsap (\$84,600), and Pierce (\$82,600)
 * The five census tracts tied with the highest median income (\$250,000) are in King County: Laurelhurst neighborhood in Seattle, Clyde Hill/Yarrow Point/Hunts Point, Bellevue, and two tracts on Mercer Island
-* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000), downtown Tacoma (\$26,400), and Auburn around Route 167 (\$28,400)
+* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000 and \$26,400), downtown Tacoma (\$28,400), and Auburn around Route 167 (\$32,800)
 
 \
 \
@@ -675,13 +674,13 @@ filter <- data_clean %>%
 
 1. \$110,200: In 2021, households in the region who were below 200% of the poverty line made \$110,200 less than households above the 200% poverty line, a 34.9% larger gap than in 2011
 2. \$15,600: Regionally, people of color have median households incomes \$15,600 lower than white non-Hispanic households, a gap which has remained relatively consistent in the last ten years
-3. \$36,600: The median household income of households in the region with older adults is $36,600 lower than households without older adults, an increase of 29.9% from 2011
+3. \$36,600: The median household income of households in the region with older adults is $36,600 lower than households without older adults, an increase of 30% from 2011
 
 \
 
 #### Insights & Analysis
 
-* The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (+16.1%) and Kitsap County (-18.9%), while almost doubling in Pierce County (91.0%), and decreasing significantly in Snohomish County (-74.1%)
+* The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (increased 16%) and Kitsap County (decreased 19%), while almost doubling in Pierce County (increased 91%), and decreasing significantly in Snohomish County (decreased 74%)
 * The median income of households below 200% of the poverty line stayed relatively static over time, while the the median income of households above 200% of the poverty line increased between 2011 and 2021, especially in King County (\$52,000) and Snohomish County (\$33,500)
 * The difference in median income of people with a disability compared to those without a disability between 2016 and 2021 stayed the same in all counties, except for King County, where the difference increased (\$13,900)
 
