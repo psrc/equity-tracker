@@ -191,7 +191,7 @@ var_name <- "Gross Median <br> Rent (2021 USD)" # the <br> could be adjusted dep
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
   paste("$", # if doesn't require prefix, this can be removed
-        prettyNum((round(acs_data_tract$estimate, digits=-2)),
+        prettyNum((round(acs_data_tract$estimate, digits=-0)),
                   big.mark = ","))) %>%
   lapply(htmltools::HTML)
 
