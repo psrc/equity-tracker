@@ -931,7 +931,7 @@ quintile_order <- c("Low",
 equity_group_order <- c("People of Color", 
                         "Households with Lower Income", 
                         "People with a Disability", 
-                        "People with Limited English Proficiency", 
+                        "Households with Limited English Proficiency", 
                         "Households with Youth <18", 
                         "Households with Older Adults 65+")
 
@@ -942,7 +942,7 @@ data_clean <- data_tract %>%
   mutate(equity_group_ord = case_when(
     equity_group=="poc_quintile"~"People of Color",
     equity_group=="disability_quintile"~"People with a Disability",
-    equity_group=="lep_quintile"~"People with Limited English Proficiency",
+    equity_group=="lep_quintile"~"Households with Limited English Proficiency",
     equity_group=="income_quintile"~"Households with Lower Income",
     equity_group=="youth_quintile"~"Households with Youth <18",
     equity_group=="older_quintile"~"Households with Older Adults 65+")) %>%

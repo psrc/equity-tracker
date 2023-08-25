@@ -246,10 +246,10 @@ sumtable(data_refined,
 # wrap/order labels ----
 county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
 
-focus_type_order <- c("People of Color", 
-                      "Households with Lower Income", 
-                      "People with a Disability", 
-                      "People with Limited English Proficiency", 
+focus_type_order <- c("Students of Color", 
+                      "Students with Lower Income", 
+                      "Students with a Disability", 
+                      "Students with Limited English Proficiency", 
                       "Households with Youth <18", 
                       "Households with Older Adults 65+")
 
@@ -268,10 +268,10 @@ focus_attribute_order <- c("People of color",
 data_clean <- data_full %>% 
   mutate(county = factor(county, levels=county_order)) %>%
   mutate(focus_type_ord = case_when(
-    focus_type=="POC_cat"~"People of Color",
-    focus_type=="Disability_cat"~"People with a Disability",
-    focus_type=="LEP_cat"~"People with Limited English Proficiency",
-    focus_type=="Income_cat"~"Households with Lower Income",
+    focus_type=="POC_cat"~"Students of Color",
+    focus_type=="Disability_cat"~"Students with a Disability",
+    focus_type=="LEP_cat"~"Students with Limited English Proficiency",
+    focus_type=="Income_cat"~"Students with Lower Income",
     focus_type=="Youth_cat"~"Households with Youth <18",
     focus_type=="Older_cat"~"Households with Older Adults 65+")) %>%
   mutate(focus_type_ord = factor(focus_type_ord, levels = focus_type_order)) %>%
