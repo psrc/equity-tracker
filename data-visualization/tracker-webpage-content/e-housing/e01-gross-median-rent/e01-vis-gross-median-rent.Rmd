@@ -365,9 +365,9 @@ y_max = 4000
 dec = 0
 esttype = "currency"
 color = "purples"
-title = "Median Household Income"
+title = "Gross Median Rent"
 subtitle = "values are adjusted to 2021 dollars"
-source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
+source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
