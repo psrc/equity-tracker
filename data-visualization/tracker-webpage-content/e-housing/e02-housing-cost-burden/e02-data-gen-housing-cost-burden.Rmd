@@ -308,7 +308,7 @@ data_clean <- data_clean %>%
                                                      TRUE~ indicator_attribute))%>% 
   dplyr::select(-indicator_fact_id)%>%
   dplyr::group_by(across(!c(fact_value, margin_of_error)))%>%
-  dplyr::summarise(fact_value = sum(fact_value, na.rm = TRUE))
+  dplyr::summarise(fact_value = sum(fact_value, na.rm = TRUE), .groups = 'drop')
                    
 #                   margin_of_error = moe_sum(margin_of_error, estimate = fact_value, na.rm = TRUE))
 ```
@@ -428,8 +428,8 @@ head(data_clean) # make sure this is the correct data set
 
 # make any additional edits 
 data_clean <- data_clean %>% 
-  mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=-2)) #round median income value to hundreds - retain consistent name
+  mutate(fact_value_notrounded=round(fact_value, digits=3)) %>% #create column to retain full median income values
+  mutate(fact_value=round(fact_value, digits=1)) #round median income value to hundreds - retain consistent name
 ```
 Save final data set (.rda) for charts
 ```{r}

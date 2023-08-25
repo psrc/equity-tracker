@@ -40,8 +40,8 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 
 library(echarts4r)
-remotes::install_github("JohnCoene/echarts4r",
-                         force=TRUE)
+#remotes::install_github("JohnCoene/echarts4r",
+ #                        force=TRUE)
 
 library(webshot2) #static image creation
 ```
@@ -354,22 +354,23 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2021") #filter on most recent year
+  dplyr::filter(data_year=="2021") %>%
+  dplyr::filter(indicator_attribute != "Less than 30 percent") #filter on most recent year
 
 # set variables 
 df = data_clean_column
 geo = "county"
 x = "focus_attribute_ord"
-y = "fact_value_notrounded"
+y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 12
+y_max = 1
 dec = 0
 esttype = "percent"
 color = "purples"
 title = "Rent Burdened Housholds"
-#subtitle = "values are adjusted to 2021 dollars"
+subtitle = "values are adjusted to 2021 dollars"
 source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -391,10 +392,10 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-column'
+file_name <- 'e02-housing-cost-burden'
 
 # column Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
