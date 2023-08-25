@@ -187,21 +187,21 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Median Household <br> Income (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
-labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
-  paste("$", # if doesn't require prefix, this can be removed
-        prettyNum((round(acs_data_tract$estimate, digits=-2)),
-                  big.mark = ","))) %>%
-  lapply(htmltools::HTML)
+var_name <- "Rent <br> Burden" # the <br> could be adjusted depending on the length/spacing of the name
+#labels <- sprintf(
+ # "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
+  #paste("%", # if doesn't require prefix, this can be removed
+   #     prettyNum((round(acs_data_tract$estimate, digits=-0)),
+    #              big.mark = ","))) %>%
+  #lapply(htmltools::HTML)
 
-# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
-#               big.mark = ","), #this wouldn't be necessary to include for %s    
-#         '%')) %>%
-#   lapply(htmltools::HTML)
+#if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+labels <- sprintf(
+   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+   paste(prettyNum((round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
+               big.mark = ","), #this wouldn't be necessary to include for %s    
+         '%')) %>%
+   lapply(htmltools::HTML)
 
 
 # map settings
@@ -227,7 +227,7 @@ acs_map <- leaflet() %>%
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
-                       labFormat = labelFormat(prefix = "$"),
+                       labFormat = labelFormat(suffix = "%"),
                        decreasing = TRUE) %>% #to get legend high-low with correct color order
   
   # set view extent
@@ -246,11 +246,13 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 acs_map
 ```
 
+Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles`
+
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
 # set folder structure
-map_name <- 'f01-median-income-map.html'
+map_name <- 'e02-housing-cost-burden-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
@@ -268,23 +270,23 @@ data <- acs_data_tract %>%
 # calculate call out information
 # this calculation doesn't work for median income because median is unique - need to retrieve from census
 # calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
+#  dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
+#  dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
 # regional median income: 104322.7
 
-# x<-rep(data$estimate,times=data$total_pop20)
-# df1<-data.frame(x)
-# summary(df1$x)
-# median(df1$x, na.rm=TRUE)
-# hist(df1$x)
-# regional median life expectancy: 80.86 
+x<-rep(data$estimate,times=data$total_pop20)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median percentage of rent burdened population: 6.8% 
 
 # getting data by region from PUMS
 pums_data <- get_psrc_pums(span = 5,
                            dyear = 2021,
                            level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
+                           vars = "OWN_RENT")
+reg_median <- psrc_pums_count(pums_data, stat_var = "OWN_RENT")
 # regional median income: 96453.13
 
 sort <- data %>% 
@@ -303,15 +305,16 @@ sort <- data %>%
 #   dplyr::arrange(desc(income.wgt))
 
 # getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B19013', #subject table code
+coun5y_acs_data <- get_acs_recs(geography ='county', 
+                                table.names = 'B25070', #subject table code
                                 years = c(2021),
                                 acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
+county_acs_data <- coutny_acs_data %>% 
   dplyr::arrange(desc(estimate))
 ```
 
-1. $96,500: The region's median household income
+1. 6.8%: The region's average percentage of rent-cost burdened households
+2. 
 2. $250,000: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
 3. $21,000: The lowest median income census tract in the region
 
