@@ -359,13 +359,13 @@ data_clean_column <- data_clean %>%
 df = data_clean_column
 geo = "county"
 x = "focus_attribute_ord"
-y = "fact_value"
+y = "fact_value_notrounded"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 180000
+y_max = 12
 dec = 0
-esttype = "currency"
+esttype = "percent"
 color = "purples"
 title = "Rent Burdened Housholds"
 subtitle = "values are adjusted to 2021 dollars"
