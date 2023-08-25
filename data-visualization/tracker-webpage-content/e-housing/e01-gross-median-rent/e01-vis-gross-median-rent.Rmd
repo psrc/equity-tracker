@@ -341,6 +341,7 @@ coutny_acs_data <- coutny_acs_data %>%
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
 source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
+#source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'e01-gross-median-rent.rda'

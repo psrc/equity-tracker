@@ -23,8 +23,8 @@ knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
 ```{r library setup, include=FALSE}
-# devtools::install_github("psrc/psrcplot",
-#                          force=TRUE)
+#devtools::install_github("psrc/psrcplot",
+ #                      force=TRUE)
 library(psrcplot)
 library(tidyverse)
 library(magrittr)
@@ -343,6 +343,7 @@ county_acs_data <- acs_data_tract %>%
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
 source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
+#source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'e02-housing-cost-burden-data.rda'
