@@ -422,9 +422,9 @@ head(data_clean) # make sure this is the correct data set
 # make any additional edits 
 data_clean <- data_clean %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=-2)) #round median income value to hundreds - retain consistent name
+  mutate(fact_value=round(fact_value, digits=-2)) #round median income value to hundreds and set retain consistent name - if you are not working with $ you will need to change this to the correct number of digits you would like to round to (for example, if using decimals, you may want to set digits=2 or if you using whole numbers you may want to set digits=0)
 
-data_clean #check to make sure the rounding worked - if not will need to go back to generate data set in chunk around line 245
+data_clean #check to make sure the rounding worked for your indicator - if not will need to go back to generate data set in chunk around line 245
 ```
 Save final data set (.rda) for charts
 ```{r}
