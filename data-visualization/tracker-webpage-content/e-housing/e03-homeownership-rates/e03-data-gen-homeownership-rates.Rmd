@@ -1,7 +1,7 @@
 ---
-title: "Median Income" 
+title: "Homeownership Rates" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
-author: "Mary Richards"
+author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   word_document:
@@ -61,7 +61,7 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 ```
 
-**Median Income**
+**Homeownership Rates**
 
 # Download data 
 ## Primary data 
@@ -87,8 +87,8 @@ unique(pums_ospi_elmer$data_year)
 
 ```{r indicator specific information, include=FALSE}
 # set indicator information
-indicator_measure <- 'median_household_income'
-indicator_title <- 'Median household income'
+indicator_measure <- 'tenure'
+indicator_title <- 'Housing Tenure'
 ```
 
 ## 1. Explore data
@@ -130,24 +130,24 @@ These fields will vary by indicator:
 * Number of indicator-specific categories - this can vary depending on the indicator of interest, ranging from N/A (*median income*) to multiple levels (*crowding, housing cost burden*)
 ```{r}
 # metric
-unique(data_full$fact_type) #median
+unique(data_full$fact_type) #share
 
 # years
 num_yr <- length(unique(data_full$data_year)) #3
 unique(data_full$data_year)
 
 # indicator attributes
-num_indatt <- length(unique(data_full$indicator_attribute)) #1
-unique(data_full$indicator_attribute) #N/A
+num_indatt <- length(unique(data_full$indicator_attribute)) #2
+unique(data_full$indicator_attribute) 
 
 # calculate expected number of rows
-num_row <- num_yr*num_county*num_group*2*num_indatt #180
+num_row <- num_yr*num_county*num_group*2*num_indatt #360
 ```
 
 There are **`r num_county`** geographies and **`r num_group`** equity focus groups (each with **2** subgroups). There are **`r num_yr`** years in the data set and the indicator specific field has **`r num_indatt`** attribute(s), which means there should be a total of **`r num_row`** rows.
 ```{r}
 # count number of rows
-nrow(data_full) #170
+nrow(data_full) #320
 ```
 <span style="color: #00A7A0">There are some missing data.</span> 
 \
@@ -156,7 +156,7 @@ nrow(data_full) #170
 #### *checking for missing data*
 ##### Year / geography
 ```{r}
-num_yr_geo <- num_group*2*num_indatt #12
+num_yr_geo <- num_group*2*num_indatt #24
 ```
 If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
 ```{r, include=FALSE, eval=FALSE}
@@ -171,7 +171,7 @@ table(data_full$data_year,
 
 ##### Year / equity focus group
 ```{r}
-num_yr_grp <- num_county*2*num_indatt #10
+num_yr_grp <- num_county*2*num_indatt #20
 ```
 If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
 ```{r}
@@ -179,14 +179,14 @@ table(data_full$data_year,
       data_full$focus_type)
 ```
 <span style="color: #00A7A0">
-The disability category is missing all data in 2011.
+The disability and LEP category is missing all data in 2011.
 </span> 
 \
 \
 
 ##### Year / equity focus sub-group
 ```{r}
-num_yr_subgrp <- num_county*num_indatt #5
+num_yr_subgrp <- num_county*num_indatt #10
 ```
 If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
 ```{r}
@@ -289,7 +289,8 @@ data_clean <- data_full %>%
     focus_attribute== "Household with older adult"~ "Households with older adults",
     focus_attribute== "Household without older adult"~ "Other households")) %>% 
   mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, width=16)) %>%
-  mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) 
+  mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) %>%
+  filter(indicator_attribute == "Owned")
 
 # echarts wants axis to be factors/characters so convert year to a character
 data_clean$data_year <- as.character(data_clean$data_year)
@@ -320,7 +321,7 @@ These charts also help to confirm that the shares add up to 100% - only relevant
 # the years below reflect the years that are available from unique(data_year)
 just_region_11 <- data_clean %>% 
   filter(county=="Region") %>% 
-  filter(data_year==2011) %>% 
+  filter(data_year==2011) %>%
   arrange(focus_attribute_ord)
 just_region_16 <- data_clean %>% 
   filter(county=="Region") %>% 
@@ -328,14 +329,14 @@ just_region_16 <- data_clean %>%
   arrange(focus_attribute_ord)
 just_region_21 <- data_clean %>% 
   filter(county=="Region") %>% 
-  filter(data_year==2021)%>% 
+  filter(data_year==2021)%>%
   arrange(focus_attribute_ord)
 
 # check est type - make sure it corresponds to your indicator (percent, currency, or number)
 facet_chart <- static_facet_column_chart(t=just_region_11,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
@@ -348,7 +349,7 @@ facet_chart
 facet_chart <- static_facet_column_chart(t=just_region_16,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
@@ -360,7 +361,7 @@ facet_chart
 facet_chart <- static_facet_column_chart(t=just_region_21,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
@@ -400,19 +401,19 @@ qplot(focus_type_ord, fact_value,
       colour = county, shape = vulnerability, 
       data = data_clean11, 
       main = paste0(indicator_title, ": 2011")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
       data = data_clean16,
       main = paste0(indicator_title, ": 2016")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
       data = data_clean21, 
       main = paste0(indicator_title, ": 2021")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+                                                        axis.title.y = element_blank()) + ylim(0, 1)
 ```
 
 # **CHART .rda**
@@ -422,7 +423,7 @@ head(data_clean) # make sure this is the correct data set
 # make any additional edits 
 data_clean <- data_clean %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=-2)) #round median income value to hundreds and set retain consistent name - if you are not working with $ you will need to change this to the correct number of digits you would like to round to (for example, if using decimals, you may want to set digits=2 or if you using whole numbers you may want to set digits=0)
+  mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds and set retain consistent name - if you are not working with $ you will need to change this to the correct number of digits you would like to round to (for example, if using decimals, you may want to set digits=2 or if you using whole numbers you may want to set digits=0)
 
 data_clean #check to make sure the rounding worked for your indicator - if not will need to go back to generate data set in chunk around line 245
 ```
@@ -430,9 +431,9 @@ Save final data set (.rda) for charts
 ```{r}
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-file_name <- 'f01-median-income-data'
+theme_dir <- 'e-housing'
+ind_dir <- 'e03-homeownership-rates'
+file_name <- 'e03-homeownership-rates-data'
 
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,
@@ -461,20 +462,33 @@ nrow(tracts10.lyr) #773
 #### Corresponding ACS table
 ```{r acs data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
-x <- tidycensus::load_variables(2021,"acs5") %>% 
-  dplyr::filter(grepl("median household income",
-                      concept, ignore.case=TRUE) & 
-                  (geography=="tract"))
+#x <- tidycensus::load_variables(2021,"acs5") %>% 
+ # dplyr::filter(grepl("homeownership",
+  #                    concept, ignore.case=TRUE) & 
+   #               (geography=="tract"))
 
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
-                              table.names = 'B19013', #subject table code
+                              table.names = 'S1101', #subject table code
                               years = c(2021),
                               acs.type = 'acs5')
 
+# cleaning data to include total percentage of owner-occupied units
+acs_data <- base_acs_data %>% rename_at('label', ~'tenure')
+
+acs_data <- acs_data %>%
+  mutate(tenure=factor(
+             case_when(grepl("Owner-occupied", tenure) ~ "Owner-occupied units",
+                       !is.na(tenure) ~ "Extra"))) %>%
+  filter(variable == "S1101_C05_018")
+
 # filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
-acs_data <- base_acs_data %>% 
+acs_data <- acs_data %>% 
   dplyr::select(GEOID, estimate)
+
+acs_data <- acs_data %>% 
+  dplyr::select(GEOID, estimate)%>%
+  dplyr::filter(!is.na(estimate)) #estimate = total owner-occupied housing units in percentage
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
 ```
@@ -607,7 +621,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate)
 
 # set the variable
-var_name <- "Median Income"
+var_name <- "Housing Tenure"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -623,7 +637,7 @@ tract_map <- leaflet() %>%
               smoothFactor = 0.2,
               fillOpacity = 0.7,
               group = var_name,
-              label = round(acs_data_tract$estimate, digits=1)) %>%
+              label = round(acs_data_tract$estimate, digits=0)) %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
@@ -657,7 +671,7 @@ Save final data set (.rda) for map
 # This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
 
 # set folder structure
-file_name <- 'f01-median-income-map-data'
+file_name <- 'e03-homeownership-rates-map-data'
 
 # save final data set as .rda
 save(acs_data_tract, file = file.path(base_dir,
