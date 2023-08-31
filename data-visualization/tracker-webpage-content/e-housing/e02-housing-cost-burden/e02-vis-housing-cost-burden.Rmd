@@ -48,7 +48,7 @@ library(webshot2) #static image creation
 
 ```{r, choose output type}
 output_type <- "word"
-# output_type <- "html"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -323,9 +323,9 @@ county_acs_data <- acs_data_tract %>%
 
 #### Insights & Analysis
 
-* King County's census tract 53033032220 has the highest population in the region, and the highest percentage of rent-burdened households (\12%)
-* The five census tracts tied with the highest representation of rent-burdened households are the Issaquah Highlands (\12%) and Hollywood (\10.7%) in King County, Clearview (\11%) in Snohomish County, and the Fort Lewis (\10.7%) and West Frederickson (\10.5%) in Pierce County
-* The three census tracts with the lowest representation of rent-burdened households are Seattle's Bellevue (\1.6%), Snohomish County's southern tip of Edmonds (\1.7%), and Seattle's Georgetown neighborhood (\2%) 
+* King County's census tract 53033032220 has the highest population in the region, and the highest percentage of rent-burdened households (12%)
+* The five census tracts tied with the highest representation of rent-burdened households are the Issaquah Highlands (12%) and Hollywood (10.7%) in King County, Clearview (11%) in Snohomish County, and the Fort Lewis (10.7%) and West Frederickson (10.5%) in Pierce County
+* The three census tracts with the lowest representation of rent-burdened households are Seattle's Bellevue (1.6%), Snohomish County's southern tip of Edmonds (1.7%), and Seattle's Georgetown neighborhood (2%) 
 
 \
 \
@@ -370,7 +370,7 @@ dec = 0
 esttype = "percent"
 color = "purples"
 title = "Rent Burdened Housholds"
-subtitle = "values are adjusted to 2021 dollars"
+subtitle = "Percentage"
 source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -392,7 +392,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'e02-housing-cost-burden'
+file_name <- 'e02-housing-cost-burden-column'
 
 # column Chart - html for interactive
 rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
