@@ -485,7 +485,7 @@ acs_data <- dplyr::select(filter(acs_data, column== 'S2502_C03_001'| column== 'S
 acs_data <- acs_data %>% 
   pivot_wider(names_from = tenure, values_from = estimate)
 
-acs_data$estimate <- acs_data$Owner_occupied_units/acs_data$Total_units
+acs_data$estimate <- ((acs_data$Owner_occupied_units/acs_data$Total_units)*100)
 
 # filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
 acs_data <- acs_data %>% 

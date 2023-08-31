@@ -61,7 +61,7 @@ To map data in this form, it requires accessing data at the regional/tract level
 ```{r map legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+			    "topleft"), pal, values, na.label = "NA", bins = 9, colors, 
 		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
 		  title = NULL, className = "info legend", layerId = NULL, 
 		  group = NULL, data = getMapData(map), decreasing = FALSE) {
@@ -187,7 +187,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Housing <br> Tenure (Percentage)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Housing <br> Tenure" # the <br> could be adjusted depending on the length/spacing of the name
 
 #labels <- sprintf(
  # "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
@@ -278,20 +278,20 @@ x<-rep(data$estimate,times=data$total_pop20)
  summary(df1$x)
  median(df1$x, na.rm=TRUE)
  hist(df1$x)
-# regional median homeownership rates: 53.70
+# regional median homeownership rates: 67%
 
 # getting data by region from PUMS
 #pums_data <- get_psrc_pums(span = 5,
  #                          dyear = 2021,
   #                         level = "h",
    #                        vars = "OWN_RENT")
-
 #reg_count <- psrc_pums_count(pums_data, stat_var = "OWN_RENT")
 # regional median income: 96453.13
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+# 53061050600 (Woodway and Edmonds Waterfront), 53061042005 (Mukilteo), and 53061052206 (south of Lake Roesiger) in Snohomish County and, 53033032328 (Sammamish) and 53033031709 (west of Covington) in King County
+# Snohomish and King County are top 5 highest home-owning counties
 
 sort <- data %>% 
   dplyr::arrange(estimate)
@@ -299,31 +299,31 @@ sort <- data %>%
 # 53033030501 (Auburn, around 167)
 
 # this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
+by_county <- data %>% 
+   dplyr::group_by(county_name) %>% 
+   dplyr::summarise(ownership.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
+   dplyr::arrange(desc(ownership.wgt))
 
 # getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B19013', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
-  dplyr::arrange(desc(estimate))
+#coutny_acs_data <- get_acs_recs(geography ='county', 
+ #                               table.names = 'B19013', #subject table code
+  #                              years = c(2021),
+   #                             acs.type = 'acs5')
+#coutny_acs_data <- coutny_acs_data %>% 
+ # dplyr::arrange(desc(estimate))
 ```
 
-1. 53.7%: The region's median for census tracts with homeownership
-2. $250,000: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
-3. $21,000: The lowest median income census tract in the region
+1. 67%: The region's rate of homeownership
+2. 99%: The highest homeownership rates (99%) belong to five tracts in King and Snohomish Counties
+3. 0%: Nine census tracts in the region have rates of 0% homeownership (King, Pierce, and Kitsap counties)
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest median income (\$106,300), followed by Snohomish (\$95,600), Kitsap (\$84,600), and Pierce (\$82,600)
-* The five census tracts tied with the highest median income (\$250,000) are in King County: Laurelhurst neighborhood in Seattle, Clyde Hill/Yarrow Point/Hunts Point, Bellevue, and two tracts on Mercer Island
-* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000), downtown Tacoma (\$26,400), and Auburn around Route 167 (\$28,400)
+* Snohomish County has the highest average of homeownership rates (70%), followed by Kitsap (69%), Pierce (65%), and King (59%)
+* The five individual census tracts tied with the highest rates of homeownership (99-97%) are in Snohomish (Woodway and Edmonds Waterfront, Mukilteo, and south of Lake Roesiger) and King County (Sammamish and west of Covington)
+* Five of the census tracts with the lowest homeownership rates (0%) are in King County; four in Seattle's University District and one in the South Lake Union neighborhood. Snohomish County is the only county without 0% homeowmership rates
 
 \
 \
@@ -340,10 +340,11 @@ coutny_acs_data <- coutny_acs_data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('equity-tracker-chart-functions.R')
+source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
+#source('equity-tracker-chart-functions.R')
 
 # set folder structure
-rda <- 'f01-median-income-data.rda'
+rda <- 'e02-housing-cost-burden-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -365,8 +366,8 @@ y_max = 180000
 dec = 0
 esttype = "currency"
 color = "purples"
-title = "Median Household Income"
-subtitle = "values are adjusted to 2021 dollars"
+title = "Homeownership Rates"
+subtitle = "percentage"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -388,10 +389,10 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-column'
+file_name <- 'e03-homeownership-rates-column'
 
 # column Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -555,7 +556,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-line'
+file_name <- 'e03-homeownership-rates-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
