@@ -469,18 +469,23 @@ nrow(tracts10.lyr) #773
 
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
-                              table.names = 'S1101', #subject table code
+                              table.names = 'S2502', #subject table code
                               years = c(2021),
                               acs.type = 'acs5')
 
 # cleaning data to include total percentage of owner-occupied units
-acs_data <- base_acs_data %>% rename_at('label', ~'tenure')
+acs_data <- base_acs_data %>% rename_at('label', ~'tenure')%>%
+  rename_at ('variable', ~ 'column')
 
-acs_data <- acs_data %>%
-  mutate(tenure=factor(
-             case_when(grepl("Owner-occupied", tenure) ~ "Owner-occupied units",
-                       !is.na(tenure) ~ "Extra"))) %>%
-  filter(variable == "S1101_C05_018")
+acs_data <- dplyr::select(filter(acs_data, column== 'S2502_C03_001'| column== 'S2502_C01_001'), c('GEOID', 'estimate', 'tenure')) %>%
+  mutate(tenure = factor(case_when(tenure == "Estimate!!Owner-occupied housing units!!Occupied housing units" ~ "Owner_occupied_units",
+                                   TRUE ~ 'Total_units')))
+
+# pivot data to calculate percentage by census tract
+acs_data <- acs_data %>% 
+  pivot_wider(names_from = tenure, values_from = estimate)
+
+acs_data$estimate <- acs_data$Owner_occupied_units/acs_data$Total_units
 
 # filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
 acs_data <- acs_data %>% 
@@ -637,7 +642,7 @@ tract_map <- leaflet() %>%
               smoothFactor = 0.2,
               fillOpacity = 0.7,
               group = var_name,
-              label = round(acs_data_tract$estimate, digits=0)) %>%
+              label = round(acs_data_tract$estimate, digits=2)) %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
