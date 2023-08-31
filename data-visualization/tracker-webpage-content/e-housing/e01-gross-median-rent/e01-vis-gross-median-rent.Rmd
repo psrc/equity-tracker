@@ -48,7 +48,7 @@ library(webshot2) #static image creation
 
 ```{r, choose output type}
 output_type <- "word"
-# output_type <- "html"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -555,7 +555,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'e01-gross-median-rent'
+file_name <- 'e01-gross-median-rent-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
