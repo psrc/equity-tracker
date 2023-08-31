@@ -97,7 +97,6 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
                                  left = 15,
                                  controlStyle=FALSE,
                                  lineStyle=FALSE,
-                                 #currentIndex = 4,
                                  label = list(show=TRUE,
                                               interval = 0,
                                               color='#4C4C4C',
@@ -161,126 +160,17 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
       echarts4r::e_tooltip(trigger = "item")
   }
   
-  # Add the source to the 4th chart
-  #if (i == 4) {
-  #  
-  #  c <- c %>%
-  #    echarts4r::e_text_g(left = 0,
-  #                        bottom = 0,
-  #                        style = list(
-  #                          text = paste0("Source: ", data_source),
-  #                          fontFamily = "Poppins",
-  #                          fontSize = 12))
-  #}
-  
-  # Add Title to the first chart
-  #if (i == 1) {
-  #  
-  #  c <- c %>%
-  #    echarts4r::e_text_g(left = 0,
-  #                        top = 0,
-  #                        style = list(
-  #                          text = paste0(title),
-  #                          fontFamily = "Poppins",
-  #                          fontSize = 20))
-  #}
-  
   return(c)
   
 }
 
-equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", width = '420px', height = '380px') {
-  
-  num_facets <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::distinct() %>% dplyr::pull() %>% length()
-  
-  # Create the first chart
-  c1 <- echart_column_chart(df = df, geo = geo, x = x, y = y, 
-                            facet = facet, title = title, dec = dec, 
-                            y_min = y_min, y_max = y_max,
-                            esttype = esttype, i = 1,
-                            color = color,
-                            width = width, height = height)
-  
-  # Create the second chart if there are 2 or more facets
-  if (num_facets >= 2) {
-    
-    c2 <- echart_column_chart(df = df, geo = geo, x = x, y = y, 
-                              facet = facet, title = title, dec = dec, 
-                              y_min = y_min, y_max = y_max, 
-                              esttype = esttype, i = 2,
-                              color = color,
-                              width = width, height = height)
-    
-    if (num_facets == 2) {chart <- echarts4r::e_arrange(c1, c2, rows = 2, cols = 3) }
-    
-  }
-  
-  # Create the third chart if there are 3 or more facets
-  if (num_facets >= 3) {
-    
-    c3 <- echart_column_chart(df = df, geo = geo, x = x, y = y, 
-                              facet = facet, title = title, dec = dec, 
-                              y_min = y_min, y_max = y_max,
-                              esttype = esttype, i = 3,
-                              color = color,
-                              width = width, height = height)
-    
-    if (num_facets == 3) {chart <- echarts4r::e_arrange(c1, c2, c3, rows = 2, cols = 3) }
-    
-  }
-  
-  # Create the fourth chart if there are 4 or more facets
-  if (num_facets >= 4) {
-    
-    c4 <- echart_column_chart(df = df, geo = geo, x = x, y = y,
-                              facet = facet, title = title, dec = dec, 
-                              y_min = y_min, y_max = y_max,
-                              esttype = esttype, i = 4,
-                              color = color,
-                              width = width, height = height)
-    
-    if (num_facets == 4) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, rows = 2, cols = 3) }
-    
-  }
-  
-  # Create the fifth chart if there are 5 or more facets
-  if (num_facets >= 5) {
-    
-    c5 <- echart_column_chart(df = df, geo = geo, x = x, y = y, 
-                              facet = facet, title = title, dec = dec, 
-                              y_min = y_min, y_max = y_max,
-                              esttype = esttype, i = 5,
-                              color = color,
-                              width = width, height = height)
-    
-    if (num_facets == 5) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, c5, rows = 2, cols = 3) }
-    
-  }
-  
-  # Create the sixth chart if there are 5 or more facets
-  if (num_facets >= 6) {
-    
-    c6 <- echart_column_chart(df = df, geo = geo, x = x, y = y, 
-                              facet = facet, title = title, dec = dec, 
-                              y_min = y_min, y_max = y_max,
-                              esttype = esttype, i = 6,
-                              color = color,
-                              width = width, height = height)
-    
-    if (num_facets == 6) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, c5, c6, rows = 2, cols = 3) }
-    
-  }
-  
-  return(chart)
-
-}
-
 echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, esttype, i, color, width, height, fill) {
   
-  if (color == "blues") {color <- psrcplot::psrc_colors$blues_inc}
-  if (color == "greens") {color <- psrcplot::psrc_colors$greens_inc}
-  if (color == "oranges") {color <- psrcplot::psrc_colors$oranges_inc}
-  if (color == "purples") {color <- psrcplot::psrc_colors$purples_inc}
+  if (color == "blues") {chart_color <- psrcplot::psrc_colors$blues_inc}
+  if (color == "greens") {chart_color <- psrcplot::psrc_colors$greens_inc}
+  if (color == "oranges") {chart_color <- psrcplot::psrc_colors$oranges_inc}
+  if (color == "purples") {chart_color <- psrcplot::psrc_colors$purples_inc}
+  if (color == "jewel") {chart_color <- psrcplot::psrc_colors$pognbgy_5}
   
   max_data <- df %>% dplyr::select(tidyselect::all_of(y)) %>% dplyr::pull() %>% max()
   facet_values <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::pull() %>% unique
@@ -324,7 +214,7 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
   }
   
   c <- c %>% 
-    echarts4r::e_color(color) %>%
+    echarts4r::e_color(chart_color) %>%
     echarts4r::e_legend(show = TRUE, bottom=0) %>%
     echarts4r::e_tooltip() %>%
     echarts4r::e_grid(left = '15%', top = top_padding, bottom = bottom_padding) %>%
@@ -349,7 +239,6 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
                                  left = 15,
                                  controlStyle=FALSE,
                                  lineStyle=FALSE,
-                                 #currentIndex = 4,
                                  label = list(show=TRUE,
                                               interval = 0,
                                               color='#4C4C4C',
@@ -413,95 +302,118 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
   
 }
 
-equity_tracker_line_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color=psrc_colors$blues_inc, width = '420px', height = '380px', fill) {
+equity_arrange <- function(charts, rows = NULL, cols = NULL, width = "xs", title = NULL) {
   
-  num_facets <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::distinct() %>% dplyr::pull() %>% length()
+  plots <- charts
   
-  # Create the first chart
-  c1 <- echart_line_chart(df = df, geo = geo, x = x, y = y, 
-                          facet = facet, title = title, dec = dec, 
-                          y_min = y_min, y_max = y_max,
-                          esttype = esttype, i = 1,
-                          color = color,
-                          width = width, height = height,
-                          fill = fill)
-  
-  # Create the second chart if there are 2 or more facets
-  if (num_facets >= 2) {
-    
-    c2 <- echart_line_chart(df = df, geo = geo, x = x, y = y, 
-                            facet = facet, title = title, dec = dec, 
-                            y_min = y_min, y_max = y_max, 
-                            esttype = esttype, i = 2,
-                            color = color,
-                            width = width, height = height,
-                            fill = fill)
-    
-    if (num_facets == 2) {chart <- echarts4r::e_arrange(c1, c2, rows = 2, cols = 3) }
-    
+  if (is.null(rows)) {
+    rows <- length(plots)
   }
   
-  # Create the third chart if there are 3 or more facets
-  if (num_facets >= 3) {
-    
-    c3 <- echart_line_chart(df = df, geo = geo, x = x, y = y, 
-                            facet = facet, title = title, dec = dec, 
-                            y_min = y_min, y_max = y_max,
-                            esttype = esttype, i = 3,
-                            color = color,
-                            width = width, height = height,
-                            fill = fill)
-    
-    if (num_facets == 3) {chart <- echarts4r::e_arrange(c1, c2, c3, rows = 2, cols = 3) }
-    
+  if (is.null(cols)) {
+    cols <- 1
   }
   
-  # Create the fourth chart if there are 4 or more facets
-  if (num_facets >= 4) {
-    
-    c4 <- echart_line_chart(df = df, geo = geo, x = x, y = y,
-                            facet = facet, title = title, dec = dec, 
-                            y_min = y_min, y_max = y_max,
-                            esttype = esttype, i = 4,
-                            color = color,
-                            width = width, height = height,
-                            fill = fill)
-    
-    if (num_facets == 4) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, rows = 2, cols = 3) }
-    
+  w <- "-xs"
+  if (!isTRUE(getOption("knitr.in.progress"))) {
+    w <- ""
   }
   
-  # Create the fifth chart if there are 5 or more facets
-  if (num_facets >= 5) {
+  x <- 0
+  tg <- htmltools::tagList()
+  for (i in 1:rows) {
+    r <- htmltools::div(class = "row")
     
-    c5 <- echart_line_chart(df = df, geo = geo, x = x, y = y, 
-                            facet = facet, title = title, dec = dec, 
-                            y_min = y_min, y_max = y_max,
-                            esttype = esttype, i = 5,
-                            color = color,
-                            width = width, height = height,
-                            fill = fill)
-    
-    if (num_facets == 5) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, c5, rows = 2, cols = 3) }
-    
+    for (j in 1:cols) {
+      ifelse(j==2, z<-2, z<-1)
+      x <- x + 1
+      cl <- paste0("col", w, "-", 12 / cols)
+      if (x <= length(plots)) {
+        c <- htmltools::div(class = cl, plots[[x]], style = {paste0("z-index: ",z,";")})
+      } else {
+        c <- htmltools::div(class = cl)
+      }
+      r <- htmltools::tagAppendChild(r, c)
+    }
+    tg <- htmltools::tagAppendChild(tg, r)
   }
   
-  # Create the sixth chart if there are 5 or more facets
-  if (num_facets >= 6) {
-    
-    c6 <- echart_line_chart(df = df, geo = geo, x = x, y = y, 
-                            facet = facet, title = title, dec = dec, 
-                            y_min = y_min, y_max = y_max,
-                            esttype = esttype, i = 6,
-                            color = color,
-                            width = width, height = height,
-                            fill = fill)
-    
-    if (num_facets == 6) {chart <- echarts4r::e_arrange(c1, c2, c3, c4, c5, c6, rows = 2, cols = 3) }
-    
+  if (!isTRUE(getOption("knitr.in.progress"))) {
+    htmltools::browsable(
+      htmltools::div(
+        class = "container-fluid",
+        htmltools::tags$head(
+          htmltools::tags$link(
+            rel = "stylesheet",
+            href = "https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css",
+            integrity = "sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO",
+            crossorigin = "anonymous"
+          )
+        ),
+        htmltools::h3(title),
+        tg
+      )
+    )
+  } else {
+    if (!is.null(title)) {
+      htmltools::div(title, tg)
+    } else {
+      tg
+    }
   }
+}
+
+equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", width = '420px', height = '380px', r=2, c=3) {
+  
+  num_facets <- seq(1, df %>% select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
+  
+  create_charts <- partial(echart_column_chart, 
+                           df = df,
+                           geo = geo,
+                           x = x,
+                           y = y, 
+                           facet = facet,
+                           title = title,
+                           dec = dec, 
+                           y_min = y_min, 
+                           y_max = y_max,
+                           esttype = esttype, 
+                           color = color,
+                           width = width, 
+                           height = height)
+  
+  plots <- map(num_facets,create_charts)
+  
+  chart <- equity_arrange(charts=plots, rows=r, cols=c)
   
   return(chart)
   
 }
 
+equity_tracker_line_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", width = '420px', height = '380px', r=2, c=3, fill) {
+  
+  num_facets <- seq(1, df %>% select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
+  
+  create_charts <- partial(echart_line_chart, 
+                           df = df,
+                           geo = geo,
+                           x = x,
+                           y = y, 
+                           facet = facet,
+                           title = title,
+                           dec = dec, 
+                           y_min = y_min, 
+                           y_max = y_max,
+                           esttype = esttype, 
+                           color = color,
+                           width = width, 
+                           height = height,
+                           fill=fill)
+  
+  plots <- map(num_facets,create_charts)
+  
+  chart <- equity_arrange(charts=plots, rows=r, cols=c)
+  
+  return(chart)
+  
+}
