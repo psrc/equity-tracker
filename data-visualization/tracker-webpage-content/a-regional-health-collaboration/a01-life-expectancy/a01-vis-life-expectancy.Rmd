@@ -623,6 +623,18 @@ filter <- data_clean %>%
 # ((10.53081-2.67668)/(2.67668))*100: 293.4281% change
 
 filter <- data_clean %>% 
+  filter(county=="Region",
+         equity_group=="disability_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2015" |
+           data_year=="2020") 
+# 2015:low-high: 77.42494-77.69571=-0.27077
+# 2020:low-high: 76.63036-78.46467=-1.83431
+# ((-1.83431--0.27077)/(-0.27077))*100: 577.4421% change
+# 1.83431-0.27077=1.56354
+
+filter <- data_clean %>% 
   filter(county=="Snohomish",
          equity_group=="poc_quintile",
          quintile=="Low" | 
@@ -649,7 +661,9 @@ filter <- data_clean %>%
   filter(county!="Region",
          equity_group=="lep_quintile",
          quintile=="High")
-
+# King 2020-2010: 77.63977	
+# Pierce 2020-2010: 70.37597
+# Snohomish 2020-2010: 80.50632
 ```
 
 1. 3.9 years: The regional life expectancy gap between census tracts with the highest and lowest concentrations of people of color in 2010, a 15.8% smaller gap than in 2020
