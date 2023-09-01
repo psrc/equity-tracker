@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -245,7 +245,8 @@ map_name <- 'f02-kindergarten-readiness-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(ospi_map,
-                        file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
+                        # file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name),
+                        file=file.path('T:/2023August/Mary/EquityTracker/visual_trials', map_name))
 ```
 \
 \
@@ -334,7 +335,7 @@ rda <- 'f02-kindergarten-readiness-data.rda'
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
 
-```{r}
+```{r testing out different data, include=FALSE, eval=FALSE}
 #------------------------
 # checking where known issue is occurring with column facet chart - missing row for LEP
 kitsap_lep <- data_clean %>% 
@@ -400,6 +401,55 @@ test <- combined_data_null %>%
            data_year=="2012")
 
 #------------------------
+# adding null 2020 year to test line facet
+region_poc_2020 <- data_clean %>% 
+  filter(county=="Region",
+         focus_type=="POC_cat",
+         data_year=="2022") %>% 
+  mutate(data_year="2020",
+         fact_value=NULL,
+         fact_value_notrounded=NULL)
+
+region_income_2020 <- data_clean %>% 
+  filter(county=="Region",
+         focus_type=="Income_cat",
+         data_year=="2022") %>% 
+  mutate(data_year="2020",
+         fact_value=NULL,
+         fact_value_notrounded=NULL)
+
+region_disability_2020 <- data_clean %>% 
+  filter(county=="Region",
+         focus_type=="Disability_cat",
+         data_year=="2022") %>% 
+  mutate(data_year="2020",
+         fact_value=NULL,
+         fact_value_notrounded=NULL)
+
+region_lep_2020 <- data_clean %>% 
+  filter(county=="Region",
+         focus_type=="LEP_cat",
+         data_year=="2022") %>% 
+  mutate(data_year="2020",
+         fact_value=NULL,
+         fact_value_notrounded=NULL)
+
+# combine original data set with new df with NULL values
+combined_data_null <- dplyr::bind_rows(data_clean,
+                                       region_poc_2020,
+                                       region_income_2020,
+                                       region_disability_2020,
+                                       region_lep_2020)
+# remove indicator_fact_id
+combined_data_null <- combined_data_null %>% 
+  dplyr::select(2:16)
+
+# make sure new data set has nulls
+test <- combined_data_null %>% 
+  filter(county=="Region",
+         data_year=="2020")
+
+#------------------------
 # re-set up the order so that the colors/labels are correct
 county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
 focus_type_order <- c("People of Color", 
@@ -452,11 +502,14 @@ data_clean_test <- data_clean_test %>%
 
 ```{r column facet - pums}
 # Create Facet Column Chart
-data_clean_test_22 <- data_clean_test %>% 
+data_clean_22 <- data_clean %>%
   dplyr::filter(data_year=="2022") #filter on most recent year
+# data_clean_test_22 <- data_clean_test %>%
+#   dplyr::filter(data_year=="2022") #filter on most recent year
 
 # set variables 
-df = data_clean_test_22
+df = data_clean_22
+# df = data_clean_test_22
 geo = "county"
 x = "focus_attribute_ord"
 y = "fact_value"
@@ -465,8 +518,15 @@ fill = "focus_attribute_ord"
 y_min = 0
 y_max = 1
 dec = 0
+# width ="400px" # original
+width ="400px"
+# height ="380px" # original
+# height ="360px" # too tall
+# height ="340px" # too tall
+# height = "320px" # too tall
+height = "300px"
 esttype = "percent"
-color = "purples"
+color = "blues"
 title = "Kindergarten Readiness"
 subtitle = "percentage of students demonstrating readiness in 6 of 6 domains*"
 source = "Office of the Superintendent of Public Instruction (OSPI) <br> No 2022 data available for students with limited English proficiency in Kitsap County <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
@@ -481,7 +541,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
+                                            color = color,
+                                            width = width,
+                                            height = height)
 
 ```
 
@@ -506,9 +568,11 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 color = color,
                                 title = title,
                                 source = source,
-                                subtitle = subtitle),
+                                subtitle = subtitle,
+                                width = width,
+                                height = height),
                   output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+                  output_dir = file.path('T:/2023August/Mary/EquityTracker/visual_trials'))
 
 # Column Chart - png for use in static file
 # need to create a 'static-images' sub-folder in theme sub-folder if not already existing
@@ -618,10 +682,12 @@ filter <- data_clean22 %>%
 
 ```{r line facet - pums, include=FALSE}
 # Create Facet Line Chart
+# combined_data_null_reg <- combined_data_null %>% 
+#   filter(county=="Region")
 
 # set variables
+# df = combined_data_null_reg
 df = data_clean
-# df = data_clean_test
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
 color = "purples"
@@ -637,8 +703,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
-                                        width = '420px',
-                                        height = '380px')
+                                        width = width,
+                                        height = height)
 ```
 
 ```{r output final line chart - pums, include=FALSE}
@@ -664,11 +730,11 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,
-                                width = '420px',
-                                height = '380px',
+                                width = width,
+                                height = height,
                                 charttype = "line"),
                   output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+                  output_dir = file.path('T:/2023August/Mary/EquityTracker/visual_trials'))
 
 # Line Chart - png for use in static file
 webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
@@ -871,7 +937,9 @@ filter <- data_clean %>%
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(getwd())
-y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+# y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+y.drive.folder <- 'T:/2023August/Mary/EquityTracker/visual_trials'
+
 
 # isolate files in Github
 list.of.files <- list.files(current_folder, 
@@ -898,10 +966,10 @@ do.call(unlink, files.to.remove)
 ## Copy files from Y drive > website folder
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
-current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+current_folder <- 'T:/2023August/Mary/EquityTracker/visual_trials'
 
-web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-new.folder <- file.path(web.base.folder,theme_dir)
+web.base.folder <- '//WEB/website_data/equity-tracker-webpages/visual_trials'
+new.folder <- file.path(web.base.folder)
 
 list.of.files <- list.files(current_folder, 
                             full.names = T)

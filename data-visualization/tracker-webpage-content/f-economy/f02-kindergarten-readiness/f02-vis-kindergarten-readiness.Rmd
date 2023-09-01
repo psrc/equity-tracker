@@ -353,7 +353,7 @@ esttype = "percent"
 color = "purples"
 title = "Kindergarten Readiness"
 subtitle = "percentage of students demonstrating readiness in 6 of 6 domains*"
-source = "Office of the Superintendent of Public Instruction (OSPI) <br> No 2022 data available for students with limited English proficiency in Kitsap County <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
+source = "Washington Office of Superintendent of Public Instruction (OSPI) 2022-23 Washington Kindergarten Inventory of Developing Skills (WaKIDS) <br> No data available for students with limited English proficiency in Kitsap County <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -508,6 +508,7 @@ df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
 color = "purples"
+source = "Washington Office of Superintendent of Public Instruction (OSPI) 2021-23 Washington Kindergarten Inventory of Developing Skills (WaKIDS) <br> Limited data available for students with limited English proficiency in Kitsap County <br> No data available for school year 2020-21 <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
