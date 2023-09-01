@@ -645,22 +645,19 @@ filter <- data_clean %>%
 # 53128.96-39211.93=13917.03
 
 filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="POC_cat",
-         data_year=="2011" |
-           data_year=="2021")
-# 2011 king:82987.29-66233.98=16753.31
-# 2021 king:130977.15-111529.7=19447.45
-# ((19447.45-16753.31)/(16753.31))*100: 16.08124% change
-# 2011 kitsap:101045.37-78865.29=22180.08
-# 2021 kitsap:103185.85-85187.57=17998.28
-# ((17998.28-22180.08)/(22180.08))*100: -18.85385% change
-# 2011 pierce:87650.57-77922.34=9728.23
-# 2021 pierce:103124.26-84547.06=18577.2
-# ((18577.2-9728.23)/(9728.23))*100: 90.96177% change
-# 2011 snohomish:80736.67-64959.63=15777.04
-# 2021 snohomish:112974.44-108886.37=4088.07
-# ((4088.07-15777.04)/(15777.04))*100: -74.08849% change
+  filter(focus_type=="POC_cat")
+# 2011 king:70-50=20
+# 2021 king:62-46=16
+# ((16-20)/(20))*100: -20% change
+# 2011 kitsap:72-53=19
+# 2021 kitsap:73-54=19
+# ((19-19)/(19))*100: 0% change
+# 2011 pierce:70-56=26
+# 2021 pierce:69-50=19
+# ((19-26)/(26))*100: -27% change
+# 2011 snohomish:71-51=20
+# 2021 snohomish:71-61=10
+# ((10-20)/(20))*100: -50% change
 
 filter <- data_clean %>%
   filter(county=="Snohomish",
@@ -680,9 +677,9 @@ filter <- data_clean %>%
 
 #### Insights & Analysis
 
-* The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (+16.1%) and Kitsap County (-18.9%), while almost doubling in Pierce County (91.0%), and decreasing significantly in Snohomish County (-74,1%)
-* The median income of households below 200% of the poverty line stayed relatively static over time, while the the median income of households above 200% of the poverty line increased between 2011 and 2021, especially in King County (\$52,000) and Snohomish County (\$33,500)
-* The difference in median income of people with a disability compared to those without a disability between 2016 and 2021 stayed the same in all counties, except for King County, where the difference increased (\$13,900)
+* The difference in homeownership rates for people of color and white non-Hispanic over time has differed between counties: shifting greatest in Snohomish County (-50%), Pierce County (-27%), and King County (-20%), while remaining unchanged in Kitsap COunty. 
+* Households with people of color have the lowest homeownership rates in King County (46%) and Snohomish County households of color have the highest rates of homeownership in Snohomish County (61%) in 2021
+* The difference in homeownership rates of people with a disability compared to those without a disability between 2016 and 2021 stayed relatively the same in all counties, except Snohomish County, with a 5% increase in homeownership rates for people living with a disability, narrowing the gap
 
 
 \
