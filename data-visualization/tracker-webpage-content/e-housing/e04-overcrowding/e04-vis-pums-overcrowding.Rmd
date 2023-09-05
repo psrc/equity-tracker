@@ -285,11 +285,6 @@ sort <- data %>%
   dplyr::arrange(desc(estimate))
 # 53033005303 (University District), 53033011801 (Dunlap), 53035081400 (Kitsap - Port of Bremerton), 53053073132 (Pierce - South of South Hill), 53033007503 (NE of First Hill Neighborhood)
 
-sort <- data %>% 
-  dplyr::arrange(estimate)
-# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
-# 53033030501 (Auburn, around 167)
-
 # this calculation doesn't work for median income because median is unique - need to retrieve from census 
 #by_county <- data %>% 
  #  dplyr::group_by(county_name) %>% 
@@ -342,17 +337,17 @@ county_acs_data$estimate <- ((county_acs_data$Overcrowding/county_acs_data$Total
 # King (3.5), REGION (2.9), Snohomish (2.3), Pierce (2.1), Kitsap (1.2)
 ```
 
-1. $96,500: The region's median household income
-2. $250,000: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
-3. $21,000: The lowest median income census tract in the region
+1. King: The only county with higher overcrowding rates than the regional average
+2. 50%: The region's highest percentage of households living with >1.5 person(s) per bedroom
+3. 2.3%: Average percentage of households in a census tract that are living in an overcrowded home
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest median income (\$106,300), followed by Snohomish (\$95,600), Kitsap (\$84,600), and Pierce (\$82,600)
-* The five census tracts tied with the highest median income (\$250,000) are in King County: Laurelhurst neighborhood in Seattle, Clyde Hill/Yarrow Point/Hunts Point, Bellevue, and two tracts on Mercer Island
-* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000), downtown Tacoma (\$26,400), and Auburn around Route 167 (\$28,400)
+* King County has the highest rates of overcrowding (3.5%), followed by Snohomish (2.3%), Pierce (2.1%), and Kitsap (1.2%)
+* The five census tracts tied with the highest rates of overcrowding are in King County: U District (50%), Dunlap (35%), and NE of the First Hill Neighborhood (24%), along with the Port of Bremerton in Kitsap (31%) and South Hill in Pierce County (29%)
+* Over half of the census tracts in the region are not experiencing overcrowding (500 out of 919 tracts)
 
 \
 \
@@ -369,10 +364,11 @@ county_acs_data$estimate <- ((county_acs_data$Overcrowding/county_acs_data$Total
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('equity-tracker-chart-functions.R')
+source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
+#source('equity-tracker-chart-functions.R')
 
 # set folder structure
-rda <- 'f01-median-income-data.rda'
+rda <- 'e04-overcrowding-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -390,12 +386,12 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 180000
+y_max = 1
 dec = 0
-esttype = "currency"
+esttype = "percent"
 color = "purples"
-title = "Median Household Income"
-subtitle = "values are adjusted to 2021 dollars"
+title = "Overcrowding"
+subtitle = "More than 1.5 person(s) per bedroom"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -417,10 +413,10 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-column'
+file_name <- 'e04-overcrowding-column'
 
 # column Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -462,7 +458,7 @@ if (output_type == "html") {
   
 }
 
-# column_chart
+column_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
 `r source`
