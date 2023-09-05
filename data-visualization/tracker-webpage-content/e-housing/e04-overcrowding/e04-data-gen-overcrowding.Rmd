@@ -1,5 +1,5 @@
 ---
-title: "Crowding" 
+title: "Overcrowding" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -470,9 +470,30 @@ acs_data <- get_acs_recs(geography ='tract',
                          years = c(2021),
                          acs.type = 'acs5')
 
+# cleaning data to include total percentage of owner-occupied units
+acs_data_trial <- acs_data %>% rename_at('label', ~'per_bedroom')%>%
+  rename_at ('variable', ~ 'column')
+
+row_names <- c('B25014_002', 'B25014_003', 'B25014_004', 'B25014_005', 'B25014_006', 'B25014_007', 'B25014_008', 'B25014_009', 'B25014_010', 
+               'B25014_011', 'B25014_012', 'B25014_013')
+
+acs_data_trial <- acs_data_trial %>%
+  dplyr::filter(column %in% row_names) %>%
+  mutate(per_bedroom = factor(
+    case_when(per_bedroom == "Estimate!!Total:!!Owner occupied:" ~ "Owner_occupied_total",
+              per_bedroom == "Estimate!!Total:!!Renter occupied:" ~ "Renter_occupied_total",
+                                   TRUE ~ as.character(per_bedroom)))) %>%
+  mutate(per_bedroom=factor(
+             case_when(grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", per_bedroom) ~ "Less than 1.5 persons per bedroom",
+                       grepl("1.51 to 2.00|2.01 or more", per_bedroom) ~ "Overcrowding (More than 1.5 persons per bedroom)",
+                       TRUE ~ as.character(per_bedroom))))
+
 # filter only fields of interest - census tract and population
 acs_data <- acs_data %>% 
-  dplyr::select(GEOID, estimate)
+  dplyr::select(GEOID, rent_burden, estimate)%>%
+  dplyr::filter(!is.na(estimate))%>%
+  dplyr::group_by(GEOID, rent_burden)%>%
+  dplyr::summarise(estimate=mean(estimate))
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
 ```
@@ -605,7 +626,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate)
 
 # set the variable
-var_name <- "Median Income"
+var_name <- "Overcrowding (>1.5 persons)"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -655,7 +676,7 @@ Save final data set (.rda) for map
 # This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
 
 # set folder structure
-file_name <- 'f01-median-income-map-data'
+file_name <- 'e04-overcrowding-map-data'
 
 # save final data set as .rda
 save(acs_data_tract, file = file.path(base_dir,
