@@ -459,10 +459,6 @@ nrow(tracts10.lyr) #773
 #### Corresponding ACS table
 ```{r acs data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
-#x <- tidycensus::load_variables(2021,"acs5") %>% 
- # dplyr::filter(grepl("crowding",
-  #                    concept, ignore.case=TRUE) & 
-   #               (geography=="tract"))
 
 # getting data by tract
 acs_data <- get_acs_recs(geography ='tract', 
@@ -471,31 +467,49 @@ acs_data <- get_acs_recs(geography ='tract',
                          acs.type = 'acs5')
 
 # cleaning data to include total percentage of owner-occupied units
-acs_data_trial <- acs_data %>% rename_at('label', ~'per_bedroom')%>%
-  rename_at ('variable', ~ 'column')
-
 row_names <- c('B25014_002', 'B25014_003', 'B25014_004', 'B25014_005', 'B25014_006', 'B25014_007', 'B25014_008', 'B25014_009', 'B25014_010', 
                'B25014_011', 'B25014_012', 'B25014_013')
 
-acs_data_trial <- acs_data_trial %>%
-  dplyr::filter(column %in% row_names) %>%
+variable <- "Less than or equal to 1.5 persons per bedroom"
+
+acs_data <- acs_data %>% rename_at('label', ~'per_bedroom')%>%
+  rename_at ('variable', ~ 'type')
+
+acs_data_full <- acs_data %>%
+  dplyr::filter(type %in% row_names) %>%
   mutate(per_bedroom = factor(
-    case_when(per_bedroom == "Estimate!!Total:!!Owner occupied:" ~ "Owner_occupied_total",
-              per_bedroom == "Estimate!!Total:!!Renter occupied:" ~ "Renter_occupied_total",
+    case_when(per_bedroom == "Estimate!!Total:!!Owner occupied:" ~ "Total",
+              per_bedroom == "Estimate!!Total:!!Renter occupied:" ~ "Total",
                                    TRUE ~ as.character(per_bedroom)))) %>%
-  mutate(per_bedroom=factor(
-             case_when(grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", per_bedroom) ~ "Less than 1.5 persons per bedroom",
-                       grepl("1.51 to 2.00|2.01 or more", per_bedroom) ~ "Overcrowding (More than 1.5 persons per bedroom)",
-                       TRUE ~ as.character(per_bedroom))))
+  mutate(per_bedroom = factor(
+             case_when(grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", per_bedroom) ~ "Less than or equal to 1.5 persons per bedroom",
+                       grepl("1.51 to 2.00|2.01 or more", per_bedroom) ~ "Overcrowding",
+                       TRUE ~ as.character(per_bedroom)))) %>%
+  mutate(type = factor(
+    case_when(grepl("B25014_002|B25014_003|B25014_004|B25014_005|B25014_006|B25014_007", type) ~ "Owner",
+              grepl("B25014_008|B25014_009|B25014_010|B25014_011|B25014_012|B25014_013", type) ~ "Renter",
+              TRUE ~ as.character(per_bedroom))))%>%
+  dplyr::filter(type != 'Owner')    #this can be commented out for inclusion of both Owners and Renters
+
+# group similar rows
+acs_data <- acs_data_full %>% 
+  dplyr::group_by(GEOID, per_bedroom)%>%
+  dplyr::summarise(estimate=sum(estimate), .groups = 'drop')%>%
+  filter(per_bedroom != variable)
+
+# pivot data to calculate percentage by census tract
+acs_data <- acs_data %>% 
+  pivot_wider(names_from = per_bedroom, values_from = estimate)
+
+acs_data$estimate <- ((acs_data$Overcrowding/acs_data$Total)*100)
 
 # filter only fields of interest - census tract and population
 acs_data <- acs_data %>% 
-  dplyr::select(GEOID, rent_burden, estimate)%>%
-  dplyr::filter(!is.na(estimate))%>%
-  dplyr::group_by(GEOID, rent_burden)%>%
-  dplyr::summarise(estimate=mean(estimate))
+  dplyr::select(GEOID, estimate)
 
-# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
+acs_data <- acs_data %>% 
+  dplyr::select(GEOID, estimate)%>%
+  dplyr::filter(!is.na(estimate)) 
 ```
 
 ### Joining data
