@@ -1,7 +1,7 @@
 ---
-title: "Median Income"
+title: "Overcrowding"
 subtitle: "Visuals for Equity Tracker (PUMS data)"
-author: "Mary Richards"
+author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
@@ -168,10 +168,11 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ### Create Visual
 ```{r map .rda}
 # load map .rda
+
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-rda <- 'f01-median-income-map-data.rda'
+theme_dir <- 'e-housing'
+ind_dir <- 'e04-overcrowding'
+rda <- 'e04-overcrowding-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
@@ -187,21 +188,21 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Median Household <br> Income (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
-labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
-  paste("$", # if doesn't require prefix, this can be removed
-        prettyNum((round(acs_data_tract$estimate, digits=-2)),
-                  big.mark = ","))) %>%
-  lapply(htmltools::HTML)
+var_name <- "Overcrowding <br> (Percentage)" # the <br> could be adjusted depending on the length/spacing of the name
+#labels <- sprintf(
+ # "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
+  #paste("$", # if doesn't require prefix, this can be removed
+   #     prettyNum((round(acs_data_tract$estimate, digits=-2)),
+    #              big.mark = ","))) %>%
+  #lapply(htmltools::HTML)
 
 # if the label required a suffix instead of a prefix, for example a %, the code would look like this:
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
-#               big.mark = ","), #this wouldn't be necessary to include for %s    
-#         '%')) %>%
-#   lapply(htmltools::HTML)
+labels <- sprintf(
+   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+   paste(prettyNum((round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
+               big.mark = ","), #this wouldn't be necessary to include for %s    
+         '%')) %>%
+   lapply(htmltools::HTML)
 
 
 # map settings
@@ -227,7 +228,7 @@ acs_map <- leaflet() %>%
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
-                       labFormat = labelFormat(prefix = "$"),
+                       labFormat = labelFormat(suffix = "%"),
                        decreasing = TRUE) %>% #to get legend high-low with correct color order
   
   # set view extent
@@ -250,7 +251,7 @@ acs_map
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
 # set folder structure
-map_name <- 'f01-median-income-map.html'
+map_name <- 'e04-overcrowding-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
@@ -265,31 +266,24 @@ htmlwidgets::saveWidget(acs_map,
 data <- acs_data_tract %>%
   st_drop_geometry()
 
-# calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
-
-# x<-rep(data$estimate,times=data$total_pop20)
-# df1<-data.frame(x)
-# summary(df1$x)
-# median(df1$x, na.rm=TRUE)
-# hist(df1$x)
+x<-rep(data$estimate,times=data$total_pop20)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
 # regional median life expectancy: 80.86 
 
 # getting data by region from PUMS
-pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
-                           level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
+#pums_data <- get_psrc_pums(span = 5,
+ #                          dyear = 2021,
+  #                         level = "h",
+   #                        vars = "HINCP")
+#reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
 # regional median income: 96453.13
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+# 53033005303 (University District), 53033011801 (Dunlap), 53035081400 (Kitsap - Port of Bremerton), 53053073132 (Pierce - South of South Hill), 53033007503 (NE of First Hill Neighborhood)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
@@ -297,18 +291,55 @@ sort <- data %>%
 # 53033030501 (Auburn, around 167)
 
 # this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
+#by_county <- data %>% 
+ #  dplyr::group_by(county_name) %>% 
+  # dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
+   #dplyr::arrange(desc(income.wgt))
 
 # getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B19013', #subject table code
+county_acs_data <- get_acs_recs(geography ='county', 
+                                table.names = 'B25014', #subject table code
                                 years = c(2021),
                                 acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
-  dplyr::arrange(desc(estimate))
+
+# cleaning data to include total percentage of owner-occupied units
+row_names <- c('B25014_002', 'B25014_003', 'B25014_004', 'B25014_005', 'B25014_006', 'B25014_007', 'B25014_008', 'B25014_009', 'B25014_010', 
+               'B25014_011', 'B25014_012', 'B25014_013')
+
+variable <- "Less than or equal to 1.5 persons per bedroom"
+
+county_acs_data <- county_acs_data %>% rename_at('label', ~'per_bedroom')%>%
+  rename_at ('variable', ~ 'type')
+
+county_acs_data <- county_acs_data %>%
+  dplyr::filter(type %in% row_names) %>%
+  mutate(per_bedroom = factor(
+    case_when(per_bedroom == "Estimate!!Total:!!Owner occupied:" ~ "Total",
+              per_bedroom == "Estimate!!Total:!!Renter occupied:" ~ "Total",
+                                   TRUE ~ as.character(per_bedroom)))) %>%
+  mutate(per_bedroom = factor(
+             case_when(grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", per_bedroom) ~ "Less than or equal to 1.5 persons per bedroom",
+                       grepl("1.51 to 2.00|2.01 or more", per_bedroom) ~ "Overcrowding",
+                       TRUE ~ as.character(per_bedroom)))) %>%
+  mutate(type = factor(
+    case_when(grepl("B25014_002|B25014_003|B25014_004|B25014_005|B25014_006|B25014_007", type) ~ "Owner",
+              grepl("B25014_008|B25014_009|B25014_010|B25014_011|B25014_012|B25014_013", type) ~ "Renter",
+              TRUE ~ as.character(per_bedroom))))%>%
+  dplyr::filter(type != 'Owner')    #this can be commented out for inclusion of both Owners and Renters
+
+# group similar rows
+county_acs_data <- county_acs_data %>% 
+  dplyr::group_by(GEOID, name, per_bedroom)%>%
+  dplyr::summarise(estimate=sum(estimate), .groups = 'drop')%>%
+  filter(per_bedroom != variable)
+
+# pivot data to calculate percentage by census tract
+county_acs_data <- county_acs_data %>% 
+  pivot_wider(names_from = per_bedroom, values_from = estimate)
+
+county_acs_data$estimate <- ((county_acs_data$Overcrowding/county_acs_data$Total)*100)
+
+# King (3.5), REGION (2.9), Snohomish (2.3), Pierce (2.1), Kitsap (1.2)
 ```
 
 1. $96,500: The region's median household income
