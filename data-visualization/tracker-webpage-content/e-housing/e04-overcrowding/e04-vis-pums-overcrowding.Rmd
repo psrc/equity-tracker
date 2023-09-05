@@ -376,7 +376,8 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2021") #filter on most recent year
+  dplyr::filter(data_year=="2021")%>% #filter on most recent year
+  dplyr::filter(indicator_attribute=="More than 1.5 persons per bedroom")
 
 # set variables 
 df = data_clean_column
@@ -386,7 +387,7 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 1
+y_max = 0.5
 dec = 0
 esttype = "percent"
 color = "purples"
@@ -525,9 +526,9 @@ filter <- data_clean_column %>%
 
 ```
 
-1. \$25,400: The regional household median income of those who are below 200% of the poverty level
-2. \$58,400: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
-3. \$39,300 years: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
+1. 19%: The regional level of overcrowding for people of color, 10 percentage points higher than white non-Hispanic households
+2. 24%: Percentage of non-Enlgish proficient households experiencing overcrowding, 13 percentage points higher than than English proficient households
+3. 16%: Households with children (below 18 years old) are 16 percentage points higher than households without children
 
 \
 
