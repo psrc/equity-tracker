@@ -472,9 +472,7 @@ filter <- data_clean_column %>%
   filter(county=="Region",
          focus_type=="Income_cat")
 
-# region low income households: 25409.57	
-# region non-low income households: 135561.35
-# 135561.35-25409.57=110151.8
+# region low income households: 20% vs 10% - double
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
@@ -510,7 +508,7 @@ filter <- data_clean_column %>%
 # 130977.15-111529.77=19447.38
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="Disability_cat")
+  filter(focus_type=="Youth_cat")
 # kitsap dis: 84171.34
 # kitsap non-dis: 104284.10
 # 104284.10-84171.34=20112.76
@@ -534,10 +532,9 @@ filter <- data_clean_column %>%
 
 #### Insights & Analysis
 
-* The smallest difference in median income between people of color and white non-Hispanic is in Snohomish County (\$4,100), while the largest difference is in King County (\$19,400)
-* For households who are below 200% of the poverty level, the median income is lowest in King County (\$24,100), followed by Snohomish and Kitsap (\$26,100), and Pierce (\$27,700)
-* The largest difference in median income between people with and without a disability is in King County (\$53,100), while the smallest difference is in County (\$20,100)
-* Snohomish County is the only county where Non-English proficient households have higher median incomes (\$67,800) than the region's Non-English proficient households (\$58,300)
+* The largest difference in overcrowding rates between people of color and white non-Hispanic is in Snohomish and King County (11 percentage points), while the smallest difference is in Pierce County (7 percentage points)
+* The largest difference in households experiencing overcrowding between people with and without a disability is in Pierce and Snohomish County (only 2 percentage points), while the rest of the counties show no disparities
+* Households with children (below 18 years old) and households with non-English proficient speakers have the highest rates of overcrowding across all of the equity indicators, regardless of county (21-25%). However, there are the largest disparities between households with youth and without youth (up to 16 percentage point difference)
 
 \
 \
@@ -581,10 +578,10 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-line'
+file_name <- 'e04-overcrowding-line'
 
 # Line Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -627,7 +624,7 @@ if (output_type == "html") {
   knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
   
 }
-# line_chart
+line_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
 `r source`
