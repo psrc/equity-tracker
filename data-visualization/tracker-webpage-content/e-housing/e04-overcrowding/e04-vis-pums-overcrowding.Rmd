@@ -552,6 +552,9 @@ filter <- data_clean_column %>%
 ```{r line facet - pums, include=FALSE}
 # Create Facet Line Chart
 
+data_clean <- data_clean %>% 
+  dplyr::filter(indicator_attribute=="More than 1.5 persons per bedroom")
+
 # set variables
 df = data_clean
 x = "data_year" # different from variables for facet column
@@ -636,32 +639,32 @@ line_chart
 filter <- data_clean %>%
   filter(county=="Region",
          focus_type=="Income_cat")
-# 2021 low income: 25409.57
-# 2021 non-low income: 135561.35
-# 135561.35-25409.57=110151.8
-# 2011 low income: 24829.81
-# 2011 non-low income: 106454.25
-# 106454.25-24829.81=81624.44
-# ((110151.8-81624.44)/(81624.44))*100: 34.94953% change
+# 2021 low income: 20
+# 2021 non-low income: 10
+# 10-20=-10
+# 2011 low income: 6
+# 2011 non-low income: 1
+# 1-6=-5
+# ((-10--5)/(-5))*100: 100% change??
 
 
 filter <- data_clean %>%
   filter(county=="Region",
          focus_type=="POC_cat")
-# 2021 poc: 102481.29
-# 2021 non-poc: 118053.44
-# 118053.44-102481.29=15572.15
+# 2021 poc: 19
+# 2021 non-poc: 9
+# 9-19= -10
 
 filter <- data_clean %>%
   filter(county=="Region",
          focus_type=="Older_cat")
-# 2021 older: 83306.58
-# 2021 non-older: 124514.77
-# 124514.77-83306.58=41208.19
-# 2011 older: 62308.22
-# 2011 non-older: 94026.28
-# 94026.28-62308.22= 31718.06
-# ((41208.19-31718.06)/(31718.06))*100: 29.92027% change
+# 2021 older: 6
+# 2021 non-older: 14
+# 14-6=8
+# 2011 older: 1
+# 2011 non-older: 2
+# 2-1= 1
+# ((8-1)/(1))*100: 700% change?
 
 filter <- data_clean %>%
   filter(county != "Region",
@@ -698,13 +701,15 @@ filter <- data_clean %>%
 # Snohomish non-low income:130900.06-97445.42=33454.64
 ```
 
-1. \$110,200: In 2021, households in the region who were below 200% of the poverty line made \$110,200 less than households above the 200% poverty line, a 34.9% larger gap than in 2011
-2. \$15,600: Regionally, people of color have median households incomes \$15,600 lower than white non-Hispanic households, a gap which has remained relatively consistent in the last ten years
-3. \$36,600: The median household income of households in the region with older adults is $36,600 lower than households without older adults, an increase of 29.9% from 2011
+1. 20%: In 2021, households in the region who were below 200% of the poverty line were twice as likely to experience overcrowding compared to households above the 200% poverty line, a 100% larger gap than in 2011
+2. 10%: Regionally, people of color experience overcrowding at 10 percentage points higher than white non-Hispanic households, a gap which has more than doubled since 2011
+3. 700%: The regional gap between overcrowding in households in the region with older adults compared to households without older adults, has grown 700% since 2011
 
 \
 
 #### Insights & Analysis
+
+* 
 
 * The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (+16.1%) and Kitsap County (-18.9%), while almost doubling in Pierce County (91.0%), and decreasing significantly in Snohomish County (-74,1%)
 * The median income of households below 200% of the poverty line stayed relatively static over time, while the the median income of households above 200% of the poverty line increased between 2011 and 2021, especially in King County (\$52,000) and Snohomish County (\$33,500)
