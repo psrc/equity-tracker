@@ -60,20 +60,20 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 ```
 
-**Life Expectancy at Birth**
+**Toxic Release Site Inventory**
 
 # Download data 
 ## Primary data 
-Data comes from [WTN](https://fortress.wa.gov/doh/wtn/WTNPortal#!q0=655). Separate CSVs at the census tract geography are available (manual download) for 5y time spans at 1y increments, starting in 2000, until 2020.
+Data comes from [EPA](https://www.epa.gov/toxics-release-inventory-tri-program). Separate CSVs at the point-level geography are available (manual download) for 1y increments, updated annually, with the most recent year being 2023.
 ```{r, include=FALSE}
-folder_path <- "Y:/Equity Indicators/tracker-webpage-content/a-regional-health-collaboration/a01-life-expectancy/raw-data"
+folder_path <- "Y:/Equity Indicators/tracker-webpage-content/a-regional-health-collaboration/b02-toxic-release/raw-data"
 life_expec_01_05 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
 life_expec_06_10 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
 life_expec_11_15 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_11_15.csv"))
 life_expec_16_20 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
 ```
 \
-Although there are 4 possible data sets (*2001-2005, 2006-2010, 2011-2015, 2016-2020*), we will be using the three more recent data sets to keep it to 2010 and onward. 
+Although there are innumerable possible data sets, we will be using the most recent data set to keep it to (*2023*). 
 
 
 ## Additional data
