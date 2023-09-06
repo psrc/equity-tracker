@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -48,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+#output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -314,7 +314,7 @@ by_county <- data %>%
  # dplyr::arrange(desc(estimate))
 ```
 
-1. 67%: The region's rate of homeownership
+1. 67%: The region's average rate of homeownership
 2. 99%: The highest homeownership rates (99%) belong to five tracts in King and Snohomish Counties
 3. 0%: Nine census tracts in the region have rates of 0% homeownership (King, Pierce, and Kitsap counties)
 
@@ -322,9 +322,9 @@ by_county <- data %>%
 
 #### Insights & Analysis
 
-* Snohomish County has the highest average of homeownership rates (70%), followed by Kitsap (69%), Pierce (65%), and King (59%)
-* The five individual census tracts tied with the highest rates of homeownership (99-97%) are in Snohomish (Woodway and Edmonds Waterfront, Mukilteo, and south of Lake Roesiger) and King County (Sammamish and west of Covington)
-* Five of the census tracts with the lowest homeownership rates (0%) are in King County; four in Seattle's University District and one in the South Lake Union neighborhood. Snohomish County is the only county without 0% homeowmership rates
+* Snohomish County has the highest homeownership rates (70%), followed by Kitsap (69%), Pierce (65%), and King (59%)
+* The five census tracts tied with the highest rates of homeownership (99-97%) are in Snohomish (Woodway and Edmonds Waterfront, Mukilteo, and south of Lake Roesiger) and King County (Sammamish and west of Covington)
+* Five census tracts with the lowest homeownership rates (0%) are in King County; four in Seattle's University District and one in the South Lake Union neighborhood. Snohomish County is the only county without 0% homeowmership rates
 
 \
 \
@@ -341,8 +341,8 @@ by_county <- data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-#source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
-source('equity-tracker-chart-functions.R')
+source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
+#source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'e03-homeownership-rates-data.rda'
@@ -497,17 +497,17 @@ filter <- data_clean_column %>%
 
 ```
 
-1. 34%: The difference between regional homeownership rates for households with a median income of those who are above or below 200% of the poverty level
-2. 66%: The median household income of households with children (below 18 years old) is 66%, only 7% higher than households without children
-3. 23%: Non-English proficient households have homeownership rates that are 23% lower than English proficient households
+1. 34%: Difference between regional homeownership rates for households living above or below 200% of the poverty level
+2. 66%: The median homeownership rates of households living with children (below 18 years old) is 66%, only 7 percentage points higher than households without children
+3. 23%: Non-English proficient households have homeownership rates that are 23 percentage points lower than English proficient households
 
 
 \
 
 #### Insights & Analysis
 
-* For households who are below 200% of the poverty level, homeownership rates were highest in Kitsap County (42%) followed by Pierce (38%), Snohomish (37%), and King (29%) 
-* The largest difference in homeownership rates between people of color and white non-Hispanic is in Kitsap and Pierce County (19%), while the smallest difference is in Snohomish County (10%)
+* For households who are living below 200% of the poverty level, homeownership rates were highest in Kitsap County (42%) followed by Pierce (38%), Snohomish (37%), and King (29%) 
+* The largest difference in homeownership rates between people of color and white non-Hispanic is in Kitsap and Pierce County (19 percentage points), while the smallest difference is in Snohomish County (10 percentage points)
 * King County is the only county where Non-English proficient households have lower homeownership rates (39%) than the region's Non-English proficient households (41%)
 
 \
@@ -669,17 +669,17 @@ filter <- data_clean %>%
 # Snohomish non-low income:130900.06-97445.42=33454.64
 ```
 
-1. 34%: In 2021, households in the region who were below 200% of the poverty line made had homeownership rates of 34% less than households above the 200% poverty line, a %13% smaller gap than in 2011
-2. 54%: King County has the lowest rates of homeownership for people with a disability (54%)
-3. 20%: The homeownership rates of households in the region with older adults has remained consistently 20% lower than households without older adults, since 2016
+1. 34%: In 2021, households in the region who were living below 200% of the poverty level had homeownership rates 34 percentage points less than households above the 200% poverty line, a 13% smaller gap than in 2011
+2. 54%: King County has the lowest rates of homeownership for people living with a disability (at 54%)
+3. 20%: The homeownership rates of households in the region with older adults has remained consistently 20 percentage points lower than households without older adults, since 2016
 
 \
 
 #### Insights & Analysis
 
-* The difference in homeownership rates for people of color and white non-Hispanic over time has differed between counties: shifting greatest in Snohomish County (-50%), Pierce County (-27%), and King County (-20%), while remaining unchanged in Kitsap COunty. 
-* Households with people of color have the lowest homeownership rates in King County (46%) and Snohomish County households of color have the highest rates of homeownership in Snohomish County (61%) in 2021
-* The difference in homeownership rates of people with a disability compared to those without a disability between 2016 and 2021 stayed relatively the same in all counties, except Snohomish County, with a 5% increase in homeownership rates for people living with a disability, narrowing the gap
+* The difference in homeownership rates for people of color and white non-Hispanic over time has shifted the greatest in Snohomish County (-50%), Pierce County (-27%), and King County (-20%), while remaining unchanged in Kitsap COunty
+* In 2021, people of color have the lowest homeownership rates in King County (46%), and the highest rates of homeownership in Snohomish County (61%)
+* The difference in homeownership rates of people with a disability compared to those living without a disability has stayed relatively the same between 2016 and 2021 in all counties, except un Snohomish County, where there has been a 5% increase in homeownership rates for people living with a disability, narrowing the gap
 
 
 \
