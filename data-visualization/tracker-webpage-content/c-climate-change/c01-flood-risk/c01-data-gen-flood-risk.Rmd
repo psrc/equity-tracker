@@ -1,7 +1,7 @@
 ---
-title: "Life Expectancy"
+title: "Flood Risk"
 subtite: "Data Gen: Exploring, Cleaning, Transforming (tract data)"
-author: "Mary Richards"
+author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   word_document:
@@ -60,13 +60,13 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 ```
 
-**Life Expectancy at Birth**
+**Flood Risk**
 
 # Download data 
 ## Primary data 
-Data comes from [WTN](https://fortress.wa.gov/doh/wtn/WTNPortal#!q0=655). Separate CSVs at the census tract geography are available (manual download) for 5y time spans at 1y increments, starting in 2000, until 2020.
+Data comes from [First Street Foundation](https://firststreet.org/data-access/public-access/). Separate CSVs at the census tract geography through FSF's AWS Data Portland and are available (manual download) for 5y time spans at 1y increments, starting in 2000, until 2020.
 ```{r, include=FALSE}
-folder_path <- "Y:/Equity Indicators/tracker-webpage-content/a-regional-health-collaboration/a01-life-expectancy/raw-data"
+folder_path <- "Y:/Equity Indicators/tracker-webpage-content/a-regional-health-collaboration/c01-flood-risk/raw-data"
 life_expec_01_05 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
 life_expec_06_10 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
 life_expec_11_15 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_11_15.csv"))
@@ -92,7 +92,7 @@ crosswalk_10_20 <- get_table(schema="census",
 ```
 
 ### tract-level population data
-to weight life expectancy for 2010, 2015, 2020
+to weight exposure of population for 2010, 2015, 2020
 ```{r, include=FALSE}
 # getting census population data by tract
 tracts_10_15_20 <- get_acs_recs(geography ='tract', 
@@ -122,7 +122,7 @@ nrow(tracts10.lyr) #773
 ```
 
 # Explore data
-The 2010 and 2015 equity tracts are in 2010 geographies and include ~770 census tracts, each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The 2010, 2015, an 2020 life expectancy data are available from WTN in 2010 geographies, so the 2020-year data will need to be translated to 2020 geographies to be able to use the 2020 population information.
+The 2010 and 2015 equity tracts are in 2010 geographies and include ~770 census tracts, each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The 2010, 2015, an 2020 life expectancy data are available from FSF in 2010 geographies, so the 2020-year data will need to be translated to 2020 geographies to be able to use the 2020 population information.
 ```{r, include=FALSE}
 # check number of rows in data sets
 nrow(life_expec_01_05) #1465
