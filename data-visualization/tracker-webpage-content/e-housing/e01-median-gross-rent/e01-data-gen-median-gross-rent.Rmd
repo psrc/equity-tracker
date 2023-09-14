@@ -470,15 +470,19 @@ base_acs_data <- get_acs_recs(geography ='tract',
                          years = c(2021),
                          acs.type = 'acs5')
 
+# data wrangling for grouping >30% and under 30% - census tract and population
+acs_data <- base_acs_data %>% rename_at('variable', ~'column')
+
 # clean up to median rent per census tract
-acs_data <- base_acs_data %>%
-  dplyr::select(filter(variable == 'B25031_001'), c('GEOID', 'variable', 'label', 'estimate', 'moe')) %>%
+acs_data <- acs_data %>%
+  dplyr::select(filter(column == 'B25031_001'), c('GEOID', 'column', 'label', 'estimate', 'moe')) %>%
   mutate(label = factor(case_when(label == "Estimate!!Median gross rent --!!Total:" ~ "Median Rent",
                                    TRUE ~ as.character(label))))
 
 # calculate relative reliability score
 acs_data$reliability <- (((acs_data$moe/1.645)/acs_data$estimate)*100) 
 acs_data$reliability <- round(acs_data$reliability, 1)
+acs_data$estimate <- signif(acs_data$estimate, digits=floor(log10(acs_data$estimate)))
 
 # filter only fields of interest - census tract and estimate (gross_median_rent)
 acs_data <- acs_data %>% 
