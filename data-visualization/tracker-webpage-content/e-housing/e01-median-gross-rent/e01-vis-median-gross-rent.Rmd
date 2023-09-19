@@ -1,5 +1,5 @@
 ---
-title: "Gross Median Rent"
+title: "Median Gross Rent"
 subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -55,6 +55,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 \
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+
+## Indicator Explanation
+Gross rent measures the average rent for the location, in this case being census tract, and "median" indicates that the middle value in between the census tracts highest gross rent and lowest gross rent is what represents the gross median rent value. Oftentimes, a higher gross median rent can indicate that some families and households are priced out of an area, limiting options of living close to transit, in neighborhoods with good schools, and limiting opportunity and access. 
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -170,8 +173,8 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 theme_dir <- 'e-housing'
-ind_dir <- 'e01-gross-median-rent'
-rda <- 'e01-gross-median-rent-map-data.rda'
+ind_dir <- 'e01-median-gross-rent'
+rda <- 'e01-median-gross-rent-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
@@ -191,7 +194,7 @@ var_name <- "Gross Median <br> Rent (2021 USD)" # the <br> could be adjusted dep
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
   paste("$", # if doesn't require prefix, this can be removed
-        prettyNum((round(acs_data_tract$estimate, digits=-0)),
+        prettyNum((round(acs_data_tract$estimate, digits=0)),
                   big.mark = ","))) %>%
   lapply(htmltools::HTML)
 
@@ -252,7 +255,7 @@ Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimat
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
 # set folder structure
-map_name <- 'e01-gross-median-rent-map.html'
+map_name <- 'e01-median-gross-rent-map.html'
 
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
@@ -314,17 +317,17 @@ coutny_acs_data <- coutny_acs_data %>%
   filter(variable == "B25031_001")
 ```
 
-1. \$1,791: Regional median gross rent
-2. \$3,500: Highest median gross rent for census tracts (in King County)
-3. \$576: Lowest average gross median rent (in Pierce County)
+1. \$1,790: Regional median gross rent
+2. \$3,500: Highest median gross rent (in King County)
+3. \$1,440: Lowest median gross rent (in Pierce County)
 
 \
 
 #### Insights & Analysis
 
 * King County has the highest median gross rent (\$1,800), followed by Snohomish (\$1,640), and Kitsap and Pierce (both \$1,440)
-* The seven census tracts tied with the highest gross median rent (\$3,500) are in King County: two tracts in southern Mercer Island, southern Bainbridge Island, Bellevue, the neighborhood east of Lake Sammamish, the neighborhood south of Ames Lake, and Clyde Hill
-* The three census tracts with the lowest gross median rent are in Pierce and Snohomish Counties; Yakima (\$574), Silver Firs just west of Route 9 (\$619), and the Tulalip Reservation (\$775)
+* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three tracts in southern Mercer Island, two in CLyde Hill/Hunts POint/Medina/Yarrow Point, two in Bellvue, two in Sammamish, and on in southwestern Bainbridge Island
+* The highest median gross rent in Pierce, Kitsap, and Snohomish County are:  and the Tulalip Reservation (\$775)
 
 \
 \
@@ -345,7 +348,7 @@ source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-
 #source('equity-tracker-chart-functions.R')
 
 # set folder structure
-rda <- 'e01-gross-median-rent.rda'
+rda <- 'e01-median-gross-rent.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -362,7 +365,7 @@ x = "focus_attribute_ord"
 y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
-y_min = 500
+y_min = 0
 y_max = 4000
 dec = 0
 esttype = "currency"
@@ -390,7 +393,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'e01-gross-median-rent-column'
+file_name <- 'e01-median-gross-rent-column'
 
 # column Chart - html for interactive
 rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
@@ -556,7 +559,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'e01-gross-median-rent-line'
+file_name <- 'e01-median-gross-rent-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
