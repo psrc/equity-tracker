@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+#output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -61,7 +61,7 @@ To map data in this form, it requires accessing data at the regional/tract level
 ```{r map legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+			    "topleft"), pal, values, na.label = "NA", bins = 9, colors, 
 		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
 		  title = NULL, className = "info legend", layerId = NULL, 
 		  group = NULL, data = getMapData(map), decreasing = FALSE) {
@@ -188,7 +188,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Overcrowding <br> (Percentage)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Overcrowding: <br> Percentage of Households <br> with >1.5 persons <br> per Bedroom" # the <br> could be adjusted depending on the length/spacing of the name
 #labels <- sprintf(
  # "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
   #paste("$", # if doesn't require prefix, this can be removed
