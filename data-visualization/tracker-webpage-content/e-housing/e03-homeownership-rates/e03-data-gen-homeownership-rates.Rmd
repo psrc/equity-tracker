@@ -489,13 +489,9 @@ acs_data$estimate <- ((acs_data$Owner_occupied_units/acs_data$Total_units)*100)
 
 # filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
 acs_data <- acs_data %>% 
-  dplyr::select(GEOID, estimate)
-
-acs_data <- acs_data %>% 
   dplyr::select(GEOID, estimate)%>%
   dplyr::filter(!is.na(estimate)) #estimate = total owner-occupied housing units in percentage
 
-# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
 ```
 
 ### Joining data
@@ -511,7 +507,7 @@ acs_data_tract <- merge(tracts20.lyr, acs_data,
 ```{r map legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+			    "topleft"), pal, values, na.label = "NA", bins = 9, colors, 
 		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
 		  title = NULL, className = "info legend", layerId = NULL, 
 		  group = NULL, data = getMapData(map), decreasing = FALSE) {
