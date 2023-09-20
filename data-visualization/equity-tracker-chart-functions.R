@@ -1,6 +1,6 @@
 echarts4r::e_common(font_family = "Poppins")
 
-echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, esttype, i, color, width, height) {
+echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, esttype, i, color, num_colors = NULL, color_rev = FALSE, width, height) {
   
   max_data <- df %>% dplyr::select(tidyselect::all_of(y)) %>% dplyr::pull() %>% max()
   facet_values <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::pull() %>% unique
@@ -24,56 +24,23 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
     dplyr::group_by(.data[[geo]]) %>%
     echarts4r::e_charts_(x, timeline = TRUE, elementId = paste0("columnchart",i), width = width, height = height) 
   
-  if (color == "blues") {
-    
-    c <- c %>%
-      echarts4r::e_bar_(y, 
-                        name = title,
-                        itemStyle = list(color = htmlwidgets::JS("
-                      function(params) {var colorList = ['#BFE9E7', '#73CFCB', '#40BDB8', '#00A7A0', '#00716c', '#005753'];
-                                                               return colorList[params.dataIndex]}"))) 
-  }
+  color_ramp <- switch(color,
+                       "blues" = c('#BFE9E7', '#73CFCB', '#40BDB8', '#00A7A0', '#00716c', '#005753'),
+                       "greens" = c('#E2F1CF', '#C0E095', '#A9D46E', '#8CC63E', '#588527', '#3f6618'),
+                       "oranges" = c('#FBD6C9', '#F7A489', '#F4835E', '#F05A28', '#9f3913', '#7a2700'),
+                       "purples" = c('#E3C9E3', '#C388C2', '#AD5CAB', '#91268F', '#630460', '#4a0048'),
+                       "jewel" = c('#91268F', '#F05A28', '#8CC63E', '#00A7A0', '#4C4C4C'))
   
-  if (color == "greens") {
-    
-    c <- c %>%
-      echarts4r::e_bar_(y, 
-                        name = title,
-                        itemStyle = list(color = htmlwidgets::JS("
-                      function(params) {var colorList = ['#E2F1CF', '#C0E095', '#A9D46E', '#8CC63E', '#588527', '#3f6618'];
-                                                               return colorList[params.dataIndex]}"))) 
-  }
+  if(!is.null(num_colors)) color_ramp <- color_ramp[1:num_colors] # number of colors to select from beginning of color ramp
+  if(color_rev == TRUE) color_ramp <- rev(color_ramp) # reverse ramp
+  palette <- paste0('"', paste(color_ramp, collapse='", "'), '"')
+  js_color <- paste0("function(params) {var colorList = [", palette, "]; return colorList[params.dataIndex]}")
   
-  if (color == "oranges") {
-    
-    c <- c %>%
-      echarts4r::e_bar_(y, 
-                        name = title,
-                        itemStyle = list(color = htmlwidgets::JS("
-                      function(params) {var colorList = ['#FBD6C9', '#F7A489', '#F4835E', '#F05A28', '#9f3913', '#7a2700'];
-                                                               return colorList[params.dataIndex]}"))) 
-  }
+  c <- c %>%
+    echarts4r::e_bar_(y,
+                      name = title,
+                      itemStyle = list(color = htmlwidgets::JS(js_color)))
   
-  if (color == "purples") {
-    
-    c <- c %>%
-      echarts4r::e_bar_(y, 
-                        name = title,
-                        itemStyle = list(color = htmlwidgets::JS("
-                      function(params) {var colorList = ['#E3C9E3', '#C388C2', '#AD5CAB', '#91268F', '#630460', '#4a0048'];
-                                                               return colorList[params.dataIndex]}"))) 
-  }
-  
-  if (color == "jewel") {
-    
-    c <- c %>%
-      echarts4r::e_bar_(y, 
-                        name = title,
-                        itemStyle = list(color = htmlwidgets::JS("
-                      function(params) {var colorList = ['#91268F', '#F05A28', '#8CC63E', '#00A7A0', '#4C4C4C'];
-                                                               return colorList[params.dataIndex]}"))) 
-  }
-
   c <- c %>% 
     echarts4r::e_grid(left = '15%', top = top_padding, bottom = bottom_padding) %>%
     echarts4r::e_connect(c("columnchart1")) %>%
@@ -363,7 +330,7 @@ equity_arrange <- function(charts, rows = NULL, cols = NULL, width = "xs", title
   }
 }
 
-equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", width = '420px', height = '380px', r=2, c=3) {
+equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", num_colors = NULL, color_rev = FALSE, width = '420px', height = '380px', r=2, c=3) {
   
   num_facets <- seq(1, df %>% select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
   
@@ -379,6 +346,8 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
                            y_max = y_max,
                            esttype = esttype, 
                            color = color,
+                           num_colors = num_colors,
+                           color_rev = color_rev,
                            width = width, 
                            height = height)
   
