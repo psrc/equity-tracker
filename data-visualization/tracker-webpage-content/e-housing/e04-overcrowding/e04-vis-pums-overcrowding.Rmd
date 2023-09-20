@@ -5,6 +5,7 @@ author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   word_document:
+  always_allow_html: true
   html_document:
     keep_md: yes
     df_print: paged
@@ -47,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -339,13 +340,13 @@ county_acs_data$estimate <- ((county_acs_data$Overcrowding/county_acs_data$Total
 
 1. King: The only county with higher overcrowding rates than the regional average
 2. 50%: The region's highest percentage of households living with >1.5 person(s) per bedroom
-3. 2.3%: Average percentage of households in a census tract that are living in an overcrowded home
+3. 2%: Average percentage of households in a census tract that are living in an overcrowded home
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest rates of overcrowding (3.5%), followed by Snohomish (2.3%), Pierce (2.1%), and Kitsap (1.2%)
+* King County has the highest rates of overcrowding (4%), followed by Snohomish and Pierce (2%), and Kitsap (1%)
 * The five census tracts tied with the highest rates of overcrowding are in King County: U District (50%), Dunlap (35%), and NE of the First Hill Neighborhood (24%), along with the Port of Bremerton in Kitsap (31%) and South Hill in Pierce County (29%)
 * Over half of the census tracts in the region are not experiencing overcrowding (500 out of 919 tracts)
 
@@ -534,7 +535,7 @@ filter <- data_clean_column %>%
 
 * The largest difference in overcrowding rates between people of color and white non-Hispanic is in Snohomish and King County (11 percentage points), while the smallest difference is in Pierce County (7 percentage points)
 * The largest difference in households experiencing overcrowding between people with and without a disability is in Pierce and Snohomish County (only 2 percentage points), while the rest of the counties show no disparities
-* Households with children (below 18 years old) and households with non-English proficient speakers have the highest rates of overcrowding across all of the equity indicators, regardless of county (21-25%). However, there are the largest disparities between households with youth and without youth (up to 16 percentage point difference)
+* Households with children (below 18 years old) and households with limited English proficient speakers have the highest rates of overcrowding across all of the equity indicators, regardless of county (about 20%). However, there are the largest disparities between households with youth and without youth (up to 16 percentage point difference)
 
 \
 \
