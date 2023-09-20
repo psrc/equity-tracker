@@ -66,14 +66,11 @@ library(showtextdb) #required for showtext
 ## Primary data 
 Data comes from [First Street Foundation](https://firststreet.org/data-access/public-access/). Separate CSVs at the census tract geography through FSF's AWS Data Portland and are available (manual download) for 5y time spans at 1y increments, starting in 2000, until 2020.
 ```{r, include=FALSE}
-folder_path <- "Y:/Equity Indicators/tracker-webpage-content/a-regional-health-collaboration/c01-flood-risk/raw-data"
-life_expec_01_05 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
-life_expec_06_10 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
-life_expec_11_15 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_11_15.csv"))
-life_expec_16_20 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
+folder_path <- "Y:/Equity Indicators/tracker-webpage-content/c-climate-change/c01-flood-risk/raw-data"
+flood_risk <- read.csv(file.path(folder_path,"first_street_foundation_flood_risk_census_tract.csv"))
 ```
 \
-Although there are 4 possible data sets (*2001-2005, 2006-2010, 2011-2015, 2016-2020*), we will be using the three more recent data sets to keep it to 2010 and onward. 
+We will be using the a data set that hypothesizes potential flood risk for the forthcoming years of 2022 to 2052. 
 
 
 ## Additional data
@@ -125,10 +122,7 @@ nrow(tracts10.lyr) #773
 The 2010 and 2015 equity tracts are in 2010 geographies and include ~770 census tracts, each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The 2010, 2015, an 2020 life expectancy data are available from FSF in 2010 geographies, so the 2020-year data will need to be translated to 2020 geographies to be able to use the 2020 population information.
 ```{r, include=FALSE}
 # check number of rows in data sets
-nrow(life_expec_01_05) #1465
-nrow(life_expec_06_10) #1465
-nrow(life_expec_11_15) #1465
-nrow(life_expec_16_20) #1465
+nrow(flood_risk) #1465
 ```
 The four possible WTN data sets that could be used without overlapping years include 1,465 records each. This closely matches the number of records in the 2010 census tract shapefile for WA state, published by the [US Census Bureau, Geography Division](https://www.census.gov/cgi-bin/geo/shapefiles/index.php) (1,458; in comparison to the 1,784 tracts in the 2020 shapefile).
 

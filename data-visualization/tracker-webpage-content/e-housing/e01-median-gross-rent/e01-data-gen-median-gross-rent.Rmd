@@ -31,6 +31,7 @@ library(rlang) #required for psrccensus
 library(emmeans) #required for rlang
 library(magrittr)
 library(ggplot2)
+library(dplyr)
 
 library(summarytools) #freq
 library(vtable) #summary stats

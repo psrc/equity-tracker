@@ -1,16 +1,20 @@
 ---
 title: "Median Gross Rent"
-subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
+  word_document: null
+  always_allow_html: true
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '6'
+subtitle: Visuals for Equity Tracker (PUMS data)
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -326,8 +330,8 @@ coutny_acs_data <- coutny_acs_data %>%
 #### Insights & Analysis
 
 * King County has the highest median gross rent (\$1,800), followed by Snohomish (\$1,640), and Kitsap and Pierce (both \$1,440)
-* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three tracts in southern Mercer Island, two in CLyde Hill/Hunts POint/Medina/Yarrow Point, two in Bellvue, two in Sammamish, and on in southwestern Bainbridge Island
-* The highest median gross rent in Pierce, Kitsap, and Snohomish County are:  and the Tulalip Reservation (\$775)
+* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three tracts in southern Mercer Island, two in Clyde Hill/Hunts Point/Medina/Yarrow Point, two in Bellvue, two in Sammamish, and on in southwestern Bainbridge Island
+* The highest median gross rent in Pierce, Kitsap, and Snohomish County are: in the far eastern portion of Pierce county near Issaquah (\$3,110) by in the southwestern portion of Bainbridge (\$3,500), and southern Mulkiteo (\$3,400)
 
 \
 \
@@ -438,7 +442,7 @@ if (output_type == "html") {
   
 }
 
-# column_chart
+column_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
 `r source`
@@ -471,8 +475,8 @@ filter <- data_clean_column %>%
 # 71.45515-63.50990=7.94525
 
 filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Youth_cat")
+  filter(focus_type=="Youth_cat", 
+         vulnerability == "high vulnerability")
 
 # region youth households: 141389.8	
 # region non-youth households: 102097.0
@@ -499,23 +503,23 @@ filter <- data_clean_column %>%
 # 134637.12-81508.16=53128.96
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="Income_cat",
-         vulnerability=="high vulnerability") %>% 
+  filter(focus_type=="Income_cat") %>% 
   dplyr::arrange(desc(fact_value))
 
 ```
 
-1. \$515: The difference in gross median rent for households that are below 200% of the poverty level and those above
-2. \$300: Households with English proficiency pay an average of \$300 more than Non-English proficient households
-3. \$200-\$300: Regional median gross rent for those with children is \$200-\$300 higher than those without
+1. \$500: Median gross rent for households in the region living below 200% of the federal poverty level is \$500 less those living above
+2. \$300: Households in the region with English proficiency pay an average of \$300 more than limited English proficient households
+3. \$300: Regional median gross rent for those with children is \$300 higher than those without
 
 \
 
 #### Insights & Analysis
 
-* Snohomish County has the smallest difference in gross median rent payments between people of color and white non-Hispanic (\$4,100), while King County has the largest difference (\$19,400)
-* For households living below 200% of the poverty level, the largest difference in gross median rent is in King County (\$1,700-\$2,300), followed by Kitsap (\$1,900-\$1,400), Snohomish (\$2,000-\$1,600), and Pierce (\$1,800-\$1,500)
-* The largest difference in gross median rent between households with childen (youth under 18 years) is in Kitsap, Pierce, and Snohomish Counties (\$300), while the smallest difference is in King County (\$200)
+* People of color in Snohomish, Pierce, and Kitsap counties are paying the same median gross rent as white non-Hispanic households, while in King County, white non-Hispanic households are paying $100 more in rent than people of color. 
+* For households living below 200% of the poverty level, King County households are paying the most at (\$1,700), followed by Snohomish (\$1,600), Pierce (\$1,500), and Kitsap (\$1,400).
+* Households with childen (youth under 18 years) are paying the most in King County (\$2,300), followed by Snohomish (\$2,100), then Kitsap and Pierce counties (\$1,900)
+* These insights may indicate that while low vulnerability households are paying more in median gross rent than high vulnerability categories, it may mean that high vulnerability folks cannot afford higher-rent homes
 
 \
 \
@@ -696,9 +700,9 @@ filter <- data_clean %>%
 # Snohomish non-low income:2000-1300 = 700 +53%
 ```
 
-1. \$500: In 2021, households in the region living below 200% of the poverty line paid an average of \$500 less than households above the 200% poverty line, a 150% larger gap than in 2011
-2. \$100: Regionally, people of color spend an average \$100 lower in gross median rent than white non-Hispanic households, a gap which has remained relatively consistent in King County and Regionally in the last ten years, but has narrowed in Kitsap, Pierce, and Snohomish counties
-3. 300%: The median gross rent of households in the region with older adults is \$400 lower than households without older adults, an increase of 300% from 2011
+1. \$500: In 2021, households in the region living below 200% of federal poverty line paid an average of \$500 less than those living above; a 150% larger gap than in 2011
+2. \$100: Regionally, people of color spend an average \$100 less in median gross rent than white non-Hispanic households, a gap which has remained relatively consistent in King County and Regionally in the last ten years, but has narrowed in Kitsap, Pierce, and Snohomish counties
+3. 300%: Median gross rent of households in the region with older adults is \$400 lower than households without older adults, an increase of 300% from 2011
 
 
 \
@@ -706,8 +710,9 @@ filter <- data_clean %>%
 #### Insights & Analysis
 
 * Median gross rent has consistently increased across the entire region from 2011 to 2021
-* The median gross rent of households (regardless of income) stayed relatively static in Kitsap and Pierce County over time, while the the gross median rent of households increased greatly in King County (more than 54% for households who are below 200% of the poverty level and 64% for For households who are above 200% of the poverty level). Similarly in Snohomish County households who are below 200% of the poverty level are paying 45% more than they did in 2011 and 53% more for households who are above 200% of the poverty level
-* The difference in gross median rent for people with a disability compared to those living without remained relatively consistent in all counties (from 2016 to 2021), including King County
+* Median gross rent of households (regardless of income) stayed relatively static in Kitsap and Pierce County over time, while the median gross rent of households increased greatly in King County (more than 54% for households who are below 200% of federal poverty level and 64% for thos living above).
+* Similarly in Snohomish County households living below 200% of the poverty level are paying 45% more than they did in 2011 and 53% more for those living above
+* The gap between median gross rent for people with a disability compared to those living without remained relatively consistent in all counties (from 2016 to 2021)
 
 
 \

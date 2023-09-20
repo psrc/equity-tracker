@@ -303,10 +303,10 @@ sort <- data %>%
 # 53033030501 (Auburn, around 167)
 
 # this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
+by_county <- data %>% 
+   dplyr::group_by(county_name) %>% 
+   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
+   dplyr::arrange(desc(income.wgt))
 
 # getting data by county from acs 
 county_acs_data <- get_acs_recs(geography ='county', 
@@ -318,18 +318,17 @@ county_acs_data <- acs_data_tract %>%
   dplyr::arrange(desc(estimate))
 ```
 
-1. 6.8%: Average percentage of cost-burdened households by census tract
-2. 12%: Highest percentage of rent-burdened households in a census tract
-3. 1.6%: Lowest proportion of rent-burdened households
+1. 46%: Average percentage of cost-burdened households by census tract
+2. 6: Six census tracts have the highest percentage of rent-burdened households at 100%
+3. 48%: Pierce County has the highest percentage of rent-burdened households (48%)
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest population in the region and the highest percentage of rent-burdened households (12%)
-* The five census tracts tied with the highest representation of cost-burdened households are in the Issaquah Highlands (12%) and Hollywood (10.7%) in King County, Clearview (11%) in Snohomish County, and the Fort Lewis (10.7%) and West Frederickson (10.5%) in Pierce County
-* The three census tracts with the lowest representation of rent-burdened households are Seattle's Bellevue (1.6%), Snohomish County's southern tip of Edmonds (1.7%), and Seattle's Georgetown neighborhood (2%) 
-
+* Pierce County has the highest percentage of rent-burdened households (48%), followed by Snohomish (47%), Kitsap (46%), and King (45%)
+* The six census tracts tied with the highest representation of cost-burdened households are in the Issaquah Highlands and by Cottage Lake and Covington (close to the outer edges of the county) in King County, and  southwestern Woodway near Shoreline and the northeastern corner of Snohomish County
+* Questions about 0% and 100% cost burden representation **
 \
 \
 
@@ -458,8 +457,9 @@ filter <- data_clean_column %>%
 # 2.7% more likely
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         county=="Region")
+  filter(focus_type=="LEP_cat")
+
+#         county=="Region")
 # 50% versus 60%
 
 filter <- data_clean_column %>% 
@@ -469,8 +469,7 @@ filter <- data_clean_column %>%
 # same across the region
 
 filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Youth_cat")
+  filter(focus_type=="Youth_cat")
 
 # region youth households: 141389.8	
 # region non-youth households: 102097.0
@@ -503,18 +502,15 @@ filter <- data_clean_column %>%
 
 ```
 
-1. 2.7x: Households who are living below 200% of the poverty level are 2.7 times more likely to be cost-burdened than households who are living above it
-2. 60%: The percentage of Non-English proficient households that are at risk of being rent burdened across the region
-3. 50%: Snohomish County narrows the gap between people with disabilities and those living without, as well as households with older adults (65+ years old) nd those without
-
-\
+1. 2.5: Households in the region who are living below 200% of the poverty level are 2.7 times more likely to be cost-burdened than households who are living above
+2. 60%: Sixty percent of limited English proficient households are at risk of being rent burdened
+3. 57%: The highest percentage of people with disabilities that are rent burdened
 
 #### Insights & Analysis
 
-* Households that are living below 200% of the poverty level are the households at highest risk of experiencing rent burden, and are equally represented across all counties.
-* King County has the highest gap between households with English proficiency and households that are non-English proficient (20%), versus other counties with smaller gaps (10%)
-* Snohomish County narrows the gap between households with people with disabilities and households with older adults (65+ years old) from 20% to 10%, and narrows the gap for households with people of color to 0%
-
+* Households that are living below 200% federal poverty level are the households at highest risk of experiencing rent burden, and are equally represented across all counties.
+* Limited English proficient households are at highest risk of rent burden in Kitsap County (64%), with the lowest risk limited English households in Pierce (56%)
+* Snohomish County is the only county where households with children (18 years or younger) are paying the same as households without children
 \
 \
 
@@ -671,26 +667,27 @@ filter <- data_clean %>%
 # ((4088.07-15777.04)/(15777.04))*100: -74.08849% change
 
 filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="Income_cat",
+  filter(county=="Region",
+         focus_type=="Disability_cat",
          vulnerability=="low vulnerability",
-         data_year=="2011" |
-           data_year=="2021")
+         data_year=="2016" |
+           data_year=="2021",
+         indicator_attribute != "Less than 30 percent")
 # king non-low income:150511.89-98506.82=52005.07
 # Snohomish non-low income:130900.06-97445.42=33454.64
 ```
 
-1. 1.5%: In 2021, the percentage points between households in the region who were living below 200% of the poverty line and households living above
-2. 50%: Regionally, people of color are as likely to be rent burdened as white non-Hispanic households, a proportion which has remained relatively consistent in the last ten years
-3. 0%: Percentage increase for households with and without people living with disabilities
+1. 1.5: In 2021, the percentage points between households in the region who were living below 200% federal poverty line and households living above
+2. 48%: In the region, people of color are as more likely to be rent burdened than white non-Hispanic households, a proportion that is 3 percentage points higher than white non-Hispanic households
+3. 43%: Rent burdened households with and without disabilities have remained constant from 2016 to 2021
 
 \
 
 #### Insights & Analysis
 
-* In 2021, the difference between households in the region who were below 200% of the poverty line and households above the 200% poverty line was 1.5%, which has remained consistent, but the proportion of rent burdened households based on income has increased by 166% from 2011
-* Since 2011, King County is the only county where the gap between households with youth (18 years or younger) has grown (from 50% to 60%), whereas households without youth decreased their rent burden (from 50% to 40%)
-* Households with older adults that are rent-burdened have increased in King and Snohomish County, while they have decreased the gap between households in Kitsap and Pierce counties.
+* In 2021, the difference between households in the region living below 200% federal poverty line and households above was 1.5%, which has remained consistent, but the proportion of rent burdened households based on income has increased by 166% from 2011
+* Since 2011, King County is the only county where the gap between households with youth (18 years or younger) has grown (from 50% to 60%)
+* Households with older adults (65 years or older) that are rent-burdened have increased in King and Snohomish County over the last decade, while they have decreased the gap between households in Kitsap and Pierce counties.
 
 
 \
