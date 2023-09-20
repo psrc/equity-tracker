@@ -57,6 +57,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
+## Indicator Explanation
+Overcrowding measures the amount of people sharing bedrooms, stating that if there are more than 1.5 person(s) per bedroom in a home, then they are experiencing "overcrowding." This oftentimes is an indicator that people are sharing bedrooms and living in homes that may be too small for their household needs or family size. This is important to note as we look for more affordable multi-family housing, and away from single family zoning practices.
+
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
 ```{r map legend settings, include=FALSE}
