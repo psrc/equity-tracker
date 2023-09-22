@@ -56,6 +56,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
+## Indicator Explanation
+[Kindergarten readiness is an important and early predictor of high school graduation. Recognizing the effectiveness and importance of the first five years of life, there have been recent efforts to strengthen early childhood programs in Washington state and the region. Readiness for incoming kindergarteners in Washington is assessed by teachers who observe students across six areas of development and learning: social emotional, physical, language, cognitive, literacy and math. For this measure, we are defining students as kindergarten ready if they demonstrate readiness in all six areas.]
+
 ## 1. Map of most recent data
 To map data in this form, it requires accessing the most recent data from OSPI since the Elmer data set is already aggregated to equity group/quintile. 
 ```{r map legend settings, include=FALSE}

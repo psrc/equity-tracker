@@ -56,6 +56,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
+## Indicator Explanation
+Education is associated with a wide range of benefits to both individuals and society. People with higher levels of education are more likely to find employment, remain employed, learn new skills on the job, and earn more over their working life relative to those with lower levels of education. For this measure, we are defining educational attainment as adults 25 years and older who have a bachelor's degree or higher.
+
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
 ```{r map legend settings, include=FALSE}
