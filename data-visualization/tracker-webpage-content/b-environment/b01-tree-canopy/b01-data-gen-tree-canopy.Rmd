@@ -1,7 +1,7 @@
 ---
-title: "Toxic Release"
+title: "Tree Canopy - 2011 and 2021"
 subtite: "Data Gen: Exploring, Cleaning, Transforming (tract data)"
-author: "Meg Grzybowski"
+author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   word_document:
@@ -60,34 +60,24 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 ```
 
-**Toxic Release Site Inventory**
+**Tree Canopy**
 
 # Download data 
 ## Primary data 
-Data comes from [EPA](https://www.epa.gov/toxics-release-inventory-tri-program). Separate CSVs at the point-level geography are available (manual download) for 1y increments, updated annually, with the most recent year being 2023.
-
+Data comes from the [MRLC](https://www.mrlc.gov/data). Data are available (manual download) for 2011 and 2021.
 ```{r, include=FALSE}
-# Data for this indicator comes from GIS buffer analysis
-# Stefan Coe, Brian Lee, and Meg Grzybowski worked to identify point sources, create buffers around those sources, and then weight the amount of chemical emissions (accounting for multiple sources in one location and adding the compounding impacts). 
-# The gdb files live here: W:\gis\projects\Megan\TRI_stefan.gdb
+folder_path <- "Y:/Equity Indicators/tracker-webpage-content/b-environment/b01-tree-canopy/raw-data"
+canopy_11 <- read.csv(file.path(folder_path,"canopy_11.csv"))
+canopy_21 <- read.csv(file.path(folder_path,"canopy_21.csv"))
 
-
-folder_path <- "Y:/Equity Indicators/tracker-webpage-content/a-regional-health-collaboration/b02-toxic-release/raw-data"
-life_expec_01_05 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
-life_expec_06_10 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
-life_expec_11_15 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_11_15.csv"))
-life_expec_16_20 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
+indicator_measure <- "Avg_Per"
 ```
 \
-Although there are innumerable possible data sets, we will be using the most recent data set to keep it to (*2023*). 
-
-
 ## Additional data
 
 ### equity quintile data and 2010-20 crosswalk file 
 
-* low, low medium, etc.) at the tract-level for each equity focus group for the years that correspond to the life expectancy data (2010, 2015, 2020
-* for the 2016-2020 life expectancy data set
+* low, low medium, etc.) at the tract-level for each equity focus group for the years that correspond to the tree canopy (2021)
 ```{r, include=FALSE}
 # Elmer data sets - equity quintile tracts using psrcelmer() and crosswalk
 equity_tracts <- get_table(schema="equity", tbl_name="v_tract_shares")
@@ -97,20 +87,19 @@ crosswalk_10_20 <- get_table(schema="census",
                              tbl_name="v_geo_relationships_tracts")
 ```
 
-### tract-level population data
-to weight life expectancy for 2010, 2015, 2020
+### tract-level population data for 2021
 ```{r, include=FALSE}
 # getting census population data by tract
-tracts_10_15_20 <- get_acs_recs(geography ='tract', 
+tracts_11_21 <- get_acs_recs(geography ='tract', 
                                 table.names = 'B01003',
-                                years = c(2010, 2015, 2020),
+                                years = c(2011, 2021),
                                 acs.type = 'acs5')
-tract.10 <- tracts_10_15_20 %>% 
-  filter(year==2010)
-tract.15 <- tracts_10_15_20 %>% 
-  filter(year==2015)
-tract.20 <- tracts_10_15_20 %>% 
-  filter(year==2020)
+tract.11 <- tracts_11_21 %>% 
+  filter(year==2011)
+
+tract.21 <- tracts_11_21 %>% 
+  filter(year==2021)
+
 ```
 
 ### tract spatial file
@@ -128,42 +117,28 @@ nrow(tracts10.lyr) #773
 ```
 
 # Explore data
-The 2010 and 2015 equity tracts are in 2010 geographies and include ~770 census tracts, each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The 2010, 2015, an 2020 life expectancy data are available from WTN in 2010 geographies, so the 2020-year data will need to be translated to 2020 geographies to be able to use the 2020 population information.
+The tree canopy data are available in 2020 geographies.
 ```{r, include=FALSE}
 # check number of rows in data sets
-nrow(life_expec_01_05) #1465
-nrow(life_expec_06_10) #1465
-nrow(life_expec_11_15) #1465
-nrow(life_expec_16_20) #1465
+nrow(canopy_11) #
+nrow(canopy_21) #
 ```
-The four possible WTN data sets that could be used without overlapping years include 1,465 records each. This closely matches the number of records in the 2010 census tract shapefile for WA state, published by the [US Census Bureau, Geography Division](https://www.census.gov/cgi-bin/geo/shapefiles/index.php) (1,458; in comparison to the 1,784 tracts in the 2020 shapefile).
+The 2020 data set that could be used without overlapping years include 1,465 records each. This closely matches the number of records in the 2010 census tract shapefile for WA state, published by the [US Census Bureau, Geography Division](https://www.census.gov/cgi-bin/geo/shapefiles/index.php) (1,458; in comparison to the 1,784 tracts in the 2020 shapefile).
 
 ```{r, include=FALSE}
 # to check the field names and data class
-str(life_expec_16_20)
+str(canopy_21)
 
 # add column with the last year of the 5-year span
 # filter to PSRC counties
-life_expec_01_05 <- life_expec_01_05 %>% 
-  mutate(year=2005) %>% 
+canopy_11 <- canopy_11 %>% 
+  mutate(year=2011) %>% 
   filter(County.Name=="King" |
            County.Name=="Kitsap" |
            County.Name=="Pierce" |
            County.Name=="Snohomish")
-life_expec_06_10 <- life_expec_06_10 %>% 
-  mutate(year=2010) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
-life_expec_11_15 <- life_expec_11_15 %>% 
-  mutate(year=2015) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
-life_expec_16_20 <- life_expec_16_20 %>% 
-  mutate(year=2020) %>% 
+canopy_21 <- canopy_21 %>% 
+  mutate(year=2021) %>% 
   filter(County.Name=="King" |
            County.Name=="Kitsap" |
            County.Name=="Pierce" |
@@ -174,14 +149,14 @@ life_expec_16_20 <- life_expec_16_20 %>%
 ### Map
 #### Join recent data to spatial file
 ```{r, include=FALSE}
-# join base 2010 geographic data to WTN health data - staying in 2010 geographies to not display false sense of accuracy
-data_tract <- merge(tracts10.lyr, life_expec_16_20,
-                    by.x="geoid10",
-                    by.y="Census.Tract", 
+# join geographic data to tree canopy data - staying in 2010 geographies to not display false sense of accuracy
+data_tract <- merge(tracts20.lyr, canopy_21,
+                    by.x="geoid20",
+                    by.y="geoid20", 
                     all.x=TRUE)
 
 data_tract <- data_tract %>% 
-  dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
+  dplyr::mutate(estimate=as.numeric(Avg_Per)) # rename value variable for consistency
 ```
 
 ```{r}
@@ -330,7 +305,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Life Expectancy"
+var_name <- "Tree Canopy Percentage"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -375,7 +350,7 @@ tract_map
 ```
 
 ### Missing Data
-Life expectancy calculations can fluctuate considerably in smaller populations or populations experiencing low or no deaths for the year(s) being calculated. Because of these issues the Life Expectancy at birth calculation for the Census Tract geographies is suppressed for Census Tracts with a population (for the 5 years combined) of <5000 or a result with a Standard Error >2 or a record of <50 deaths for the time period. The Washington Department of Health, Center for Health Statistics estimates data gathered from death certificates to be 99% complete.
+None
 
 #### Isolate NA or missing data
 ```{r}
@@ -383,7 +358,7 @@ Life expectancy calculations can fluctuate considerably in smaller populations o
 data_tract_na <- data_tract %>% 
   filter(is.na(estimate))
 
-nrow(data_tract_na) #27 tracts
+nrow(data_tract_na) #0 tracts
 ```
 
 ```{r missing tract map}
@@ -397,7 +372,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Life Expectancy"
+var_name <- "Tree Canopy Percentage"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -453,7 +428,7 @@ tract_map
 ```
 
 ### Descriptive Statistics
-The following descriptive statistics reflect the census tracts that have values - the `r na_rows_num` census tracts with NAs have been removed. These are not weighted by population numbers. 
+The following descriptive statistics reflect the census tracts that have values - the r na_rows_num census tracts with NAs have been removed. These are not weighted by population numbers. 
 ```{r}
 data_tract_nona <- data_tract %>% 
   filter(!is.na(estimate))
@@ -463,16 +438,16 @@ summary(data_tract_nona$estimate)
 
 **When weighted by tract populations.** 
 ```{r, include=FALSE}
-data_tract_nona_weight <- data_tract_nona %>% 
-  mutate(tot_age = estimate*total_pop10,
-         reg_tot = sum(tot_age),
-         tot_pop = sum(total_pop10),
-         est_weight_avg = reg_tot/tot_pop)
+# data_tract_nona_weight <- data_tract_nona %>% 
+#   mutate(tot_age = estimate*total_pop10,
+#          reg_tot = sum(tot_age),
+#          tot_pop = sum(total_pop10),
+#          est_weight_avg = reg_tot/tot_pop)
 
-distrib <- rep(data_tract_nona$estimate, data_tract_nona$total_pop10)
+distrib <- rep(data_tract_nona$estimate, 1)
 
-avg.value <- data_tract_nona_weight$est_weight_avg[1] #80.78997
-med.value <- median(distrib) #80.74
+avg.value <- data_tract_nona$estimate[1] #28.90
+med.value <- median(distrib) #29.99
 ```
 *Average:* `r avg.value`
 \
@@ -500,25 +475,22 @@ The IQR criterion means that all observations above or below the first and third
 outliers <- boxplot.stats(distrib)$out
 outlier_rle <- rle(outliers)
 outlier_df <- data.frame(unclass(outlier_rle)) %>% 
-  rename(population = lengths,
-         health_in = values) %>% 
-  arrange(health_in)
+  rename(number_of_census_tracts = lengths,
+         indicator = values) %>% 
+  arrange(indicator)
 
 outlier_df
 ```
 \
 
-##### *Check outliers*
-The following steps are specific to the life expectancy dataset and may or may not be applicable depending on the data.
-
 ###### Identify census tracts with outliers
 ```{r include=FALSE}
 outlier_values <- outlier_df[,2]
 
-data_tract_nona_weight_outliers <- data_tract_nona_weight %>% 
+data_tract_nona_outliers <- data_tract_nona %>% 
   dplyr::filter(estimate %in% outlier_values)
 
-num_outliers <- nrow(data_tract_nona_weight_outliers) #7
+num_outliers <- nrow(data_tract_nona_outliers) #7
 ```
 There are `r num_outliers` tracts that have outliers. 
 \
@@ -543,19 +515,20 @@ displacement_simp <- displacement.lyr %>%
 ```
 
 ```{r, include=FALSE}
-data_tract_nona_weight_outliers %<>% 
-  dplyr::mutate(geoid=trimws(geoid10))
+data_tract_nona_outliers %<>% 
+  dplyr::mutate(geoid=trimws(geoid20))
 
 # join outlier tract datas to spatial dispalcement tract data to isolate tracts with outlier data
 data_tract_risk_outliers <- merge(x=displacement_simp, 
-                                      y=data_tract_nona_weight_outliers,
+                                      y=data_tract_nona_outliers,
                                       by.x="geoid10",
                                       by.y="geoid",
                                       all.y=TRUE)
+
 head(data_tract_risk_outliers)
 # class(data_tract_risk_outliers)
 # plot(data_tract_risk_outliers$geometry)
-nrow(data_tract_risk_outliers) #7
+nrow(data_tract_risk_outliers) #103
 pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop10, na.rm = T)) #33152
 pop_outliers_num <- label_comma()(pop_outliers)
 ```
@@ -570,18 +543,18 @@ plot(data_tract_risk_outliers$risk_score,
 
 ```{r}
 # this will be different for each indicator - the code and the text included below...
-# based on the plot in the last chunk, this code is meant to isolate outlier(s) - in this case it filters for the outliers with high risk scores and high life expectancy
+# based on the plot in the last chunk, this code is meant to isolate outlier(s) - in this case it filters for the outliers with high risk scores and tree canopy percentage
 
 # outlier #1
 data_tract20_outliers_1 <- data_tract_risk_outliers %>% 
-  filter(risk_score > 50)
+  filter(risk_score > 0)
 
 # code to look at the scores and census tracts that are outliers
 data_tract20_outliers_1
 
 # outlier #2
 data_tract20_outliers_2 <- data_tract_risk_outliers %>% 
-  filter(risk_score < 17)
+  filter(risk_score > 5)
 
 # code to look at the scores and census tracts that are outliers
 data_tract20_outliers_2
@@ -595,37 +568,30 @@ Save final data set (.rda) for map
 ```{r, include=FALSE}
 # This is the data set used to create the map of the most recent data. For this data set, there is one additional transformation that is needed before saving it for final visualization in the 'vis' script. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk. 
 
-# Because the measure (life expectancy) does not account for the population of the tract, it hasn't been normalized and needs to be weighted in order to aggregate to the region level. The map is going to visualize 2020 data, but in 2010 geographies. The original WTN data set was merged to the 2010 spatial file which has 2010 population numbers. To get 2020 population numbers, we need to aggregate population numbers in the 2020 tracts that were split from 2010 tracts. 
-
- 
-head(tract.20) # to determine field names
-tract.20.edit <- tract.20 %>% 
-  dplyr::mutate(pop20=estimate) # the life expectancy value is already 'estimate'
+head(tract.21) # to determine field names
+tract.21.edit <- tract.21 %>% 
+   dplyr::mutate(pop21=estimate) # the rate is already 'estimate'
 
 # merge 2020 acs population data to crosswalk file
-pop20_crosswalk <- merge(tract.20.edit, crosswalk_10_20, 
+pop21_crosswalk <- merge(tract.21.edit, crosswalk_10_20, 
                          by.x="GEOID",
                          by.y="geoid20", 
                          all.x=TRUE)
 
 # calculate population by adding 2020 tracts that were split from 2010 tracts
-pop20 <- pop20_crosswalk %>% 
+pop21 <- pop21_crosswalk %>% 
   dplyr::group_by(geoid10) %>% 
-  dplyr::summarise(total_pop20=sum(pop20))
+  dplyr::summarise(total_pop21=sum(pop21)) %>%
+  as_tibble()
 
-# merge 2020 population by 2010 tracts to life expectancy data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_tract <- merge(data_tract, pop20, 
-                         by.x="geoid10",
-                         by.y="geoid10", 
-                         all.x=TRUE)
 ```
 
 ```{r}
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'a-regional-health-collaboration'
-ind_dir <- 'a01-life-expectancy'
-file_name <- 'a01-life-expectancy-map-data'
+theme_dir <- 'b-environment'
+ind_dir <- 'b01-tree-canopy'
+file_name <- 'b01-tree-canopy-map-data'
 
 # save final data set as .rda
 save(data_tract, file = file.path(base_dir,
@@ -636,75 +602,51 @@ save(data_tract, file = file.path(base_dir,
 
 # Explore data by equity quintile
 ## Join primary data to equity quintiles and acs population
-```{r}
-# 2010 data -----
-equity_tracts_10 <- equity_tracts %>% 
-  dplyr::filter(data_year==2010)
 
-# join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(life_expec_06_10, equity_tracts_10,
-                            by.x="Census.Tract",
+```{r}
+# 2021 data -----
+equity_tracts_21 <- equity_tracts %>% 
+  dplyr::filter(data_year==2021)
+
+canopy_21 %<>%
+  dplyr::rename("geoid" = "geoid20")
+
+# join data to equity quintiles (on 2020 census tracts)
+data_equity_tracts <- merge(canopy_21, equity_tracts_21,
+                            by.x="geoid",
                             by.y="geoid", 
                             all.x=TRUE)
 
-# join 2010 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract10 <- merge(tract.10, data_equity_tracts,
+# join 2021 acs population data to tree canopy data - this is for eventual weighting (which may not be necessary depending on the indicator)
+data_equity_tract21 <- merge(tract.21, data_equity_tracts,
                              by.x="GEOID",
-                             by.y="Census.Tract", 
+                             by.y="geoid", 
                              all.x=TRUE)
 
 # check data set
-nrow(data_equity_tract10) #1548
-```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
+nrow(data_equity_tract21)
 
-```{r}
-# 2015 data ----- 
-equity_tracts_15 <- equity_tracts %>% 
-  dplyr::filter(data_year==2015)
+# 2011 data -----
+equity_tracts_11 <- equity_tracts %>% 
+  dplyr::filter(data_year==2011)
 
-# join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(life_expec_11_15, equity_tracts_15,
-                            by.x="Census.Tract",
+canopy_11 %<>%
+  dplyr::rename("geoid" = "geoid20")
+
+# join data to equity quintiles (on 2020 census tracts)
+data_equity_tracts <- merge(canopy_11, equity_tracts_11,
+                            by.x="geoid",
                             by.y="geoid", 
                             all.x=TRUE)
 
-# join 2015 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract15 <- merge(tract.15, data_equity_tracts,
+# join 2011 acs population data to tree canopy data - this is for eventual weighting (which may not be necessary depending on the indicator)
+data_equity_tract11 <- merge(tract.11, data_equity_tracts,
                              by.x="GEOID",
-                             by.y="Census.Tract", 
+                             by.y="geoid", 
                              all.x=TRUE)
 
 # check data set
-nrow(data_equity_tract15)
-```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
-
-```{r}
-# 2020 data -----
-equity_tracts_20 <- equity_tracts %>% 
-  dplyr::filter(data_year==2020)
-
-# join WTN data (in 2010 census tracts) to cross walk
-data_crosswalk <- merge(crosswalk_10_20, life_expec_16_20,
-                        by.x="geoid10",
-                        by.y="Census.Tract",
-                        all.x=TRUE)
-
-# join WTN data to equity quintiles (on 2020 census tracts)
-data_equity_tracts <- merge(data_crosswalk, equity_tracts_20,
-                            by.x="geoid20",
-                            by.y="geoid", 
-                            all.x=TRUE)
-
-# join 2020 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract20 <- merge(tract.20, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="geoid20", 
-                             all.x=TRUE)
-
-# check data set
-nrow(data_equity_tract20)
+nrow(data_equity_tract11)
 ```
 This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
 
@@ -712,30 +654,21 @@ This data set should include about twice the number of census tracts in the regi
 The data sets need to be cleaned and pivoted to a longer table so that there is only one field for the 6 different equity categories, instead of one field for each.
 ```{r, include=FALSE}
 # clean/simplify data sets
-data_equity_quintiles10 <- data_equity_tract10 %>% 
+data_equity_quintiles21 <- data_equity_tract21 %>% 
   dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
+  dplyr::mutate(Avg_Per_num=as.numeric(Avg_Per))
 
-data_equity_quintiles15 <- data_equity_tract15 %>% 
+data_equity_quintiles11 <- data_equity_tract11 %>% 
   dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
-
-data_equity_quintiles20 <- data_equity_tract20 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
+  dplyr::mutate(Avg_Per_num=as.numeric(Avg_Per))
 
 # pivot data set so that there is one column with quintile designation
-data_equity_pivot10 <- data_equity_quintiles10 %>% 
+data_equity_pivot21<- data_equity_quintiles21 %>% 
   pivot_longer(cols = poc_quintile:lep_quintile,
                names_to = "equity_group",
                values_to = "quintile")
 
-data_equity_pivot15 <- data_equity_quintiles15 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
-               names_to = "equity_group",
-               values_to = "quintile")
-
-data_equity_pivot20 <- data_equity_quintiles20 %>% 
+data_equity_pivot11<- data_equity_quintiles11 %>% 
   pivot_longer(cols = poc_quintile:lep_quintile,
                names_to = "equity_group",
                values_to = "quintile")
@@ -743,48 +676,42 @@ data_equity_pivot20 <- data_equity_quintiles20 %>%
 
 ```{r}
 # check data sets
-nrow(data_equity_pivot10)
-nrow(data_equity_pivot15)
-nrow(data_equity_pivot20)
+nrow(data_equity_pivot11)
+nrow(data_equity_pivot21)
 ```
 
 These data sets should include records for:
 
-* 2 geographies (region and whichever county the tract belongs to) x # census tracts (~773 for 2010/15, ~919 for 2020)
-* 6 equity focus groups (disability and lep are not available in for 2010, lep not available in 2015 - but still show up as NA)
+* 2 geographies (region and whichever county the tract belongs to) x # census tracts (~919 for 2020)
+* 6 equity focus groups (disability and lep are not available in for 2010, lep not avail - but still show up as NA)
 
 
 ## Calculations
 ### Calculate by region
-The life expectancy values are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2010, 2015, 2020).
+The tree canopy data are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2021).
 ```{r}
-data_equity_pivot10_calc <- data_equity_pivot10 %>% 
-  filter(!is.na(quintile)) %>% #missing lep and disability data
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2010)
-
-data_equity_pivot15_calc <- data_equity_pivot15 %>% 
-  filter(!is.na(quintile)) %>% #missing lep data
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2015)
-
-data_equity_pivot20_calc <- data_equity_pivot20 %>% 
+data_equity_pivot21_calc <- data_equity_pivot21 %>% 
   filter(!is.na(quintile)) %>%
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
+  dplyr::group_by(equity_group, quintile, county) %>%
+  summarise(wt_Avg_Per=(sum(Avg_Per_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>% 
-  mutate(data_year=2020)
+  as_tibble() %>%
+  mutate(data_year=2021) 
+
+data_equity_pivot11_calc <- data_equity_pivot11 %>% 
+  filter(!is.na(quintile)) %>%
+  dplyr::group_by(equity_group, quintile, county) %>%
+  summarise(wt_Avg_Per=(sum(Avg_Per_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
+  mutate(County.Name="Region") %>% 
+  as_tibble() %>%
+  mutate(data_year=2011) 
+
 ```
 
 ```{r}
 # check data sets
-nrow(data_equity_pivot10_calc)
-nrow(data_equity_pivot15_calc)
-nrow(data_equity_pivot20_calc)
+nrow(data_equity_pivot11_calc)
+nrow(data_equity_pivot21_calc)
 ```
 These data sets should include records for:
 
@@ -796,102 +723,64 @@ These data sets should include records for:
 
 
 ### Calculate by equity quintile
-The life expectancy values are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2010, 2015, 2020). 
-```{r}
-# calculate 2010 region population
-population_test <- data_equity_pivot10 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,603,425
-
-sum(tract.10$estimate) #3,603,425
-
-# calculations to get weighted average life expectancy
-data_equity_wt10 <- data_equity_pivot10 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt10_test <- data_equity_wt10 %>% 
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt10_test$tot_pop) #3,603,425
-
-# check data set
-nrow(data_equity_wt10)
-```
-The regional population in 2010: `r population_test`
-\
-\
-This data sets should include records for:
-
-* 4 geographies: 4 PSRC counties
-* 4 equity focus groups (disability and lep are not available in for 2010)
-* 5 equity quintiles 
+The rates are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2020). 
 
 ```{r}
-# calculate 2015 region population
-population_test <- data_equity_pivot15 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,869,802
 
-# calculations to get weighted average life expectancy
-data_equity_wt15 <- data_equity_pivot15 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt15_test <- data_equity_wt15 %>%
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt15_test$tot_pop) #3,869,802
-
-# check data set
-nrow(data_equity_wt15)
-```
-The regional population in 2015: `r population_test`
-\
-\
-This data sets should include records for:
-
-* 4 geographies: 4 PSRC counties
-* 5 equity focus groups (lep not available in 2015)
-* 5 equity quintiles 
-
-```{r}
 # calculate 2020 region population
-population_test <- data_equity_pivot20 %>% 
+population_test <- data_equity_pivot21 %>%
   distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443	
+  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443
 
-sum(tracts20.lyr$total_pop20) #4,294,373
+sum(tracts20.lyr$total_pop21) #4,294,373
 
-# calculations to get weighted average life expectancy per equity group/quintile
-data_equity_wt20 <- data_equity_pivot20 %>% 
+# calculations to get weighted average for tree canopy percentage per equity group/quintile
+data_equity_wt21 <- data_equity_pivot21 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
+  dplyr::mutate(tot_risk_tract=estimate*Avg_Per_num) %>%
+  dplyr::group_by(county, data_year, equity_group, quintile) %>%
   dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
+                   tot_Avg_Per=(sum(tot_risk_tract, na.rm = TRUE)),
+                   tot_pop=(sum(estimate, na.rm = TRUE))) %>%
+  dplyr::mutate(wt_Avg_Per=tot_Avg_Per/tot_pop) 
 
-# # check population
-# data_equity_wt20_test <- data_equity_wt20 %>%
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt20_test$tot_pop) #4,197,443
+# check population
+data_equity_wt21_test <- data_equity_wt21 %>%
+  dplyr::filter(equity_group=="income_quintile")
+  sum(data_equity_wt21_test$tot_pop) #4,197,443
+
+# calculations to get weighted average for tree canopy percentage per equity group/quintile
+data_equity_wt11 <- data_equity_pivot11 %>%
+  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
+  dplyr::mutate(tot_risk_tract=estimate*Avg_Per_num) %>%
+  dplyr::group_by(county, data_year, equity_group, quintile) %>%
+  dplyr::summarise(tracts=length(GEOID),
+                   tot_Avg_Per=(sum(tot_risk_tract, na.rm = TRUE)),
+                   tot_pop=(sum(estimate, na.rm = TRUE))) %>%
+  dplyr::mutate(wt_Avg_Per=tot_Avg_Per/tot_pop) 
+
+# check population
+data_equity_wt11_test <- data_equity_wt11 %>%
+  dplyr::filter(equity_group=="income_quintile")
+  sum(data_equity_wt11_test$tot_pop) #4,197,443
 
 # check data set
-nrow(data_equity_wt20)
+nrow(data_equity_wt11)
+nrow(data_equity_wt21)
+
+# region_rate <- data_equity_pivot20 %>%
+#   dplyr::select(-"county", -"equity_group", -"quintile") %>%
+#   distinct() %>%
+#   mutate(rate_pop=(estimate*Log_rate)) %>%
+#   mutate(rate_pop=(replace_na(rate_pop, 0))) %>%
+#   group_by(year.x) %>%
+#   summarise(region_rate=(sum(rate_pop)/sum(estimate))) %>%
+#   as_tibble() %>%
+#   dplyr::select("region_rate") %>%
+#   pull()
+
 ```
-The regional population in 2020: `r population_test`
+The regional population in 2021: `r population_test`
 \
 \
 This data sets should include records for:
@@ -902,14 +791,15 @@ This data sets should include records for:
 
 ## Combine years into one data set
 ```{r}
-data_tract <- as.data.frame(rbind(data_equity_wt10,
-                                  data_equity_wt15,
-                                  data_equity_wt20)) %>% 
-  dplyr::select(-tot_age, -tot_pop, -tracts) %>% 
-  rbind(data_equity_pivot10_calc,
-        data_equity_pivot15_calc,
-        data_equity_pivot20_calc) %>% 
+data_tract <- as.data.frame(rbind(data_equity_pivot11_calc,
+        data_equity_pivot21_calc)) %>%
+   dplyr::select(-County.Name) %>% 
   filter(!is.na(quintile))
+
+# single year
+# data_tract <- data_equity_pivot20_calc %>% 
+#   filter(!is.na(quintile))
+
 
 # check data set
 str(data_tract)
@@ -943,7 +833,6 @@ equity_group_order <- c("People of Color",
 
 # transforming data labels ----
 data_clean <- data_tract %>% 
-  mutate(county=County.Name) %>%  #rename value variable for consistency
   mutate(county_ord = factor(county, levels=county_order)) %>%
   mutate(equity_group_ord = case_when(
     equity_group=="poc_quintile"~"People of Color",
@@ -956,9 +845,11 @@ data_clean <- data_tract %>%
   mutate(quintile_ord = str_wrap(quintile, width=7)) %>%
   mutate(quintile_ord = factor(quintile_ord, levels = quintile_order))
 
+data_clean$data_year <- as.character(data_clean$data_year)
+
 # Minor edits to the data
 data_clean <- data_clean %>%
-  dplyr::mutate(estimate=as.numeric(wt_life_expec)) #rename value variable for consistency
+  dplyr::mutate(estimate=as.numeric(wt_Avg_Per)) #rename value variable for consistency
 
 # Sort the data to ensure the charts work
 data_clean <- data_clean %>%
@@ -970,7 +861,7 @@ data_clean <- data_clean %>%
 Save final data set for charts (.rda)
 ```{r}
 # set folder structure
-file_name <- 'a01-life-expectancy-data'
+file_name <- 'b01-tree-canopy-data'
 
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,

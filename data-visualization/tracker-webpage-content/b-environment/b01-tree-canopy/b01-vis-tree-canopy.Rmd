@@ -1,7 +1,7 @@
 ---
-title: "Life Expectancy"
+title: "Average Percentage of Tree Canopy Cover by Census Tract, 2011 and 2021"
 subtitle: "Visuals for Equity Tracker (tract data)"
-author: "Mary Richards"
+author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
@@ -47,7 +47,7 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
+#output_type <- "word"
 output_type <- "html"
 ```
 # 3 visuals for webpage
@@ -57,7 +57,7 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Flood risk measures the risk of a household living in a location where there is a chance of flooding. This is increasingly important because as climate change continues to progress, more homes that may not have been at risk before, could be in the near future. 
+Average percentage of tree canopy by census tract. Understanding tree canopy coverage can help us understand which communities are disproportionately impacted by lower levels of tree canopy. Reduced tree canopy can impact quality of life in various ways including warmer temperatures and decreased access to park. 
 
 ## 1. Map of most recent data
 To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution. 
@@ -172,9 +172,9 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```{r map .rda}
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'a-regional-health-collaboration'
-ind_dir <- 'a01-life-expectancy'
-rda <- 'a01-life-expectancy-map-data.rda'
+theme_dir <- 'b-environment'
+ind_dir <- 'b01-tree-canopy'
+rda <- 'b01-tree-canopy-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
@@ -190,10 +190,10 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Life Expectancy"
+var_name <- "Average % of Tree Canopy"
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$geoid10, # the code in <> makes the geoid value italic 
-  paste(prettyNum((round(data_tract$estimate, digits=1))), " years")) %>% 
+  "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$geoid20, # the code in <> makes the geoid value italic 
+  paste(prettyNum((round(data_tract$estimate, digits=1))), " rate")) %>% 
   lapply(htmltools::HTML)
 
 # if the label required a prefix, for example a $, the code would look like this:
@@ -254,18 +254,18 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Sources: MRLC; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+
 ```{r generate tract map html, include=FALSE}
-# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\b-environment\b01-tree-canopy\webpage-html-outputs
 
 # set folder structure
-map_name <- 'a01-life-expectancy-map.html'
+map_name <- 'b01-tree-canopy-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(tract_map,
                         file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
 ```
-\
 \
 
 #### Data call outs
@@ -276,46 +276,47 @@ data <- data_tract %>%
 
 # calculate call out information
 calc <- data %>%
-  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
-# regional average life expectancy: 78.83183
+  mutate(Avg_Per=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+
 
 x<-rep(data$estimate,times=data$total_pop20)
 df1<-data.frame(x)
 summary(df1$x)
 median(df1$x, na.rm=TRUE)
 hist(df1$x)
-# regional median life expectancy: 80.86  
+
+#   Min. 1st Qu.  Median    Mean  3rd Qu.  Max. 
+#  0.000   21.20   29.60   30.48   38.80   72.60
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004400 (Ravenna/U-District/Roosevelt) King (92.14), 53033032309 (Redmond) King (91.25)
+
+# 2 highest: 53053061400 (downtown Tacoma that includes the jail) Pierce (8.99), 53033008500 (Yesler Terrace are of Seattle that includes Harborview) King (8.54), 53053060200 (Port of Tacoma area) Pierce (8.44), 53061040700 (downtown Everett which includes the Snohomish County jail) Snohomish (8.19)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
 
-# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
-
-#95.39-67.31=28.08
+# 3 lowest: there are 99 census tracts with a rate of zero
 
 by_county <- data %>% 
   dplyr::group_by(County.Name) %>% 
-  dplyr::summarise(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-  dplyr::arrange(desc(life.expectancy.wgt))
-# Snohomish (80.66948), King (79.40807), Kitsap (78.91234), Pierce (75.69769)
+  dplyr::summarise(Avg_Per=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
+  dplyr::arrange(desc(Avg_Per))
+# Kitsap (43.49517), Snohomish (31.86968), King (29.79651),  Pierce (27.04333)
+
 
 ```
 
-1. 78.8 years: The region's average life expectancy
-2. 80.9 years: The region's median life expectancy
-3. 28.1 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+1. 28.90: The region's average tree canopy coverage per census tract
+2. 5.30: Washington State's average imprisonment rate
 
 \
 
 #### Insights & Analysis
 
-* Snohomish County has the highest life expectancy (80.7 years), followed by King (79.4 years), Kitsap (78.9 years), and Pierce (75.7 years)
-* The census tracts with the highest life expectancy are in Auburn, Pierce County (95.4 years); Ravenna/U-District neighborhoods (Seattle), King County (92.1 years); Redmond, King County (91.3 years)
-* The census tracts with the lowest life expectancy are in the Lincoln International District (Tacoma), Pierce County (67.3 years); Lakewood, Pierce County (69.7 years); Tulalip Reservation, Snohomish County (70.1 years)
+* The census tracts with the highest average tree canopy cover include three census tracts in King County that include the tract with Tiger Mountain (72.6), the tract with the Cedar River Watershed (71.9), the tract east of Enumclaw heading into the foothills (69.7), and in Snohomish County the tract with Mt. Pilchuck (68.0)
+* The census tracts with the lowest average tree canopy cover are in King County and include South Lake Union (0.8), the two tracts that make up downtown Seattle (0.9 and 1.2), and the tract with Boeing Field (1.6)
+* Kitsap County has the highest average tree canopy cover (43.50), followed by Snohomish (31.87), King (29.80), and Pierce (27.04)
 
 \
 \
@@ -331,11 +332,11 @@ by_county <- data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R')
+source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+#source('equity-tracker-chart-functions.R')
 
 # set folder structure
-rda <- 'a01-life-expectancy-data.rda'
+rda <- 'b01-tree-canopy-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -343,7 +344,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - tract}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2020") #filter on most recent year
+  dplyr::filter(data_year=="2021") #filter on most recent year
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
@@ -353,13 +354,13 @@ y = "estimate"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0 
-y_max = 95
+y_max = 50
 dec = 1
 esttype = "number"
 color = "purples"
-title = "Life Expectancy"
-subtitle = "values are adjusted to 2021 dollars"
-source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+title = "Average % of Tree Canopy"
+subtitle = "Census Tract Level"
+source = paste("MRLC", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -376,11 +377,11 @@ column_chart <- equity_tracker_column_facet(df = df,
 ```
 
 ```{r output final column chart - tract, include=FALSE}
-# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
-# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\b-environment\b01-tree-canopy\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\b-environement\static-images
 
 # set folder structure
-file_name <- 'a01-life-expectancy-column'
+file_name <- 'b01-tree-canopy-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -431,73 +432,85 @@ if (output_type == "html") {
 `r source`
 </p> 
 
-#### Data call outs
 ```{r column facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
   filter(county=="Region",
          equity_group=="poc_quintile")
 
-# region low quintile poc households: 81.19030	
-# region high quintile poc households: 76.67422
-# 81.19030-76.67422=4.51608
+# region low quintile poc households: 39.91983
+# region high quintile poc households: 24.8452
+# 24.8452-39.91983=-15.07463
+
+filter <- data_clean_column %>% 
+  filter(county!="Region",
+         equity_group=="poc_quintile",
+         quintile=="Low"|
+           quintile=="High")
+# king dif bt high/low quintiles for income: 23.96616-36.13557=-12.16941
+# kitsap dif bt high/low quintiles for income: 31.95647-54.21209=-22.25562
+# pierce dif bt high/low quintiles for income: 19.35792-36.43676=-17.07884
+# snohomish dif bt high/low quintiles for income: 28.00900-39.92032=-11.91132
 
 filter <- data_clean_column %>% 
   filter(quintile=="High",
          equity_group=="income_quintile")
 
-# region high quintile low income households: 71.45515	
-# pierce high quintile low income households: 63.50990
-# 71.45515-63.50990=7.94525
-
-filter <- data_clean_column %>% 
-  filter(equity_group=="lep_quintile",
-         quintile=="Low"|
-           quintile=="High")
-
-# region dif bt high/low quintiles for lep: 79.04127-77.92853=1.11274
-# king dif bt high/low quintiles for lep: 80.32595-77.63977=2.68618
-# pierce dif bt high/low quintiles for lep: 78.46118-70.37597=8.08521
-# snohomish dif bt high/low quintiles for lep: 80.35905-80.50632=-0.14727
+# region high quintile low income households: 20.59965
+# king high quintile low income households: 20.44392
+# kitsap high quintile low income households: 29.02184
+# pierce high quintile low income households: 18.82754
+# snohomish high quintile low income households: 23.57543
 
 filter <- data_clean_column %>% 
   filter(equity_group=="income_quintile",
          quintile=="Low"|
            quintile=="High")
 
-# region dif bt high/low quintiles for income: 81.98596-71.45515=10.53081
-# king dif bt high/low quintiles for income: 81.94740-73.03439=8.91301
-# kitsap dif bt high/low quintiles for income: 85.48813-69.90245=15.58568
-# pierce dif bt high/low quintiles for income: 80.93128-63.50990=17.42138
-# snohomish dif bt high/low quintiles for income: 82.09946-78.50544=3.59402
+# region dif bt high/low quintiles for income: 20.59965-38.83801=-18.238366
+# king dif bt high/low quintiles for income: 20.44392-39.98891=-19.54499
+# kitsap dif bt high/low quintiles for income: 29.02184-53.64476=-24.62292
+# pierce dif bt high/low quintiles for income: 18.82754-35.49278=-16.66524
+# snohomish dif bt high/low quintiles for income: 23.57543-37.4818=-13.90637
 
 filter <- data_clean_column %>% 
-  filter(county!="Region",
-         equity_group=="youth_quintile",
+  filter(equity_group=="lep_quintile",
          quintile=="Low"|
            quintile=="High")
-# king dif bt high/low quintiles for income: 79.29009-76.35762=2.93247
-# kitsap dif bt high/low quintiles for income: 59.86058-82.22206=-22.36148
-# pierce dif bt high/low quintiles for income: 66.70910-75.97165=-9.26255
-# snohomish dif bt high/low quintiles for income: 81.56795-80.16112=1.40683
-```
 
-1. 76.7 years: The regional life expectancy of people living in census tracts with the highest concentration of people of color, compared to 81.2 in census tracts with the lowest concentrations of people of color
-2. 7.9 years: The life expectancy of those living census tracts with the highest concentration of low income households is lowest in Pierce County - a difference of 7.9 years when compared to the regional average
-3. 7.0 years: Those living in census tracts with the highest concentration of limited English proficient households have a shorter life expectancy in Pierce County by 7.0 years, when compared to the regional average 
+# region dif bt high/low quintiles for lep: 23.40311-35.81572=-12.41261
+
+filter <- data_clean_column %>% 
+  filter(equity_group=="lep_quintile",
+         quintile=="Low"|
+           quintile=="High")
+
+# region dif bt high/low quintiles for lep: 23.40311-35.81572=-12.41261
+# king dif bt high/low quintiles for lep: 23.03641-33.03112=-9.99471
+# kitsap dif bt high/low quintiles for lep: 44.91147
+# pierce dif bt high/low quintiles for lep: 19.20263-31.46629=-12.26366
+# snohomish dif bt high/low quintiles for lep: 24.23809-39.50152=-15.26343
+
+
+
+```
+1. 28.90: The region's average tree canopy coverage per census tract
+2. 5.30: Washington State's average imprisonment rate
 
 \
 
 #### Insights & Analysis
 
-* The smallest difference in life expectancy between census tracts with the highest and lowest concentrations of households with lower income is in Snohomish County (3.6 years), while the largest difference is in Pierce County (17.4 years)
-* The life expectancy of those living in census tracts with the highest concentration of limited English proficient households is lower in all the counties except for Snohomish County  
-* There is no noticeable relationship between life expectancy and living in census tracts with high and low concentrations of people with disabilities
-* When comparing the life expectancy of those living in census tracts with the highest and lowest concentrations of households with children under 18 years old, life expectancy is slightly higher in King County (2.9 years) and Snohomish County (1.4 years) and much lower in Kitsap County (-22.4 years) and Pierce County (-9.3 years) 
+* Communities with the highest concentration of households with lower income or households with disabilities are the most disproportionately impacted by imprisonment rates
+* The county with the highest imprisonment rate for communities with the highest concentration of households with lower income is Pierce County (5.905), followed by Kitsap (5.901), Snohomish (5.30), King (5.08)
+* King County has the largest gap in imprisonment rate for lower income households which may be a reflection of the higher median income
+* King County has the highest median income at $102,620, followed by Snohomish $93,589, Pierce $80,236, Kitsap $76,814 (source: Office of Financial Management)
+* The county with the highest imprisonment rate for communities with the highest concentration of households with disabilities is Pierce County (5.69), followed by Kitsap (5.37), King (4.71), Snohomish (4.38)
 
 \
+This dataset first became available in 2020 due to a change in Washington State law requiring the Department of Corrections to report last known addresses for people incarcerated in state prisons during the 2020 Decennial Census. At this time, 2020 is the only year available and it is unclear if this data will be available again after the 2030 Decennial Census.
 \
-
+\
 
 ## 3. Facet of trend data
 ### Create Visual
@@ -515,8 +528,8 @@ filter <- data_clean_column %>%
 df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
-y_min = 50
-y_max = 95
+y_min = 0
+y_max = 50
 color = "purples"
 
 line_chart <- equity_tracker_line_facet(df = df,
@@ -535,11 +548,11 @@ line_chart <- equity_tracker_line_facet(df = df,
 ```
 
 ```{r output final line chart - tract, include=FALSE}
-# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
-# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\b-environment\b01-tree-canopy\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\b-environment\static-images
 
 # set folder structure
-file_name <- 'a01-life-expectancy-line'
+file_name <- 'b01-tree-canopy-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -591,7 +604,6 @@ if (output_type == "html") {
 `r source`
 </p> 
 
-#### Data call outs
 ```{r line facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>% 
@@ -599,32 +611,32 @@ filter <- data_clean %>%
          equity_group=="poc_quintile",
          quintile=="Low" | 
            quintile=="High",
-         data_year=="2010" |
-           data_year=="2020")
+         data_year=="2011" |
+           data_year=="2021")
 
-# 2010 region low quintile poc households: 80.54142	
-# 2010 region high quintile poc households: 76.64042
-# 80.54142-76.64042=3.901
-# 2020 region low quintile poc households: 81.19030
-# 2020 region high quintile poc households: 76.67422
-# 81.19030-76.67422=4.51608
-# ((4.51608-3.901)/(3.901))*100: 15.8% change
+# 2011 region low quintile poc households: 39.98673
+# 2011 region high quintile poc households: 24.19528
+# 24.19528-39.98673=-15.79145
+
+# 2021 region low quintile poc households: 39.91983
+# 2021 region high quintile poc households: 24.84521
+# 24.84521-39.91983=-15.07462
 
 filter <- data_clean %>% 
   filter(county=="Region",
          equity_group=="income_quintile",
          quintile=="Low" | 
            quintile=="High",
-         data_year=="2010" |
-           data_year=="2020")
+           data_year=="2011" |
+           data_year=="2021")
 
-# 2010 region low quintile income: 75.48994	
-# 2010 region high quintile income: 72.81326
-# 75.48994-72.81326=2.67668
-# 2020 region low quintile income: 81.98596
-# 2020 region high quintile income: 71.45515
-# 81.98596-71.45515=10.53081
-# ((10.53081-2.67668)/(2.67668))*100: 293.4281% change
+# 2011 region low quintile poc households: 42.21453
+# 2011 region high quintile poc households: 21.09514
+# 21.09514-42.21453=-21.11939
+
+# 2021 region low quintile income: 38.83801
+# 2021 region high quintile income: 20.59965
+# 20.59965-38.83801=-18.23836
 
 filter <- data_clean %>% 
   filter(county=="Snohomish",
@@ -637,36 +649,32 @@ filter <- data_clean %>%
          equity_group=="income_quintile",
          quintile=="Low" | 
            quintile=="High",
-         data_year=="2010" |
-           data_year=="2020")
+           data_year=="2021")
 
-# 2020 King dif low/high income: 81.94740-73.03439=8.91301
-# 2010 King dif low/high income: 74.67479-75.27990=-0.60511
-# 2020 Kitsap dif low/high income: 85.48813-69.90245=15.58568
-# 2010 Kitsap dif low/high income: 78.56102-64.58841=13.97261
-# 2020 Pierce dif low/high income: 80.93128-63.50990=17.42138
-# 2010 Pierce dif low/high income: 76.74249-66.53859=10.2039
-# 2020 Snohomish dif low/high income: 82.09946-78.50544=3.59402
-# 2010 Snohomish dif low/high income: 76.01877-77.99171=-1.97294
+# 2021 King dif low/high income: 5.083316-2.306517=2.776799
+# 2011 King dif low/high income: 5.083316-2.306517=2.776799
+# 2021 Kitsap dif low/high income: 5.906103-4.232797=1.673306
+# 2011 Kitsap dif low/high income: 5.906103-4.232797=1.673306
+# 2021 Pierce dif low/high income: 5.911497-3.856045=2.055452
+# 2011 Pierce dif low/high income: 5.911497-3.856045=2.055452
+# 2021 Snohomish dif low/high income: 5.306512-3.715537=1.590975
+# 2011 Snohomish dif low/high income: 5.306512-3.715537=1.590975
 
 filter <- data_clean %>% 
   filter(county!="Region",
-         equity_group=="lep_quintile",
-         quintile=="High")
+         equity_group=="disability_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+           data_year=="2021")
+
+# 2020 King dif low/high disability: 4.912824-2.659749=2.253075
+# 2020 Kitsap dif low/high disability: 5.468296-3.715005=1.753291
+# 2020 Pierce dif low/high disability: 5.547184-3.812307=1.734877
+# 2020 Snohomish dif low/high disability: 5.137279-3.679690=1.457589
 
 ```
 
-1. 3.9 years: The regional life expectancy gap between census tracts with the highest and lowest concentrations of people of color in 2010, a 15.8% smaller gap than in 2020
-2. 293%: The increase in the regional life expectancy gap between census tracts with the highest and lowest concentrations of households below 200% of the poverty line between 2010 and 2020
-3. 71.5 years: The 2020 regional life expectancy in tracts with the highest concentrations of households below 200% of the poverty line, 7 years fewer than the regional average (78.8) and 9 years fewer than the regional median (80.9)
 
-\
-
-#### Insights & Analysis
-
-* Snohomish County is the only county in the region where the life expectancy of the census tracts with the highest concentration of people of color exceeds the life expectancy of the census tracts with the lowest concentration of people of color, a trend consistent over the past decade
-* The life expectancy gaps between census tracts with the highest and lowest concentration of households below 200% of the poverty line increased in all counties between 2010 and 2020, with the largest gap change in Pierce County (7.2 years) and the smallest gap change in Kitsap County (1.6 years)
-* The 2020 life expectancy of those living in the census tracts with the highest concentrations of households with limited English proficiency is shortest in Pierce County (70.4 years), compared to King County () and Snohomish County (80.5 years)
 
 \
 \
@@ -703,13 +711,13 @@ do.call(unlink, files.to.remove)
 ## Copy files from Y drive > website folder
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
-current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
-
-web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-new.folder <- file.path(web.base.folder,theme_dir)
-
-list.of.files <- list.files(current_folder, 
-                            full.names = T)
+# current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+# 
+# web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+# new.folder <- file.path(web.base.folder,theme_dir)
+# 
+# list.of.files <- list.files(current_folder, 
+#                             full.names = T)
 # list.of.files
 
 # copy the files to the new folder
