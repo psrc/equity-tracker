@@ -446,8 +446,8 @@ summary(data_tract_nona$estimate)
 
 distrib <- rep(data_tract_nona$estimate, 1)
 
-avg.value <- data_tract_nona$estimate[1] #28.90
-med.value <- median(distrib) #29.99
+avg.value <- data_tract_nona$estimate[1] #20.1
+med.value <- median(distrib) #28.90
 ```
 *Average:* `r avg.value`
 \
@@ -529,7 +529,7 @@ head(data_tract_risk_outliers)
 # class(data_tract_risk_outliers)
 # plot(data_tract_risk_outliers$geometry)
 nrow(data_tract_risk_outliers) #103
-pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop10, na.rm = T)) #33152
+pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop21, na.rm = T)) #33152
 pop_outliers_num <- label_comma()(pop_outliers)
 ```
 There are `r pop_outliers_num` people (2020 Decennial Census) in these outlier tracts.
@@ -547,7 +547,7 @@ plot(data_tract_risk_outliers$risk_score,
 
 # outlier #1
 data_tract20_outliers_1 <- data_tract_risk_outliers %>% 
-  filter(risk_score > 0)
+  filter(risk_score > 50)
 
 # code to look at the scores and census tracts that are outliers
 data_tract20_outliers_1
@@ -795,11 +795,6 @@ data_tract <- as.data.frame(rbind(data_equity_pivot11_calc,
         data_equity_pivot21_calc)) %>%
    dplyr::select(-County.Name) %>% 
   filter(!is.na(quintile))
-
-# single year
-# data_tract <- data_equity_pivot20_calc %>% 
-#   filter(!is.na(quintile))
-
 
 # check data set
 str(data_tract)

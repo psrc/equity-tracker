@@ -4,13 +4,14 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
+ 
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -57,7 +58,7 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Average percentage of tree canopy by census tract. Understanding tree canopy coverage can help us understand which communities are disproportionately impacted by lower levels of tree canopy. Reduced tree canopy can impact quality of life in various ways including warmer temperatures and decreased access to park. 
+Average percentage of tree canopy by census tract. Understanding tree canopy coverage can help us understand which communities are disproportionately impacted by less tree canopy. Reduced tree canopy can impact quality of life in various ways including leading to warmer temperatures and decreased access to open space/parks. 
 
 ## 1. Map of most recent data
 To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution. 
@@ -286,12 +287,12 @@ median(df1$x, na.rm=TRUE)
 hist(df1$x)
 
 #   Min. 1st Qu.  Median    Mean  3rd Qu.  Max. 
-#  0.000   21.20   29.60   30.48   38.80   72.60
+#  0.80   21.20   29.60   30.48   38.80   72.60
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
 
-# 2 highest: 53053061400 (downtown Tacoma that includes the jail) Pierce (8.99), 53033008500 (Yesler Terrace are of Seattle that includes Harborview) King (8.54), 53053060200 (Port of Tacoma area) Pierce (8.44), 53061040700 (downtown Everett which includes the Snohomish County jail) Snohomish (8.19)
+# 2 highest: 53033031502 (east of Enumclaw heading into the foothills) King (72.6), 53033032705 (Cedar River Watershed area) King (71.9), 53033032102 (Tiger Mountain area) King (69.7), 53061053606 (Mt. Pilchuck area) Snohomish (68.0)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
@@ -307,16 +308,17 @@ by_county <- data %>%
 
 ```
 
-1. 28.90: The region's average tree canopy coverage per census tract
-2. 5.30: Washington State's average imprisonment rate
+1. 29.99%: The region's average tree canopy coverage per census tract in 2021
+2. 72.6%: census tract with the highest average percentage of tree canopy in 2021
+3. 0.8%: census tract with the lowest average percentage of tree canopy in 2021
 
 \
 
 #### Insights & Analysis
 
-* The census tracts with the highest average tree canopy cover include three census tracts in King County that include the tract with Tiger Mountain (72.6), the tract with the Cedar River Watershed (71.9), the tract east of Enumclaw heading into the foothills (69.7), and in Snohomish County the tract with Mt. Pilchuck (68.0)
-* The census tracts with the lowest average tree canopy cover are in King County and include South Lake Union (0.8), the two tracts that make up downtown Seattle (0.9 and 1.2), and the tract with Boeing Field (1.6)
-* Kitsap County has the highest average tree canopy cover (43.50), followed by Snohomish (31.87), King (29.80), and Pierce (27.04)
+* The census tracts with the highest average tree canopy cover includes three census tracts in King County that include the tract east of Enumclaw heading into the foothills of the Cascades (72.6%), the tract with the Cedar River Watershed (71.9%), the tract with Tiger Mountain (69.7%), and in Snohomish County the tract with Mt. Pilchuck (68.0%)
+* The census tracts with the lowest average tree canopy cover are in King County and include South Lake Union (0.8%), the two tracts that make up downtown Seattle (0.9% and 1.2%), and the tract with Boeing Field (1.6%)
+* Kitsap County has the highest average tree canopy cover (43.50%), followed by Snohomish (31.87%), King (29.80%), and Pierce (27.04%)
 
 \
 \
@@ -333,7 +335,7 @@ by_county <- data %>%
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
 source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-#source('equity-tracker-chart-functions.R')
+# source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'b01-tree-canopy-data.rda'
@@ -354,7 +356,7 @@ y = "estimate"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0 
-y_max = 50
+y_max = 60
 dec = 1
 esttype = "number"
 color = "purples"
@@ -487,28 +489,29 @@ filter <- data_clean_column %>%
 
 # region dif bt high/low quintiles for lep: 23.40311-35.81572=-12.41261
 # king dif bt high/low quintiles for lep: 23.03641-33.03112=-9.99471
-# kitsap dif bt high/low quintiles for lep: 44.91147
+# kitsap dif bt medium high/low quintiles for lep: 29.37065-44.91147=-15.54082
 # pierce dif bt high/low quintiles for lep: 19.20263-31.46629=-12.26366
 # snohomish dif bt high/low quintiles for lep: 24.23809-39.50152=-15.26343
 
 
 
 ```
-1. 28.90: The region's average tree canopy coverage per census tract
-2. 5.30: Washington State's average imprisonment rate
+
+#### Data call outs
+
+1. TBD
+
 
 \
 
 #### Insights & Analysis
 
-* Communities with the highest concentration of households with lower income or households with disabilities are the most disproportionately impacted by imprisonment rates
-* The county with the highest imprisonment rate for communities with the highest concentration of households with lower income is Pierce County (5.905), followed by Kitsap (5.901), Snohomish (5.30), King (5.08)
-* King County has the largest gap in imprisonment rate for lower income households which may be a reflection of the higher median income
-* King County has the highest median income at $102,620, followed by Snohomish $93,589, Pierce $80,236, Kitsap $76,814 (source: Office of Financial Management)
-* The county with the highest imprisonment rate for communities with the highest concentration of households with disabilities is Pierce County (5.69), followed by Kitsap (5.37), King (4.71), Snohomish (4.38)
+* Communities with the highest concentration of people of color, households with lower income, or households with limited English proficiency are most disproportionately impacted by lower average tree canopy cover
+* The counties with the largest gap in the highest and lowest quintiles for people of color are Kitsap and Pierce counties
+* The counties with the largest gap in the highest and lowest quintiles for households with lower income are Kitsap and King counties
+* The counties with the largest gap in the highest/medium high and lowest quintiles for households with limited English proficiency are Kitsap and Snohomish counties
 
 \
-This dataset first became available in 2020 due to a change in Washington State law requiring the Department of Corrections to report last known addresses for people incarcerated in state prisons during the 2020 Decennial Census. At this time, 2020 is the only year available and it is unclear if this data will be available again after the 2030 Decennial Census.
 \
 \
 
@@ -529,7 +532,7 @@ df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0
-y_max = 50
+y_max = 60
 color = "purples"
 
 line_chart <- equity_tracker_line_facet(df = df,
@@ -649,16 +652,16 @@ filter <- data_clean %>%
          equity_group=="income_quintile",
          quintile=="Low" | 
            quintile=="High",
-           data_year=="2021")
+           data_year=="2011")
 
-# 2021 King dif low/high income: 5.083316-2.306517=2.776799
-# 2011 King dif low/high income: 5.083316-2.306517=2.776799
-# 2021 Kitsap dif low/high income: 5.906103-4.232797=1.673306
-# 2011 Kitsap dif low/high income: 5.906103-4.232797=1.673306
-# 2021 Pierce dif low/high income: 5.911497-3.856045=2.055452
-# 2011 Pierce dif low/high income: 5.911497-3.856045=2.055452
-# 2021 Snohomish dif low/high income: 5.306512-3.715537=1.590975
-# 2011 Snohomish dif low/high income: 5.306512-3.715537=1.590975
+# 2021 King dif low/high income: 20.44392-39.98891=-19.54499
+# 2011 King dif low/high income: 20.97226-42.62123=-21.64897
+# 2021 Kitsap dif low/high income: 29.02184-53.64476=-24.62292
+# 2011 Kitsap dif low/high income: 29.82310-51.95387=-22.13077
+# 2021 Pierce dif low/high income: 18.82754-35.49278=-16.66524
+# 2011 Pierce dif low/high income: 17.81613-34.45938=-16.64325
+# 2021 Snohomish dif low/high income: 23.57543-37.48184=-13.90641
+# 2011 Snohomish dif low/high income: 21.02530-41.25180=-20.2265
 
 filter <- data_clean %>% 
   filter(county!="Region",
@@ -667,15 +670,20 @@ filter <- data_clean %>%
            quintile=="High",
            data_year=="2021")
 
-# 2020 King dif low/high disability: 4.912824-2.659749=2.253075
-# 2020 Kitsap dif low/high disability: 5.468296-3.715005=1.753291
-# 2020 Pierce dif low/high disability: 5.547184-3.812307=1.734877
-# 2020 Snohomish dif low/high disability: 5.137279-3.679690=1.457589
+# 2020 King dif low/high disability: 
+# 2020 Kitsap dif low/high disability: 
+# 2020 Pierce dif low/high disability: 
+# 2020 Snohomish dif low/high disability: 
 
 ```
 
 
+#### Insights & Analysis
 
+* The region has reduced the gap between the highest and lowest quintiles for people of color due to a decreased average tree canopy for the communities in the lowest quintile
+* King County has reduced the gap between the highest and lowest quintiles for communities with lower income between 2011 and 2021 due to decreased average tree canopy for the communities in the lowest quintile
+* Snohomish County has reduced the gap between the highest and lowest quintiles for communities with lower income between 2011 and 2021 due to an increase in average tree canopy for the communities in the highest quintile and a decrease for the communities in the lowest quintile
+ 
 \
 \
 
