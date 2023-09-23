@@ -56,6 +56,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
+## Indicator Explanation
+[Median household income is a broadly recognized indicator of economic well-being. It provides information about the financial resources available to households, and is closely tied to employment levels, educational attainment, and health. For most people, wages earned from work is the primary driver of economic success. The gap between the highest earners and everyone else has been growing in the U.S. for decades. For this measure, median household income is based on the pre-tax income of all household members 15 years and older, where half the households in the geographic area earn more and half earn less, including households with no income.]
+
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
 ```{r map legend settings, include=FALSE}
@@ -189,10 +192,12 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
 # setting the legend/label variables
 var_name <- "Median Household <br> Income (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><small>%s</small>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value italic
   paste("$", # if doesn't require prefix, this can be removed
         prettyNum((round(acs_data_tract$estimate, digits=-2)),
-                  big.mark = ","))) %>%
+                  big.mark = ",")),
+  paste("Coefficient of variation: ", acs_data_tract$countyfp20)) %>%
   lapply(htmltools::HTML)
 
 # if the label required a suffix instead of a prefix, for example a %, the code would look like this:

@@ -342,7 +342,7 @@ coutny_acs_data <- coutny_acs_data %>%
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
 source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R')
+source('equity-tracker-chart-functions.R') 
 
 # set folder structure
 rda <- 'f01-median-income-data.rda'
@@ -367,8 +367,6 @@ y_max = 180000
 dec = 0
 esttype = "currency"
 color = "purples"
-num_colors = 2
-color_rev = TRUE
 title = "Median Household Income"
 subtitle = "values are adjusted to 2021 dollars"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
@@ -384,10 +382,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             dec = dec,
                                             esttype = esttype,
                                             color = color,
-                                            num_colors = num_colors,
-                                            color_rev = color_rev)
+                                            num_colors = 2,
+                                            color_rev = TRUE)
 
-column_chart
 ```
 
 ```{r output final column chart - pums, include=FALSE}
@@ -554,7 +551,9 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         esttype = esttype,
                                         color = color,
                                         width = '420px',
-                                        height = '380px')
+                                        height = '380px',
+                                        num_colors = 2,
+                                        color_rev = TRUE)
 ```
 
 ```{r output final line chart - pums, include=FALSE}
@@ -707,7 +706,7 @@ current_folder <- file.path(getwd())
 y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
 
 # isolate files in Github
-list.of.files <- list.files(current_folder,
+list.of.files <- list.files(current_folder, 
                             full.names = T,
                             pattern = "\\.(html|docx)$")
 # list.of.files
@@ -718,9 +717,9 @@ file.copy(list.of.files,
           overwrite = T)
 
 # keep only .Rmd files in Github (cleaner)
-files.in.dir <- list.files(current_folder,
+files.in.dir <- list.files(current_folder, 
                             full.names = T)
-files.to.keep <- list.files(current_folder,
+files.to.keep <- list.files(current_folder, 
                             full.names = T,
                             pattern = "\\.Rmd$")
 files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
@@ -736,7 +735,7 @@ current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
 new.folder <- file.path(web.base.folder,theme_dir)
 
-list.of.files <- list.files(current_folder,
+list.of.files <- list.files(current_folder, 
                             full.names = T)
 # list.of.files
 

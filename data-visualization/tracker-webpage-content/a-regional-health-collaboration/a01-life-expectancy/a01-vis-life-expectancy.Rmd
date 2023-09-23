@@ -56,6 +56,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 **If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
+## Indicator Explanation
+Life expectancy provides a way to understand a population's overall health. Differences between groups of people can highlight differing access to healthcare and public services, adequate nutrition, and living conditions, all which impact a population's mortality rate. For this measure, we are defining life expectancy as a measure of the number of years a newborn can expect to live based on current age-specific death rates.
+
 ## 1. Map of most recent data
 To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution. 
 ```{r map legend settings, include=FALSE}
