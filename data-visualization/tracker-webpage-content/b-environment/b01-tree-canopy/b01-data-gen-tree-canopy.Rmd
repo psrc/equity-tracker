@@ -446,7 +446,7 @@ summary(data_tract_nona$estimate)
 
 distrib <- rep(data_tract_nona$estimate, 1)
 
-avg.value <- data_tract_nona$estimate[1] #20.1
+avg.value <- data_tract_nona$estimate[1] #20.1 - pulling first value
 med.value <- median(distrib) #28.90
 ```
 *Average:* `r avg.value`
