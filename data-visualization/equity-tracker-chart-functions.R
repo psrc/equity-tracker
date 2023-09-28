@@ -336,7 +336,7 @@ equity_arrange <- function(charts, rows = NULL, cols = NULL, width = "xs", title
 
 equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", num_colors = NULL, color_rev = FALSE, width = '420px', height = '380px', r=2, c=3) {
   
-  num_facets <- seq(1, df %>% select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
+  num_facets <- seq(1, df %>% dplyr::select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
   
   create_charts <- partial(echart_column_chart, 
                            df = df,
@@ -366,7 +366,7 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
 equity_tracker_line_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", num_colors = NULL,
                                       color_rev = FALSE, width = '420px', height = '380px', r=2, c=3, fill) {
   
-  num_facets <- seq(1, df %>% select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
+  num_facets <- seq(1, df %>% dplyr::select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
   
   create_charts <- partial(echart_line_chart, 
                            df = df,
