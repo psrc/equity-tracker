@@ -277,10 +277,10 @@ data <- data_tract %>%
 
 # calculate call out information
 calc <- data %>%
-  mutate(Avg_Per=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+  mutate(Avg_Per=(sum(estimate*total_pop21, na.rm =TRUE))/(sum(total_pop21, na.rm=TRUE)))
 
 
-x<-rep(data$estimate,times=data$total_pop20)
+x<-rep(data$estimate,times=data$total_pop21)
 df1<-data.frame(x)
 summary(df1$x)
 median(df1$x, na.rm=TRUE)
@@ -301,7 +301,7 @@ sort <- data %>%
 
 by_county <- data %>% 
   dplyr::group_by(County.Name) %>% 
-  dplyr::summarise(Avg_Per=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
+  dplyr::summarise(Avg_Per=(sum(estimate*total_pop21, na.rm =TRUE))/(sum(total_pop21, na.rm=TRUE))) %>% 
   dplyr::arrange(desc(Avg_Per))
 # Kitsap (43.49517), Snohomish (31.86968), King (29.79651),  Pierce (27.04333)
 
