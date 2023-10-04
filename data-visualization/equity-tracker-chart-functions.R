@@ -131,14 +131,18 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
   
 }
 
-echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, esttype, i, color, width, height, fill) {
+echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, esttype, i, color, num_colors = NULL,
+                              color_rev = FALSE, width, height, fill) {
   
-  if (color == "blues") {chart_color <- psrcplot::psrc_colors$blues_inc}
-  if (color == "greens") {chart_color <- psrcplot::psrc_colors$greens_inc}
-  if (color == "oranges") {chart_color <- psrcplot::psrc_colors$oranges_inc}
-  if (color == "purples") {chart_color <- psrcplot::psrc_colors$purples_inc}
-  if (color == "jewel") {chart_color <- psrcplot::psrc_colors$pognbgy_5}
+  if(color == "blues") {chart_color <- psrcplot::psrc_colors$blues_inc}
+  if(color == "greens") {chart_color <- psrcplot::psrc_colors$greens_inc}
+  if(color == "oranges") {chart_color <- psrcplot::psrc_colors$oranges_inc}
+  if(color == "purples") {chart_color <- psrcplot::psrc_colors$purples_inc}
+  if(color == "jewel") {chart_color <- psrcplot::psrc_colors$pognbgy_5}
   
+  if(!is.null(num_colors)) chart_color <- chart_color[1:num_colors] # number of colors to select from beginning of color ramp
+  if(color_rev == TRUE) chart_color <- rev(chart_color) # reverse ramp
+
   max_data <- df %>% dplyr::select(tidyselect::all_of(y)) %>% dplyr::pull() %>% max()
   facet_values <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::pull() %>% unique
   num_facets <- df %>% dplyr::select(tidyselect::all_of(facet)) %>% dplyr::distinct() %>% dplyr::pull() %>% length()
@@ -332,7 +336,7 @@ equity_arrange <- function(charts, rows = NULL, cols = NULL, width = "xs", title
 
 equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", num_colors = NULL, color_rev = FALSE, width = '420px', height = '380px', r=2, c=3) {
   
-  num_facets <- seq(1, df %>% select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
+  num_facets <- seq(1, df %>% dplyr::select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
   
   create_charts <- partial(echart_column_chart, 
                            df = df,
@@ -359,9 +363,10 @@ equity_tracker_column_facet <- function(df, x, y, facet, geo, title, y_min=0, y_
   
 }
 
-equity_tracker_line_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", width = '420px', height = '380px', r=2, c=3, fill) {
+equity_tracker_line_facet <- function(df, x, y, facet, geo, title, y_min=0, y_max=NULL, dec=0, esttype="number", color="blues", num_colors = NULL,
+                                      color_rev = FALSE, width = '420px', height = '380px', r=2, c=3, fill) {
   
-  num_facets <- seq(1, df %>% select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
+  num_facets <- seq(1, df %>% dplyr::select(all_of(facet)) %>% distinct() %>% pull() %>% length(), by=1)
   
   create_charts <- partial(echart_line_chart, 
                            df = df,
@@ -375,6 +380,8 @@ equity_tracker_line_facet <- function(df, x, y, facet, geo, title, y_min=0, y_ma
                            y_max = y_max,
                            esttype = esttype, 
                            color = color,
+                           num_colors = num_colors,
+                           color_rev = color_rev,
                            width = width, 
                            height = height,
                            fill=fill)
