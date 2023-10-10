@@ -363,6 +363,8 @@ y_max = 95
 dec = 1
 esttype = "number"
 color = "purples"
+num_colors = 5
+color_rev = FALSE
 title = "Life Expectancy"
 subtitle = "values are adjusted to 2021 dollars"
 source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
@@ -377,8 +379,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
-
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
 ```
 
 ```{r output final column chart - tract, include=FALSE}
@@ -400,6 +403,8 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
@@ -536,6 +541,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
                                         width = '420px',
                                         height = '380px')
 ```
@@ -560,6 +567,8 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,
