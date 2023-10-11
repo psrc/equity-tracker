@@ -187,7 +187,7 @@ map.zoom<- 8.5
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
-acs_data_plus_zero<-append(0,acs_data_tract$estimate)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
 
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = acs_data_plus_zero) # this is the value field
