@@ -4,13 +4,13 @@ subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -487,6 +487,37 @@ kg_schdistrict <- kgreadiness_schdistrict %>%
 ospi_data_tract <- merge(sch_districts, kg_schdistrict,
                          by.x = "organization",
                          by.y = "OrganizationId",
+                         all.x=TRUE)
+
+# aggregating data by county
+county_data <- ospi_data_tract %>%
+  sf::st_drop_geometry() %>% 
+  dplyr::select(county, Numerator, Denominator) %>% 
+  dplyr::group_by(county) %>% 
+  dplyr::summarise(cnty_num=sum(Numerator, na.rm=TRUE),
+                   cnty_denom=sum(Denominator, na.rm=TRUE),
+                   cnty_percent_num=(cnty_num/cnty_denom)*100) %>% #to distinguish between tract and county values
+  dplyr::select(-cnty_num, -cnty_denom)
+
+# aggregating data by region
+reg_data <- ospi_data_tract %>%
+  sf::st_drop_geometry() %>% 
+  dplyr::select(OrganizationLevel, Numerator, Denominator) %>% 
+  dplyr::group_by(OrganizationLevel) %>% 
+  dplyr::summarise(reg_num=sum(Numerator, na.rm=TRUE),
+                   reg_denom=sum(Denominator, na.rm=TRUE),
+                   reg_percent_num=(reg_num/reg_denom)*100) %>% #to distinguish between county, tract, and region values
+  na.omit() #remove NA row
+ 
+
+# add region to county data
+county_reg_data <- county_data %>% 
+  mutate(reg_percent_num=reg_data$reg_percent_num) #add column with region value
+
+# merge tract, county, and region data into one data set 
+ospi_data_tract <- merge(ospi_data_tract, county_reg_data,
+                         by.x="county",
+                         by.y="county",
                          all.x=TRUE)
 ```
 
