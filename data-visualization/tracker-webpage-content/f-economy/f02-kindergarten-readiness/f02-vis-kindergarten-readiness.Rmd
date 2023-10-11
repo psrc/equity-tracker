@@ -186,15 +186,24 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # setting color palette
-psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
-                                      domain = ospi_data_tract$Percent_num) # this is the value field
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+tract_data_plus_zero<-append(ospi_data_tract$Percent_num,0)
+
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = tract_data_plus_zero) # this is the value field
+
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
+#                                       domain = ospi_data_tract$Percent_num) # this is the value field
 
 # setting the legend/label variables
 var_name <- "Kindergarten <br> Readiness <br> (2022-23)" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
-  "School District: <em>%s</em><br/><strong>%s</strong>", ospi_data_tract$DistrictName, # the code in <> makes the district italic
-  paste(prettyNum(round(ospi_data_tract$Percent_num, digits=1)), #the digits would probably be 2 for %
-        '%')) %>%
+  "School District: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>",
+  ospi_data_tract$lea_name, # the code in <> makes the district italic
+  paste("School district value: ", prettyNum(round(ospi_data_tract$Percent_num, digits=0)),'%'),
+  paste("Region value: ", prettyNum((round(ospi_data_tract$reg_percent_num, digits=0))), '%'),
+  paste("County value: ", prettyNum(round(ospi_data_tract$cnty_percent_num, digits=0)), '%', 
+        paste0("(", ospi_data_tract$county," County)"))) %>%
   lapply(htmltools::HTML)
 
 
@@ -207,7 +216,7 @@ ospi_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=ospi_data_tract,
-              fillColor = psrc_palette(ospi_data_tract$Percent_num),
+              fillColor = psrc_palette(tract_data_plus_zero),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -216,7 +225,7 @@ ospi_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = ospi_data_tract$Percent_num,
+                       values = tract_data_plus_zero,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -354,6 +363,8 @@ y_max = 1
 dec = 0
 esttype = "percent"
 color = "purples"
+num_colors = 2
+color_rev = TRUE
 title = "Kindergarten Readiness"
 subtitle = "percentage of students demonstrating readiness in 6 of 6 domains*"
 source = "Washington Office of Superintendent of Public Instruction (OSPI) 2022-23 Washington Kindergarten Inventory of Developing Skills (WaKIDS) <br> No data available for students with limited English proficiency in Kitsap County <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
@@ -368,7 +379,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
 
 ```
 
@@ -391,6 +404,8 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
@@ -524,6 +539,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
                                         width = '420px',
                                         height = '380px')
 ```
@@ -548,6 +565,8 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,

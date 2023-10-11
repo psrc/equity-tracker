@@ -542,8 +542,10 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             dec = dec,
                                             esttype = esttype,
                                             color = color,
-                                            width = width,
-                                            height = height)
+                                            # width = width,
+                                            # height = height,
+                                            num_colors = 2,
+                                            color_rev = TRUE)
 
 ```
 
