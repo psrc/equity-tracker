@@ -200,13 +200,13 @@ labels <- sprintf(
   paste("Tract value: ","$", # if doesn't require prefix, this can be removed
         prettyNum((round(acs_data_tract$estimate, digits=-2)),
                   big.mark = ",")),
+  paste("Tract data reliability: ", acs_data_tract$reliability),
   paste("Region value: ","$",
         prettyNum((round(acs_data_tract$reg_estimate, digits=-2)),
                   big.mark = ",")),
   paste("County value: ","$",
         prettyNum((round(acs_data_tract$cnty_estimate, digits=-2)),
-                  big.mark = ","), paste0("(",acs_data_tract$county_name," County)")),
-  paste("Data reliability: ", acs_data_tract$reliability)) %>%
+                  big.mark = ","), paste0("(",acs_data_tract$county_name," County)"))) %>%
   lapply(htmltools::HTML)
 
 # if the label required a suffix instead of a prefix, for example a %, the code would look like this:
