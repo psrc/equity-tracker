@@ -244,14 +244,16 @@ tract_map <- leaflet() %>%
   
 # legends
 addLegend_decreasing(pal = psrc_palette,
-                     values = ~ln(tract_data_plus_zero),
+                     values = tract_data_plus_zero,
                      bins = 5,
                      position = "bottomright",
                      title = var_name,
                      group = var_name,
                      opacity = 0.7,
                      decreasing = TRUE,
-                     labFormat = labelFormat()) %>% 
+                     labFormat = labelFormat(
+                       transform = function(x) round(exp(x),-1)
+                     )) %>% 
   
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
