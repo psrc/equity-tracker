@@ -69,7 +69,7 @@ Data comes from the [Prison Policy Initiative](https://www.prisonpolicy.org/orig
 folder_path <- "Y:/Equity Indicators/tracker-webpage-content/h-public-services/h01-imprisonment/raw-data"
 imprison_20 <- read.csv(file.path(folder_path,"number_of_people_prison_2020.csv"))
 
-indicator_measure <- "Log_rate"
+indicator_measure <- "prison_rate"
 ```
 \
 ## Additional data
@@ -146,7 +146,7 @@ data_tract <- merge(tracts20.lyr, imprison_20,
                     all.x=TRUE)
 
 data_tract <- data_tract %>% 
-  dplyr::mutate(estimate=as.numeric(Log_rate)) # rename value variable for consistency
+  dplyr::mutate(estimate=as.numeric(prison_rate)) # rename value variable for consistency
 ```
 
 ```{r}
