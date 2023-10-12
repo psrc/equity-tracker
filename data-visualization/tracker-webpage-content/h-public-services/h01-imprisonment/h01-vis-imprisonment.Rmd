@@ -191,7 +191,7 @@ map.zoom<- 8.5
 # psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
 #                                       domain = data_tract$estimate)
 
-psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+psrc_purple_plus<-c("#FFFFFF","#FFFFFF","#F6CEFC", psrc_colors$purples_inc)
 tract_data_plus_zero<-append(data_tract$estimate,0)
 
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
@@ -206,7 +206,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 var_name <- "Imprisonment <br> Rate"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$geoid20, # the code in <> makes the geoid value italic 
-  paste(prettyNum((round(data_tract$estimate, digits=1))), " rate")) %>% 
+  paste(prettyNum((round(exp(data_tract$estimate), -1))), " rate")) %>% 
   lapply(htmltools::HTML)
 
 # if the label required a prefix, for example a $, the code would look like this:
