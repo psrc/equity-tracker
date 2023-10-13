@@ -201,7 +201,8 @@ labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid10, # the code in <> makes the geoid value italic 
   paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " years"),
   paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=1))), " years"),
-  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=1))), " years")) %>% 
+  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=1))), 
+        paste0("(",data_tract$county_name," County)"))) %>% 
   lapply(htmltools::HTML)
 
 # if the label required a prefix, for example a $, the code would look like this:
