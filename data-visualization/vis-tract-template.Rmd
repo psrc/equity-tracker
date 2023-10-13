@@ -198,8 +198,10 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_purple_plus,
 # set the variable
 var_name <- "Life Expectancy"
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$geoid10, # the code in <> makes the geoid value italic 
-  paste(prettyNum((round(data_tract$estimate, digits=1))), " years")) %>% 
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid10, # the code in <> makes the geoid value italic 
+  paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " years"),
+  paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=1))), " years"),
+  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=1))), " years")) %>% 
   lapply(htmltools::HTML)
 
 # if the label required a prefix, for example a $, the code would look like this:
@@ -227,7 +229,7 @@ tract_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=data_tract,
-              fillColor = psrc_palette(data_tract$estimate), #psrc_palette(tract_data_plus_zero)
+              fillColor = psrc_palette(data_tract$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -237,7 +239,7 @@ tract_map <- leaflet() %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
-                       values = data_tract$estimate, #tract_data_plus_zero
+                       values = data_tract$estimate,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
