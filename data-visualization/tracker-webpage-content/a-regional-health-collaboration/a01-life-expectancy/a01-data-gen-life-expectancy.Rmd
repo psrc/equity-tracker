@@ -592,7 +592,7 @@ Save final data set (.rda) for map
 # Because the measure (life expectancy) does not account for the population of the tract, it hasn't been normalized and needs to be weighted in order to aggregate to the region level. The map is going to visualize 2020 data, but in 2010 geographies. The original WTN data set was merged to the 2010 spatial file which has 2010 population numbers. To get 2020 population numbers, we need to aggregate population numbers in the 2020 tracts that were split from 2010 tracts. 
 
  
-head(tract.20) # to determine field names
+head(tract.20) # to determine field names of population data frame
 tract.20.edit <- tract.20 %>% 
   dplyr::mutate(pop20=estimate) # the life expectancy value is already 'estimate'
 
@@ -612,6 +612,33 @@ data_tract <- merge(data_tract, pop20,
                          by.x="geoid10",
                          by.y="geoid10", 
                          all.x=TRUE)
+```
+
+```{r, region and county numbers for map labels}
+# calculating data by county 
+county_tract_data <- data_tract %>% 
+  st_drop_geometry() %>%  #to remove spatial component
+  # dplyr::select(county_name, estimate, total_pop20) %>% #to simplify table to necessary fields
+  dplyr::group_by(county_name) %>% 
+  dplyr::mutate(cnty_estimate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% #calculate weighted value by county
+  dplyr::distinct(county_name, cnty_estimate)
+
+# calculating data by region
+reg_tract_data <- data_tract %>% 
+  st_drop_geometry() %>%  #to remove spatial component
+  dplyr::select(estimate, total_pop20) %>% #to simplify table to necessary fields
+  dplyr::mutate(reg_estimate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% #calculate weighted value for region
+  dplyr::distinct(reg_estimate)
+
+# add region data to county data
+county_reg_data <- county_tract_data %>% 
+  mutate(reg_estimate=reg_tract_data$reg_estimate)
+
+# merge tract, county, and region data into one data set 
+data_tract <- merge(data_tract, county_reg_data,
+                    by.x="county_name",
+                    by.y="county_name",
+                    all.x=TRUE)
 ```
 
 ```{r}
