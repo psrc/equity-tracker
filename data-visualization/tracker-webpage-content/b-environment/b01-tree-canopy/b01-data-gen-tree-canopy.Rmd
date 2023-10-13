@@ -87,7 +87,7 @@ crosswalk_10_20 <- get_table(schema="census",
                              tbl_name="v_geo_relationships_tracts")
 ```
 
-### tract-level population data for 2021
+### tract-level population data for 2021 and 2011
 ```{r, include=FALSE}
 # getting census population data by tract
 tracts_11_21 <- get_acs_recs(geography ='tract', 
@@ -154,6 +154,18 @@ data_tract <- merge(tracts20.lyr, canopy_21,
                     by.x="geoid20",
                     by.y="geoid20", 
                     all.x=TRUE)
+
+tract_acs_21data <- get_acs_recs(geography ='tract', table.names = 'B01003', years = c(2021), acs.type = 'acs5')
+  
+tract_acs_21data <- tract_acs_21data %>%
+  rename(total_pop21=estimate) %>%
+  rename(geoid20=GEOID)
+ 
+tract_acs_21data <- tract_acs_21data %>%
+  dplyr::select(geoid20, total_pop21)
+
+data_tract <- left_join(data_tract, tract_acs_21data, 
+                        by="geoid20")
 
 data_tract <- data_tract %>% 
   dplyr::mutate(estimate=as.numeric(Avg_Per)) # rename value variable for consistency
