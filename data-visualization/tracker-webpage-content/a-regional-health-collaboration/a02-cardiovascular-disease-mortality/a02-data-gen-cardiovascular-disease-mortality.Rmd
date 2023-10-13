@@ -618,6 +618,33 @@ Save final data set (.rda) for map
 #                          all.x=TRUE)
 ```
 
+```{r, region and county numbers for map labels}
+# calculating data by county 
+county_tract_data <- data_tract %>% 
+  st_drop_geometry() %>%  #to remove spatial component
+  # dplyr::select(county_name, estimate, total_pop20) %>% #to simplify table to necessary fields
+  dplyr::group_by(county_name) %>% 
+  dplyr::mutate(cnty_estimate=mean(estimate, na.rm=TRUE)) %>% #calculate weighted value by county
+  dplyr::distinct(county_name, cnty_estimate)
+
+# calculating data by region
+reg_tract_data <- data_tract %>% 
+  st_drop_geometry() %>%  #to remove spatial component
+  dplyr::select(estimate) %>% #to simplify table to necessary fields
+  dplyr::mutate(reg_estimate=mean(estimate, na.rm=TRUE)) %>% #calculate weighted value for region
+  dplyr::distinct(reg_estimate)
+
+# add region data to county data
+county_reg_data <- county_tract_data %>% 
+  mutate(reg_estimate=reg_tract_data$reg_estimate)
+
+# merge tract, county, and region data into one data set 
+data_tract <- merge(data_tract, county_reg_data,
+                    by.x="county_name",
+                    by.y="county_name",
+                    all.x=TRUE)
+```
+
 ```{r}
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
@@ -640,17 +667,19 @@ equity_tracts_10 <- equity_tracts %>%
   dplyr::filter(data_year==2010)
 
 # join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(cardio_mort_06_10, equity_tracts_10,
+data_equity_tracts <- merge(cardio_06_10, equity_tracts_10,
                             by.x="Census.Tract",
                             by.y="geoid", 
                             all.x=TRUE)
 
 # join 2010 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract10 <- merge(tract.10, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="Census.Tract", 
-                             all.x=TRUE)
+# data_equity_tract10 <- merge(tract.10, data_equity_tracts,
+#                              by.x="GEOID",
+#                              by.y="Census.Tract", 
+#                              all.x=TRUE)
 
+data_equity_tract10 <- data_equity_tracts
+  
 # check data set
 nrow(data_equity_tract10) #1548
 ```
@@ -662,16 +691,18 @@ equity_tracts_15 <- equity_tracts %>%
   dplyr::filter(data_year==2015)
 
 # join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(cardio_mort_11_15, equity_tracts_15,
+data_equity_tracts <- merge(cardio_11_15, equity_tracts_15,
                             by.x="Census.Tract",
                             by.y="geoid", 
                             all.x=TRUE)
 
 # join 2015 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract15 <- merge(tract.15, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="Census.Tract", 
-                             all.x=TRUE)
+# data_equity_tract15 <- merge(tract.15, data_equity_tracts,
+#                              by.x="GEOID",
+#                              by.y="Census.Tract", 
+#                              all.x=TRUE)
+
+data_equity_tract15 <- data_equity_tracts
 
 # check data set
 nrow(data_equity_tract15)
@@ -684,22 +715,30 @@ equity_tracts_20 <- equity_tracts %>%
   dplyr::filter(data_year==2020)
 
 # join WTN data (in 2010 census tracts) to cross walk
-data_crosswalk <- merge(crosswalk_10_20, cardio_mort_16_20,
-                        by.x="geoid10",
-                        by.y="Census.Tract",
-                        all.x=TRUE)
-
-# join WTN data to equity quintiles (on 2020 census tracts)
-data_equity_tracts <- merge(data_crosswalk, equity_tracts_20,
-                            by.x="geoid20",
+# data_crosswalk <- merge(crosswalk_10_20, cardio_16_20,
+#                         by.x="geoid10",
+#                         by.y="Census.Tract",
+#                         all.x=TRUE)
+                        
+# join WTN data to equity quintiles (on 2010 census tracts)
+data_equity_tracts <- merge(cardio_16_20, equity_tracts_20,
+                            by.x="Census.Tract",
                             by.y="geoid", 
                             all.x=TRUE)
 
+# join WTN data to equity quintiles (on 2020 census tracts)
+# data_equity_tracts <- merge(data_crosswalk, equity_tracts_20,
+#                             by.x="geoid20",
+#                             by.y="geoid", 
+#                             all.x=TRUE)
+
 # join 2020 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract20 <- merge(tract.20, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="geoid20", 
-                             all.x=TRUE)
+# data_equity_tract20 <- merge(tract.20, data_equity_tracts,
+#                              by.x="GEOID",
+#                              by.y="geoid20", 
+#                              all.x=TRUE)
+
+data_equity_tract20 <- data_equity_tracts 
 
 # check data set
 nrow(data_equity_tract20)
@@ -712,18 +751,15 @@ The data sets need to be cleaned and pivoted to a longer table so that there is 
 # clean/simplify data sets
 data_equity_quintiles10 <- data_equity_tract10 %>% 
   dplyr::mutate(data_year=format(year,format="%Y")) %>% 
-  dplyr::mutate(Cardio.Risk_num=as.numeric(Age.Adjusted.Rate.per.100.000
-))
+  dplyr::mutate(Cardio.Risk_num=as.numeric(Age.Adjusted.Rate.per.100.000))
 
 data_equity_quintiles15 <- data_equity_tract15 %>% 
   dplyr::mutate(data_year=format(year,format="%Y")) %>% 
-  dplyr::mutate(Cardio.Risk_num=as.numeric(Age.Adjusted.Rate.per.100.000
-))
+  dplyr::mutate(Cardio.Risk_num=as.numeric(Age.Adjusted.Rate.per.100.000))
 
 data_equity_quintiles20 <- data_equity_tract20 %>% 
   dplyr::mutate(data_year=format(year,format="%Y")) %>% 
-  dplyr::mutate(Cardio.Risk_num=as.numeric(Age.Adjusted.Rate.per.100.000
-))
+  dplyr::mutate(Cardio.Risk_num=as.numeric(Age.Adjusted.Rate.per.100.000))
 
 # pivot data set so that there is one column with quintile designation
 data_equity_pivot10 <- data_equity_quintiles10 %>% 
@@ -746,7 +782,7 @@ data_equity_pivot20 <- data_equity_quintiles20 %>%
 # check data sets
 nrow(data_equity_pivot10) #9288
 nrow(data_equity_pivot15) #9288
-nrow(data_equity_pivot20) #11052
+nrow(data_equity_pivot20) #8454
 ```
 
 These data sets should include records for:
@@ -800,31 +836,30 @@ These data sets should include records for:
 
 
 ### Calculate by equity quintile
-The life expectancy values are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2010, 2015, 2020). 
+The cardiovascular disease mortality rate values are available at the census tract level. We don't need to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2010, 2015, 2020). 
 ```{r}
-# calculate 2010 region population
-population_test <- data_equity_pivot10 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,603,425
-
-sum(tract.10$estimate) #3,603,425
+# # calculate 2010 region population
+# population_test <- data_equity_pivot10 %>%
+#   distinct(Census.Tract, .keep_all = TRUE) %>%
+#   dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,603,425
+# 
+# sum(tract.10$estimate) #3,603,425
 
 # calculations
-data_equity_wt10 <- data_equity_pivot10 %>% 
+data_equity_10 <- data_equity_pivot10 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  # dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
+  # dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>%
   dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_pop=(sum(estimate, na.rm = TRUE)),
-                   cardio_rate=mean(Cardio.Risk_num, na.rm = TRUE))
+  dplyr::summarise(tracts=length(Census.Tract),
+                   cardio_rate=mean(Cardio.Risk_num, na.rm = TRUE)) 
 
 # # check population
-# data_equity_wt10_test <- data_equity_wt10 %>% 
+# data_equity_wt10_test <- data_equity_wt10 %>%
 #   dplyr::filter(equity_group=="income_quintile")
 # sum(data_equity_wt10_test$tot_pop) #3,603,425
 
 # check data set
-nrow(data_equity_wt10)
+nrow(data_equity_10) #80
 ```
 The regional population in 2010: `r population_test`
 \
@@ -836,18 +871,17 @@ This data sets should include records for:
 * 5 equity quintiles 
 
 ```{r}
-# calculate 2015 region population
-population_test <- data_equity_pivot15 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,869,802
+# # calculate 2015 region population
+# population_test <- data_equity_pivot15 %>%
+#   distinct(Census.Tract, .keep_all = TRUE) %>%
+#   dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,869,802
 
 # calculations
-data_equity_wt15 <- data_equity_pivot15 %>% 
+data_equity_15 <- data_equity_pivot15 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  # dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
+  # dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>%
   dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_pop=(sum(estimate, na.rm = TRUE)),
+  dplyr::summarise(tracts=length(Census.Tract),
                    cardio_rate=mean(Cardio.Risk_num, na.rm = TRUE))
 
 # # check population
@@ -856,7 +890,7 @@ data_equity_wt15 <- data_equity_pivot15 %>%
 # sum(data_equity_wt15_test$tot_pop) #3,869,802
 
 # check data set
-nrow(data_equity_wt15)
+nrow(data_equity_15) #100
 ```
 The regional population in 2015: `r population_test`
 \
@@ -868,20 +902,19 @@ This data sets should include records for:
 * 5 equity quintiles 
 
 ```{r}
-# calculate 2020 region population
-population_test <- data_equity_pivot20 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443	
-
-sum(tracts20.lyr$total_pop20) #4,294,373
+# # calculate 2020 region population
+# population_test <- data_equity_pivot20 %>%
+#   distinct(Census.Tract, .keep_all = TRUE) %>%
+#   dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443
+# 
+# sum(tracts20.lyr$total_pop20) #4,294,373
 
 # calculations
-data_equity_wt20 <- data_equity_pivot20 %>% 
+data_equity_20 <- data_equity_pivot20 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  # dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
+  # dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>%
   dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_pop=(sum(estimate, na.rm = TRUE)),
+  dplyr::summarise(tracts=length(Census.Tract),
                    cardio_rate=mean(Cardio.Risk_num, na.rm = TRUE))
 
 # # check population
@@ -890,7 +923,7 @@ data_equity_wt20 <- data_equity_pivot20 %>%
 # sum(data_equity_wt20_test$tot_pop) #4,197,443
 
 # check data set
-nrow(data_equity_wt20)
+nrow(data_equity_20) #119
 ```
 The regional population in 2020: `r population_test`
 \
@@ -903,13 +936,13 @@ This data sets should include records for:
 
 ## Combine years into one data set
 ```{r}
-data_tract <- as.data.frame(rbind(data_equity_wt10,
-                                  data_equity_wt15,
-                                  data_equity_wt20)) %>% 
-  dplyr::select(-tot_pop, -tracts) %>% 
-  rbind(data_equity_pivot10_calc,
+data_tract <- as.data.frame(rbind(data_equity_10, #equity/quintile
+                                  data_equity_15,
+                                  data_equity_20)) %>% 
+  dplyr::select(-tracts) %>%
+  rbind(data_equity_pivot10_calc, #region
         data_equity_pivot15_calc,
-        data_equity_pivot20_calc) %>% 
+        data_equity_pivot20_calc) %>%
   filter(!is.na(quintile))
 
 # check data set
@@ -944,8 +977,7 @@ equity_group_order <- c("People of Color",
 
 # transforming data labels ----
 data_clean <- data_tract %>% 
-  mutate(county=County.Name) %>%  #rename value variable for consistency
-  mutate(county_ord = factor(county, levels=county_order)) %>%
+  mutate(county_ord = factor(County.Name, levels=county_order)) %>%
   mutate(equity_group_ord = case_when(
     equity_group=="poc_quintile"~"People of Color",
     equity_group=="disability_quintile"~"People with a Disability",
@@ -959,7 +991,8 @@ data_clean <- data_tract %>%
 
 # Minor edits to the data
 data_clean <- data_clean %>%
-  dplyr::mutate(estimate=as.numeric(cardio_rate)) #rename value variable for consistency
+  dplyr::mutate(estimate=as.numeric(round(cardio_rate),0), #rename value variable for consistency
+                county=County.Name) 
 
 # Sort the data to ensure the charts work
 data_clean <- data_clean %>%
