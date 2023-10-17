@@ -50,17 +50,21 @@ library(webshot2) #static image creation
 # output_type <- "word"
 output_type <- "html"
 ```
+
 # 3 visuals for webpage
-This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
+
+This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.\
 \
-\
-**If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+**If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.
 
 ## Indicator Explanation
-Life expectancy provides a way to understand a population's overall health. Differences between groups of people can highlight differing access to healthcare and public services, adequate nutrition, and living conditions, all which impact a population's mortality rate. For this measure, we are defining life expectancy as a measure of the number of years a newborn can expect to live based on current age-specific death rates.
+
+Cardiovascular disease mortality provides a way to understand a population's overall health. Cardiovascular disease can be caused by diet, lack of exercise, smoking, and environmental risk factors. Differences between groups of people can highlight differing access to healthcare and public services, adequate nutrition, and living conditions, all which impact a population's susceptibility to cardiovascular disease. For this measure, we are defining cardiovascular disease mortality as an age-adjusted rate of deaths per 100,000 due to cardiovascular disease, such as coronary heart disease, strokes, aortic disease, and peripheral arterial disease.
 
 ## 1. Map of most recent data
-To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution. 
+
+To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution.
+
 ```{r map legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
@@ -169,6 +173,7 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```
 
 ### Create Visual
+
 ```{r map .rda}
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
@@ -177,7 +182,7 @@ ind_dir <- 'a02-cardiovascular-disease-mortality'
 rda <- 'a02-cardiovascular-disease-mortality-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
-``` 
+```
 
 ```{r tract data map}
 # set map extent
@@ -186,31 +191,24 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # set up palettes
-psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+# tract_data_plus_zero<-append(data_tract$estimate,0)
+# 
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+#                                       domain = tract_data_plus_zero) # this is the value field
+
+psrc_palette <- leaflet::colorNumeric(palette=psrc_purple_plus,
                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Life Expectancy"
+var_name <- "Cardiovascular Disease <br> Mortality Rate (per 100,000)"
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$geoid10, # the code in <> makes the geoid value italic 
-  paste(prettyNum((round(data_tract$estimate, digits=1))), " years")) %>% 
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid10, # the code in <> makes the geoid value italic 
+  paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=0)))),
+  paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=0)))),
+  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=0))), 
+        paste0("(",data_tract$county_name," County)"))) %>% 
   lapply(htmltools::HTML)
-
-# if the label required a prefix, for example a $, the code would look like this:
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$Census.Tract, # the code in <> makes the geoid value italic
-#   paste("$",
-#         prettyNum((round(data_tract$estimate, digits=-2)),
-#                   big.mark = ","))) %>%
-#   lapply(htmltools::HTML)
-
-# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$Census.Tract,
-#   paste(prettyNum((round(data_tract$estimate, digits=2)), #the digits would probably be 2 for %
-#               big.mark = ","), #this wouldn't be necessary to include for %s    
-#         '%')) %>%
-#   lapply(htmltools::HTML)
 
 # map settings
 tract_map <- leaflet() %>%
@@ -254,21 +252,25 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: Washington State Department of Health (DOH) 2017-21 Washington Tracking Network (WTN); U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+
+Sources: Washington State Department of Health (DOH) 2016-20 Washington Tracking Network (WTN); U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+
 ```{r generate tract map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
 # set folder structure
-map_name <- 'a01-life-expectancy-map.html'
+map_name <- 'a02-cardiovascular-disease-mortality-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(tract_map,
                         file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
 ```
+
 \
 \
 
 #### Data call outs
+
 ```{r map calculations - tract, include=FALSE, eval=FALSE}
 # simplify data set
 data <- data_tract %>%
@@ -276,61 +278,53 @@ data <- data_tract %>%
 
 # calculate call out information
 calc <- data %>%
-  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
-# regional average life expectancy: 78.83183
-
-x<-rep(data$estimate,times=data$total_pop20)
-df1<-data.frame(x)
-summary(df1$x)
-median(df1$x, na.rm=TRUE)
-hist(df1$x)
-# regional median life expectancy: 80.86  
+  dplyr::distinct(county_name, cnty_estimate, reg_estimate)
+# regional: 199.8068
+# Snohomish (179.0106), King (199.1084), Kitsap (165.4363), Pierce (230.3565)
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004400 (Ravenna/U-District/Roosevelt) King (92.14), 53033032309 (Redmond) King (91.25)
+# 3 highest: 53033031205 (Auburn) King (643.89), 53033029407 (Kent) King (492.66), 53053071806 (Lakewood) Pierce (472.69)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
 
-# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
+# 3 lowest: 53033009701 (West Seattle, Alki) King (74.02), 53061051917 (Bothell) Snohomish (74.25), (View Ridge/Bryant neighborhoods) 53033003900 King (77.79)
 
-#95.39-67.31=28.08
-
-by_county <- data %>% 
-  dplyr::group_by(County.Name) %>% 
-  dplyr::summarise(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-  dplyr::arrange(desc(life.expectancy.wgt))
-# Snohomish (80.66948), King (79.40807), Kitsap (78.91234), Pierce (75.69769)
-
+#643.89-74.02=569.87
 ```
 
-1. 78.8 years: The region's average life expectancy
-2. 80.9 years: The region's median life expectancy
-3. 28.1 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+1.  200: The region's average cardiovascular disease mortality rate (per 100,000)
+2.  230: Pierce County has the highest cardiovascular disease mortality rate of PSRC's four counties
+3.  570: The difference in the cardiovascular disease mortality rate between those living in the census tracts with the highest and lowest rates
 
 \
 
 #### Insights & Analysis
 
-* Snohomish County has the highest life expectancy (80.7 years), followed by King (79.4 years), Kitsap (78.9 years), and Pierce (75.7 years)
-* The census tracts with the highest life expectancy are in Auburn, Pierce County (95.4 years); Ravenna/U-District neighborhoods (Seattle), King County (92.1 years); Redmond, King County (91.3 years)
-* The census tracts with the lowest life expectancy are in the Lincoln International District (Tacoma), Pierce County (67.3 years); Lakewood, Pierce County (69.7 years); Tulalip Reservation, Snohomish County (70.1 years)
+-   Kitsap County has the lowest cardiovascular disease mortality rate (165 per 100,000), followed by Snohomish (179 per 100,000), King (199 per 100,000), and Pierce (230 per 100,000)
+-   The census tracts with the lowest cardiovascular disease mortality rate (per 100,000) are in West Seattle, King County (74); Bothell, Snohomish County (92.1 years); Bryant/View Ridge neighborhoods (Seattle), King County (78)
+-   The census tracts with the highest cardiovascular disease mortality rate (per 100,000) are in the Auburn, King County (644); Kent, King County (493); Lakewood, Pierce County (473)
 
 \
 \
 
 ## 2. Facet of most recent data
+
 ### Create Visual
+
+```{=html}
 <style type="text/css">
 .main-container {
   max-width: 100% !important;
   margin: auto;
 }
 </style>
+```
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
 source('equity-tracker-chart-functions.R')
 
 # set folder structure
@@ -352,12 +346,14 @@ y = "estimate"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0
-y_max = 95
+y_max = 400
 dec = 1
 esttype = "number"
 color = "purples"
-title = "Life Expectancy"
-subtitle = "values are adjusted to 2021 dollars"
+num_colors = 5
+color_rev = FALSE
+title = "Cardiovascular Disease Mortality"
+subtitle = "age adjusted rate per 100,000"
 source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -370,8 +366,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
-
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
 ```
 
 ```{r output final column chart - tract, include=FALSE}
@@ -379,7 +376,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # set folder structure
-file_name <- 'a01-life-expectancy-column'
+file_name <- 'a02-cardiovascular-disease-mortality-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -393,6 +390,8 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
@@ -407,11 +406,17 @@ webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outpu
 ```
 
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+
 `r title`
+
 </p>
+
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+
 `r subtitle`
+
 </p>
+
 ```{r column chart output - tract, echo=FALSE}
 
 if (output_type == "html") {
@@ -426,49 +431,65 @@ if (output_type == "html") {
 
 # column_chart
 ```
+
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
+
 `r source`
-</p> 
+
+</p>
 
 #### Data call outs
+
 ```{r column facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
   filter(county=="Region",
          equity_group=="poc_quintile")
 
-# region low quintile poc households: 81.19030	
-# region high quintile poc households: 76.67422
-# 81.19030-76.67422=4.51608
+# region low quintile poc households: 189.3186	
+# region high quintile poc households: 228.2367
+# 228.2367-189.3186=38.9181
 
 filter <- data_clean_column %>% 
   filter(quintile=="High",
          equity_group=="income_quintile")
 
-# region high quintile low income households: 71.45515	
-# pierce high quintile low income households: 63.50990
-# 71.45515-63.50990=7.94525
+# region high quintile low income households: 243.9779	
+# pierce high quintile low income households: 283.8008
+# 283.8008-243.9779=39
 
 filter <- data_clean_column %>% 
   filter(equity_group=="lep_quintile",
          quintile=="Low"|
            quintile=="High")
 
-# region dif bt high/low quintiles for lep: 79.04127-77.92853=1.11274
-# king dif bt high/low quintiles for lep: 80.32595-77.63977=2.68618
-# pierce dif bt high/low quintiles for lep: 78.46118-70.37597=8.08521
-# snohomish dif bt high/low quintiles for lep: 80.35905-80.50632=-0.14727
+# region dif bt high/low quintiles for lep: 213.3713-191.8491=21.5222
+# king dif bt high/low quintiles for lep: 220.1033-184.1050=35.9983
+# pierce dif bt high/low quintiles for lep: 242.6309-211.3918=31.2391
+# snohomish dif bt high/low quintiles for lep: 190.2200-192.1292=-1.9092
 
 filter <- data_clean_column %>% 
   filter(equity_group=="income_quintile",
          quintile=="Low"|
            quintile=="High")
 
-# region dif bt high/low quintiles for income: 81.98596-71.45515=10.53081
-# king dif bt high/low quintiles for income: 81.94740-73.03439=8.91301
-# kitsap dif bt high/low quintiles for income: 85.48813-69.90245=15.58568
-# pierce dif bt high/low quintiles for income: 80.93128-63.50990=17.42138
-# snohomish dif bt high/low quintiles for income: 82.09946-78.50544=3.59402
+# region dif bt high/low quintiles for income: 241.2496-171.2760=69.9736
+# king dif bt high/low quintiles for income: 232.7547-175.7219=57.0328
+# kitsap dif bt high/low quintiles for income: 222.1252-129.4562=92.669
+# pierce dif bt high/low quintiles for income: 278.1537-201.1905=76.9632
+# snohomish dif bt high/low quintiles for income: 218.6136-143.5857=75.0279
+
+filter <- data_clean_column %>% 
+  filter(equity_group=="disability_quintile",
+         quintile=="Low"|
+           quintile=="High")
+
+# region dif bt high/low quintiles for disability: 228-169=59
+# king dif bt high/low quintiles for disability: 229-171=58
+# kitsap dif bt high/low quintiles for disability: 209-142=67
+# pierce dif bt high/low quintiles for disability: 249-195=54
+# snohomish dif bt high/low quintiles for disability: 206-151=55
+
 
 filter <- data_clean_column %>% 
   filter(county!="Region",
@@ -481,32 +502,34 @@ filter <- data_clean_column %>%
 # snohomish dif bt high/low quintiles for income: 81.56795-80.16112=1.40683
 ```
 
-1. 76.7 years: The regional life expectancy of people living in census tracts with the highest concentration of people of color, compared to 81.2 in census tracts with the lowest concentrations of people of color
-2. 7.9 years: The life expectancy of those living census tracts with the highest concentration of low income households is lowest in Pierce County - a difference of 7.9 years when compared to the regional average
-3. 7.0 years: Those living in census tracts with the highest concentration of limited English proficient households have a shorter life expectancy in Pierce County by 7.0 years, when compared to the regional average 
+1.  228: The cardiovascular disease mortality rate (per 100,000) for people living in census tracts with the highest concentration of people of color, compared to 189 in census tracts with the lowest concentrations of people of color
+2.  39: Pierce County's cardiovascular disease mortality rate (per 100,000) for those living census tracts with the highest concentration of low income households is higher than the regional average - a difference of 39
+3.  36: The largest difference in the cardiovascular disease mortality rate (per 100,000) between census tracts with the highest and lowest concentration of limited English proficient households is in King County
 
 \
 
 #### Insights & Analysis
 
-* The smallest difference in life expectancy between census tracts with the highest and lowest concentrations of households with lower income is in Snohomish County (3.6 years), while the largest difference is in Pierce County (17.4 years)
-* The life expectancy of those living in census tracts with the highest concentration of limited English proficient households is lower in all the counties except for Snohomish County  
-* There is no noticeable relationship between life expectancy and living in census tracts with high and low concentrations of people with disabilities
-* When comparing the life expectancy of those living in census tracts with the highest and lowest concentrations of households with children under 18 years old, life expectancy is slightly higher in King County (2.9 years) and Snohomish County (1.4 years) and much lower in Kitsap County (-22.4 years) and Pierce County (-9.3 years) 
+-   The smallest difference in the cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of households with lower income is in King County (57 per 100,000), followed by Snohomish County (75 per 100,000), Pierce County (77 per 100,000), and Kitsap County (93 per 100,000)
+-   The cardiovascular disease mortality rate is lowest in census tracts with the lowest concentration of people with disabilities in all the counties; however, the rate varies between 142 per 100,000 in Kitsap County to 195 per 100,000 in Pierce County
+-   There is no noticeable relationship between life expectancy and living in census tracts with high and low concentrations of people with limited English proficiency
+-   Census tracts with higher concentrations of households with families have higher rates of cardiovascular disease mortality in King and Pierce Counties, while there is no noticeable relationship in Kitsap and Snohomish Counties
 
 \
 \
-
 
 ## 3. Facet of trend data
+
 ### Create Visual
+
+```{=html}
 <style type="text/css">
 .main-container {
   max-width: 100% !important;
   margin: auto;
 }
 </style>
-
+```
 ```{r line facet - tract, include=FALSE}
 # Create Facet Line Chart
 
@@ -514,8 +537,8 @@ filter <- data_clean_column %>%
 df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
-y_min = 50
-y_max = 95
+y_min = 0
+y_max = 400
 color = "purples"
 
 line_chart <- equity_tracker_line_facet(df = df,
@@ -529,6 +552,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
                                         width = '420px',
                                         height = '380px')
 ```
@@ -538,7 +563,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # set folder structure
-file_name <- 'a01-life-expectancy-line'
+file_name <- 'a02-cardiovascular-disease-mortality-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -553,6 +578,8 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,
@@ -569,11 +596,17 @@ webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outpu
 ```
 
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+
 `r title`
+
 </p>
+
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+
 `r subtitle`
+
 </p>
+
 ```{r line chart - tract, echo=FALSE}
 if (output_type == "html") {
 
@@ -586,11 +619,15 @@ if (output_type == "html") {
 }
 # line_chart
 ```
+
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
+
 `r source`
-</p> 
+
+</p>
 
 #### Data call outs
+
 ```{r line facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>% 
@@ -601,13 +638,14 @@ filter <- data_clean %>%
          data_year=="2010" |
            data_year=="2020")
 
-# 2010 region low quintile poc households: 80.54142	
-# 2010 region high quintile poc households: 76.64042
-# 80.54142-76.64042=3.901
-# 2020 region low quintile poc households: 81.19030
-# 2020 region high quintile poc households: 76.67422
-# 81.19030-76.67422=4.51608
-# ((4.51608-3.901)/(3.901))*100: 15.8% change
+# 2010 region low quintile poc households: 216	
+# 2010 region high quintile poc households: 237
+# 237-216=21
+# 2020 region low quintile poc households: 188
+# 2020 region high quintile poc households: 226
+# 81.19030-76.67422=38
+# ((38-21)/(21))*100: 81% change
+# 17 increase over time
 
 filter <- data_clean %>% 
   filter(county=="Region",
@@ -617,13 +655,29 @@ filter <- data_clean %>%
          data_year=="2010" |
            data_year=="2020")
 
-# 2010 region low quintile income: 75.48994	
-# 2010 region high quintile income: 72.81326
-# 75.48994-72.81326=2.67668
-# 2020 region low quintile income: 81.98596
-# 2020 region high quintile income: 71.45515
-# 81.98596-71.45515=10.53081
-# ((10.53081-2.67668)/(2.67668))*100: 293.4281% change
+# 2010 region low quintile income: 193	
+# 2010 region high quintile income: 269
+# 269-193=76
+# 2020 region low quintile income: 171
+# 2020 region high quintile income: 241
+# 241-171=70
+# ((76-70)/(70))*100: 8.571429% change
+
+filter <- data_clean %>% 
+  filter(county=="Region",
+         equity_group=="youth_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2010" |
+           data_year=="2020")
+
+# 2010 region low quintile youth: 217	
+# 2010 region high quintile youth: 228
+# 228-217=11
+# 2020 region low quintile youth: 191
+# 2020 region high quintile youth: 220
+# 220-191=29
+# ((29-11)/(11))*100: 163.6364% change
 
 filter <- data_clean %>% 
   filter(county=="Region",
@@ -632,60 +686,55 @@ filter <- data_clean %>%
            quintile=="High",
          data_year=="2015" |
            data_year=="2020") 
-# 2015:low-high: 77.42494-77.69571=-0.27077
-# 2020:low-high: 76.63036-78.46467=-1.83431
-# ((-1.83431--0.27077)/(-0.27077))*100: 577.4421% change
-# 1.83431-0.27077=1.56354
+# 2015:low-high: 227-166=61
+# 2020:low-high: 229-169=60
+# ((61-60)/(60))*100: 1.666667% change
 
 filter <- data_clean %>% 
-  filter(county=="Snohomish",
+  filter(county=="King",
          equity_group=="poc_quintile",
-         quintile=="Low" | 
-           quintile=="High")
+         quintile=="High")
 
 filter <- data_clean %>% 
   filter(county!="Region",
          equity_group=="income_quintile",
-         quintile=="Low" | 
-           quintile=="High",
-         data_year=="2010" |
-           data_year=="2020")
+         quintile=="High",
+         data_year=="2020")
 
-# 2020 King dif low/high income: 81.94740-73.03439=8.91301
-# 2010 King dif low/high income: 74.67479-75.27990=-0.60511
-# 2020 Kitsap dif low/high income: 85.48813-69.90245=15.58568
-# 2010 Kitsap dif low/high income: 78.56102-64.58841=13.97261
-# 2020 Pierce dif low/high income: 80.93128-63.50990=17.42138
-# 2010 Pierce dif low/high income: 76.74249-66.53859=10.2039
-# 2020 Snohomish dif low/high income: 82.09946-78.50544=3.59402
-# 2010 Snohomish dif low/high income: 76.01877-77.99171=-1.97294
+# 2020 King high quintile income: 233
+# 2020 Kitsap high quintile income: 222
+# 2020 Pierce high quintile income: 278
+# 2020 Snohomish high quintile income: 219
 
 filter <- data_clean %>% 
   filter(county!="Region",
-         equity_group=="lep_quintile",
+         equity_group=="disability_quintile",
          quintile=="High")
-# King 2020-2010: 77.63977	
-# Pierce 2020-2010: 70.37597
-# Snohomish 2020-2010: 80.50632
+# King 2020-2015: 229-219=10	
+# Kitsap 2020-2015: 209-198=11
+# Pierce 2020-2015: 249-245=4
+# Snohomish 2020-2015: 206-234=-28
 ```
 
-1. 3.9 years: The regional life expectancy gap between census tracts with the highest and lowest concentrations of people of color in 2010, a 15.8% smaller gap than in 2020
-2. 293%: The increase in the regional life expectancy gap between census tracts with the highest and lowest concentrations of households below 200% of the poverty line between 2010 and 2020
-3. 71.5 years: The 2020 regional life expectancy in tracts with the highest concentrations of households below 200% of the poverty line, 7 years fewer than the regional average (78.8) and 9 years fewer than the regional median (80.9)
+1.  38 (per 100,000): The gap in the regional cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of people of color in 2020, a 17 larger (rate) gap than in 2020
+2.  70 (per 100,000): The gap in the regional cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of households below 200% of the poverty line between 2010 and 2020, a slight decrease compared to 2010 (76 per 100,000)
+3.  29 (per 100,000): The gap in the regional cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of households with youth in 2020, a 18 larger (rate) gap than in 2010
 
 \
 
 #### Insights & Analysis
 
-* Snohomish County is the only county in the region where the life expectancy of the census tracts with the highest concentration of people of color exceeds the life expectancy of the census tracts with the lowest concentration of people of color, a trend consistent over the past decade
-* The life expectancy gaps between census tracts with the highest and lowest concentration of households below 200% of the poverty line increased in all counties between 2010 and 2020, with the largest gap change in Pierce County (7.2 years) and the smallest gap change in Kitsap County (1.6 years)
-* The 2020 life expectancy of those living in the census tracts with the highest concentrations of households with limited English proficiency is shortest in Pierce County (70.4 years), compared to King County () and Snohomish County (80.5 years)
+-   For census tracts with the highest concentration of people of color, King County is the only county in the region where the cardiovascular disease mortality increased over the past decade (an increase of 15\_\_\_\_)
+-   Although the cardiovascular disease mortality rate has improved over time for census tracts with the highest concentration of households below 200% of the poverty line in all counties, the rate has remained the highest in Pierce County (279 per 100,000) - compared to King County (233 per 100,000), Kitsap County (222 per 100,000), and Snohomish County (219 per 100,000)
+-   For census tracts with the highest concentration of people with disabilities, Snohomish County is the only county in the region where the cardiovascular disease mortality rate has decreased, or improved, over time (28 per 100,000), while the rate has slightly increased in Pierce County (4 per 100,000), King County (10 per 100,000), and Kitsap County (11 per 100,000)
 
 \
 \
 
 # Transfer files
-## Copy files from Github > Y drive
+
+## Copy files from Github \> Y drive
+
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(getwd())
@@ -713,7 +762,8 @@ files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.kee
 do.call(unlink, files.to.remove)
 ```
 
-## Copy files from Y drive > website folder
+## Copy files from Y drive \> website folder
+
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
