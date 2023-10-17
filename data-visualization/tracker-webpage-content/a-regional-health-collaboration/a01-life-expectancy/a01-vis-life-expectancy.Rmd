@@ -247,7 +247,7 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: Washington State Department of Health (DOH) 2017-21 Washington Tracking Network (WTN); U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Sources: Washington State Department of Health (DOH) 2016-20 Washington Tracking Network (WTN); U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate tract map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
