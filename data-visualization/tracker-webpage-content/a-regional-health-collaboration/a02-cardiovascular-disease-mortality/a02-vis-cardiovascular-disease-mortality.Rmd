@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 # 3 visuals for webpage
 
@@ -58,7 +58,7 @@ This code will help produce the three visuals that are going to be a part of eac
 
 ## Indicator Explanation
 
-Cardiovascular disease mortality provides a way to understand a population's overall health. Cardiovascular disease can be caused by diet, lack of exercise, smoking, and environmental risk factors. Differences between groups of people can highlight differing access to healthcare and public services, adequate nutrition, and living conditions, all which impact a population's susceptibility to cardiovascular disease. For this measure, we are defining cardiovascular disease mortality as an age-adjusted rate of deaths per 100,000 due to cardiovascular disease, such as coronary heart disease, strokes, aortic disease, and peripheral arterial disease.
+The cardiovascular disease mortality rate provides a way to understand a population's overall health. Cardiovascular disease can be caused by diet, lack of exercise, smoking, and environmental risk factors. Differences between groups of people can highlight differing access to healthcare and public services, adequate nutrition, and living conditions, all which impact a population's susceptibility to cardiovascular disease. For this measure, we are defining cardiovascular disease mortality as an age-adjusted rate of deaths per 100,000 due to cardiovascular disease, such as coronary heart disease, strokes, aortic disease, and peripheral arterial disease.
 
 ## 1. Map of most recent data
 
@@ -285,17 +285,18 @@ sort <- data %>%
 # 3 lowest: 53033009701 (West Seattle, Alki) King (74.02), 53061051917 (Bothell) Snohomish (74.25), (View Ridge/Bryant neighborhoods) 53033003900 King (77.79)
 
 #643.89-74.02=569.87
+# ((643.89-74.02)/(74.02))*100: 770% change
 ```
 1.  200: The region's average cardiovascular disease mortality rate (per 100,000)
-2.  230: Pierce County has the highest cardiovascular disease mortality rate of PSRC's four counties
-3.  570: The difference in the cardiovascular disease mortality rate between those living in the census tracts with the highest and lowest rates
+2.  230: Pierce County has the highest rate of deaths due to heart disease and stroke of PSRC's four counties
+3.  770%: The rate is 770% higher in the census tract with the highest rate (644), compared to the census tract with the lowest (74) rates
 
 \
 
 #### Insights & Analysis
 
--   Kitsap County has the lowest cardiovascular disease mortality rate (165 per 100,000), followed by Snohomish (179 per 100,000), King (199 per 100,000), and Pierce (230 per 100,000)
--   The census tracts with the lowest cardiovascular disease mortality rate (per 100,000) are in West Seattle, King County (74); Bothell, Snohomish County (92.1 years); Bryant/View Ridge neighborhoods (Seattle), King County (78)
+-   Kitsap County has the lowest cardiovascular disease mortality rate (165 per 100,000), followed by Snohomish (179), King (199), and Pierce (230)
+-   The census tracts with the lowest cardiovascular disease mortality rate (per 100,000) are in West Seattle, King County (74); Bothell, Snohomish County (74); Bryant/View Ridge neighborhoods (Seattle), King County (78)
 -   The census tracts with the highest cardiovascular disease mortality rate (per 100,000) are in the Auburn, King County (644); Kent, King County (493); Lakewood, Pierce County (473)
 
 \
@@ -360,7 +361,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 
 ```
 
-```{r output final column chart - tract, include=FALSE}
+```{r output-final-column-chart-tract, include=FALSE}
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
@@ -428,6 +429,7 @@ filter <- data_clean_column %>%
 # region low quintile poc households: 189.3186	
 # region high quintile poc households: 228.2367
 # 228.2367-189.3186=38.9181
+# ((228-189)/(189))*100: 20.63% change
 
 filter <- data_clean_column %>% 
   filter(quintile=="High",
@@ -436,6 +438,7 @@ filter <- data_clean_column %>%
 # region high quintile low income households: 243.9779	
 # pierce high quintile low income households: 283.8008
 # 283.8008-243.9779=39
+# ((284-244)/(244))*100: 16.39% change
 
 filter <- data_clean_column %>% 
   filter(equity_group=="lep_quintile",
@@ -446,6 +449,7 @@ filter <- data_clean_column %>%
 # king dif bt high/low quintiles for lep: 220.1033-184.1050=35.9983
 # pierce dif bt high/low quintiles for lep: 242.6309-211.3918=31.2391
 # snohomish dif bt high/low quintiles for lep: 190.2200-192.1292=-1.9092
+# ((220-184)/(184))*100: 19.57% change
 
 filter <- data_clean_column %>% 
   filter(equity_group=="income_quintile",
@@ -481,18 +485,18 @@ filter <- data_clean_column %>%
 # snohomish dif bt high/low quintiles for income: 81.56795-80.16112=1.40683
 ```
 
-1.  228: The cardiovascular disease mortality rate (per 100,000) for people living in census tracts with the highest concentration of people of color, compared to 189 in census tracts with the lowest concentrations of people of color
-2.  39: Pierce County's cardiovascular disease mortality rate (per 100,000) for those living census tracts with the highest concentration of low income households is higher than the regional average - a difference of 39
-3.  36: The largest difference in the cardiovascular disease mortality rate (per 100,000) between census tracts with the highest and lowest concentration of limited English proficient households is in King County
+1.  228: The cardiovascular disease mortality rate (per 100,000) for people living in census tracts with the highest concentration of people of color, 21% higher that in census tracts with the lowest concentrations of people of color
+2.  16%: In Pierce County, the number of heart disease and stroke-related deaths for areas with the highest concentration of low income households is 16% higher than the regional average
+3.  36: When comparing areas with the highest and lowest concentrations of limited English proficient households, King County has the largest gap of 36 deaths or a 20% difference 
 
 \
 
 #### Insights & Analysis
 
--   The smallest difference in the cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of households with lower income is in King County (57 per 100,000), followed by Snohomish County (75 per 100,000), Pierce County (77 per 100,000), and Kitsap County (93 per 100,000)
--   The cardiovascular disease mortality rate is lowest in census tracts with the lowest concentration of people with disabilities in all the counties; however, the rate varies between 142 per 100,000 in Kitsap County to 195 per 100,000 in Pierce County
--   There is no noticeable relationship between life expectancy and living in census tracts with high and low concentrations of people with limited English proficiency
--   Census tracts with higher concentrations of households with families have higher rates of cardiovascular disease mortality in King and Pierce Counties, while there is no noticeable relationship in Kitsap and Snohomish Counties
+-   The smallest difference in the cardiovascular disease mortality rate between areas with higher numbers of households with lower income is in King County (57 per 100,000), followed by Snohomish County (75), Pierce County (77), and Kitsap County (93)
+-   The number of heart disease and stroke-related deaths is highest in census tracts with the highest concentration of people with disabilities in all the counties; however, the rate varies between 142 per 100,000 in Kitsap County to 195 per 100,000 in Pierce County
+-   There is no noticeable relationship between heart disease and stroke-related deaths and the concentration of people with limited English proficiency
+-   Census tracts with higher concentrations of households with families have higher rates of cardiovascular disease mortality in King and Pierce Counties, while there is no clear trend in Kitsap and Snohomish Counties
 
 \
 \
@@ -661,6 +665,9 @@ filter <- data_clean %>%
   filter(county=="King",
          equity_group=="poc_quintile",
          quintile=="High")
+# 2010: 210.6055
+# 2020: 225.6985
+# ((225.6985-210.6055)/(210.6055))*100: 7.16648% change
 
 filter <- data_clean %>% 
   filter(county!="Region",
@@ -683,17 +690,17 @@ filter <- data_clean %>%
 # Snohomish 2020-2015: 206-234=-28
 ```
 
-1.  38 (per 100,000): The gap in the regional cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of people of color in 2020, a 17 larger (rate) gap than in 2020
-2.  70 (per 100,000): The gap in the regional cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of households below 200% of the poverty line between 2010 and 2020, a slight decrease compared to 2010 (76 per 100,000)
-3.  29 (per 100,000): The gap in the regional cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of households with youth in 2020, a 18 larger (rate) gap than in 2010
+1.  81%: The gap in the regional cardiovascular disease mortality rate between census tracts with the highest and lowest concentrations of people of color increased in 2020, an 81% larger rate than in 2010
+2.  70: The gap in the rate between census tracts with the highest and lowest concentrations of households below 200% of the poverty line in 2020, a 9% decrease compared to 2010
+3.  164%: The gap in the number of heart disease and stroke-related deaths between census tracts with the highest and lowest concentrations of households with youth increased by 164% between 2010 and 2020
 
 \
 
 #### Insights & Analysis
 
--   For census tracts with the highest concentration of people of color, King County is the only county in the region where the cardiovascular disease mortality increased over the past decade (an increase of 15....)
--   Although the cardiovascular disease mortality rate has improved over time for census tracts with the highest concentration of households below 200% of the poverty line in all counties, the rate has remained the highest in Pierce County (279 per 100,000) - compared to King County (233 per 100,000), Kitsap County (222 per 100,000), and Snohomish County (219 per 100,000)
--   For census tracts with the highest concentration of people with disabilities, Snohomish County is the only county in the region where the cardiovascular disease mortality rate has decreased, or improved, over time (28 per 100,000), while the rate has slightly increased in Pierce County (4 per 100,000), King County (10 per 100,000), and Kitsap County (11 per 100,000)
+-   For census tracts with the highest concentration of people of color, King County is the only county in the region where the cardiovascular disease mortality increased over the past decade (7% increase)
+-   Although deaths related to heart disease and stroke have decreased over time for census tracts with the highest concentration of households below 200% of the poverty line in all counties, the rate has remained the highest in Pierce County (279 per 100,000) - compared to King County (233), Kitsap County (222), and Snohomish County (219)
+-   For census tracts with the highest concentration of people with disabilities, Snohomish County is the only county in the region where the cardiovascular disease mortality rate has decreased, or improved, over time (-28 per 100,000), while the rate has slightly increased in Pierce County (+4 per 100,000), King County (+10 per 100,000), and Kitsap County (+11 per 100,000)
 
 \
 \
