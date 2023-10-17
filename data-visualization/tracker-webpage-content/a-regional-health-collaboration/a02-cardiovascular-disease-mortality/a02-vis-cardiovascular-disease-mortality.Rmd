@@ -50,7 +50,6 @@ library(webshot2) #static image creation
 # output_type <- "word"
 output_type <- "html"
 ```
-
 # 3 visuals for webpage
 
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.\
@@ -63,8 +62,7 @@ Cardiovascular disease mortality provides a way to understand a population's ove
 
 ## 1. Map of most recent data
 
-To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution.
-
+To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution. 
 ```{r map legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
@@ -173,7 +171,6 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```
 
 ### Create Visual
-
 ```{r map .rda}
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
@@ -182,7 +179,7 @@ ind_dir <- 'a02-cardiovascular-disease-mortality'
 rda <- 'a02-cardiovascular-disease-mortality-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
-```
+``` 
 
 ```{r tract data map}
 # set map extent
@@ -252,9 +249,7 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-
 Sources: Washington State Department of Health (DOH) 2016-20 Washington Tracking Network (WTN); U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
-
 ```{r generate tract map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
@@ -265,12 +260,10 @@ map_name <- 'a02-cardiovascular-disease-mortality-map.html'
 htmlwidgets::saveWidget(tract_map,
                         file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
 ```
-
 \
 \
 
 #### Data call outs
-
 ```{r map calculations - tract, include=FALSE, eval=FALSE}
 # simplify data set
 data <- data_tract %>%
@@ -293,7 +286,6 @@ sort <- data %>%
 
 #643.89-74.02=569.87
 ```
-
 1.  200: The region's average cardiovascular disease mortality rate (per 100,000)
 2.  230: Pierce County has the highest cardiovascular disease mortality rate of PSRC's four counties
 3.  570: The difference in the cardiovascular disease mortality rate between those living in the census tracts with the highest and lowest rates
@@ -312,19 +304,15 @@ sort <- data %>%
 ## 2. Facet of most recent data
 
 ### Create Visual
-
-```{=html}
 <style type="text/css">
 .main-container {
   max-width: 100% !important;
   margin: auto;
 }
 </style>
-```
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
 source('equity-tracker-chart-functions.R')
 
 # set folder structure
@@ -369,6 +357,7 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             color = color,
                                             num_colors = num_colors,
                                             color_rev = color_rev)
+
 ```
 
 ```{r output final column chart - tract, include=FALSE}
@@ -406,17 +395,11 @@ webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outpu
 ```
 
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
-
 `r title`
-
 </p>
-
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-
 `r subtitle`
-
 </p>
-
 ```{r column chart output - tract, echo=FALSE}
 
 if (output_type == "html") {
@@ -431,15 +414,11 @@ if (output_type == "html") {
 
 # column_chart
 ```
-
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-
 `r source`
-
-</p>
+</p> 
 
 #### Data call outs
-
 ```{r column facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
@@ -521,15 +500,13 @@ filter <- data_clean_column %>%
 ## 3. Facet of trend data
 
 ### Create Visual
-
-```{=html}
 <style type="text/css">
 .main-container {
   max-width: 100% !important;
   margin: auto;
 }
 </style>
-```
+
 ```{r line facet - tract, include=FALSE}
 # Create Facet Line Chart
 
@@ -596,17 +573,11 @@ webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outpu
 ```
 
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
-
 `r title`
-
 </p>
-
 <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-
 `r subtitle`
-
 </p>
-
 ```{r line chart - tract, echo=FALSE}
 if (output_type == "html") {
 
@@ -619,15 +590,11 @@ if (output_type == "html") {
 }
 # line_chart
 ```
-
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-
 `r source`
-
-</p>
+</p> 
 
 #### Data call outs
-
 ```{r line facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>% 
@@ -724,7 +691,7 @@ filter <- data_clean %>%
 
 #### Insights & Analysis
 
--   For census tracts with the highest concentration of people of color, King County is the only county in the region where the cardiovascular disease mortality increased over the past decade (an increase of 15\_\_\_\_)
+-   For census tracts with the highest concentration of people of color, King County is the only county in the region where the cardiovascular disease mortality increased over the past decade (an increase of 15....)
 -   Although the cardiovascular disease mortality rate has improved over time for census tracts with the highest concentration of households below 200% of the poverty line in all counties, the rate has remained the highest in Pierce County (279 per 100,000) - compared to King County (233 per 100,000), Kitsap County (222 per 100,000), and Snohomish County (219 per 100,000)
 -   For census tracts with the highest concentration of people with disabilities, Snohomish County is the only county in the region where the cardiovascular disease mortality rate has decreased, or improved, over time (28 per 100,000), while the rate has slightly increased in Pierce County (4 per 100,000), King County (10 per 100,000), and Kitsap County (11 per 100,000)
 
@@ -732,9 +699,7 @@ filter <- data_clean %>%
 \
 
 # Transfer files
-
-## Copy files from Github \> Y drive
-
+## Copy files from Github > Y drive
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(getwd())
@@ -762,8 +727,7 @@ files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.kee
 do.call(unlink, files.to.remove)
 ```
 
-## Copy files from Y drive \> website folder
-
+## Copy files from Y drive > website folder
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
