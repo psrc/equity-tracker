@@ -230,7 +230,7 @@ tract_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=data_tract,
-              fillColor = psrc_palette(data_tract$estimate),
+              fillColor = psrc_palette(data_tract$estimate), #tract_data_plus_zero
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -240,7 +240,7 @@ tract_map <- leaflet() %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
-                       values = data_tract$estimate,
+                       values = data_tract$estimate, #tract_data_plus_zero
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
