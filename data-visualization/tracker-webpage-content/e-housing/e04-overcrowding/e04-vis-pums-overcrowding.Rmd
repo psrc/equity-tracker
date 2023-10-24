@@ -48,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -188,8 +188,13 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # setting color palette
-psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
-                                      domain = acs_data_tract$estimate) # this is the value field
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = acs_data_plus_zero) # this is the value field
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
+#                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
 var_name <- "Overcrowding: <br> Percentage of Households <br> with >1.5 persons <br> per Bedroom" # the <br> could be adjusted depending on the length/spacing of the name
@@ -218,7 +223,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$estimate),
+              fillColor = psrc_palette(acs_data_plus_zero),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -227,7 +232,7 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_tract$estimate,
+                       values = acs_data_plus_zero,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -368,8 +373,8 @@ county_acs_data$estimate <- ((county_acs_data$Overcrowding/county_acs_data$Total
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
-#source('equity-tracker-chart-functions.R')
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'e04-overcrowding-data.rda'
@@ -395,6 +400,8 @@ y_max = 0.5
 dec = 0
 esttype = "percent"
 color = "purples"
+num_colors = 2
+color_rev = TRUE
 title = "Overcrowding"
 subtitle = "More than 1.5 person(s) per bedroom"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
@@ -409,8 +416,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
-
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
 ```
 
 ```{r output final column chart - pums, include=FALSE}
@@ -421,7 +429,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'e04-overcrowding-column'
 
 # column Chart - html for interactive
-rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -432,6 +440,8 @@ rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualizat
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
@@ -576,6 +586,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
                                         width = '420px',
                                         height = '380px')
 ```
@@ -588,7 +600,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 file_name <- 'e04-overcrowding-line'
 
 # Line Chart - html for interactive
-rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -600,6 +612,8 @@ rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualizat
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,
