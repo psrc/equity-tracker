@@ -497,21 +497,23 @@ acs_data_calc <- acs_data_pivot %>%
 
 # calculate moes
 acs_data_moes <- acs_data_calc %>%
-  rowwise()%>%
-  mutate(moe_perc_own_occ=moe_prop(num=estimate_Owner_occupied_units,
-                                   denom=estimate_Total_units, 
-                                   moe_num=moe_Owner_occupied_units, 
-                                   moe_denom=moe_Total_units))
+  rowwise() %>%
+  # mutate(moe_perc_own_occ=moe_prop(num=estimate_Owner_occupied_units,
+  #                                  denom=estimate_Total_units, 
+  #                                  moe_num=moe_Owner_occupied_units, 
+  #                                  moe_denom=moe_Total_units)) %>% 
+  mutate(moe_cost_burdened=tidycensus::moe_sum(estimate = estimate_Owner_occupied_units,
+                                               moe = moe_Owner_occupied_units))
 
 acs_data_final<- acs_data_moes %>% 
-  dplyr::select(GEOID, estimate_Owner_occupied_units, estimate_Total_units, estimate_perc_own_occ,
-                moe_Owner_occupied_units, moe_Total_units, moe_perc_own_occ) %>%
+  # dplyr::select(GEOID, estimate_Owner_occupied_units, estimate_Total_units, estimate_perc_own_occ,
+  #               moe_Owner_occupied_units, moe_Total_units, moe_perc_own_occ) %>%
   dplyr::filter(!is.na(estimate_Owner_occupied_units))
 
 # calculate reliability values
 acs_data_reliability <-reliability_calcs(acs_data_final,
-                                         estimate='estimate_perc_own_occ',
-                                         moe='moe_perc_own_occ')
+                                         estimate='estimate_Owner_occupied_units',
+                                         moe='moe_Owner_occupied_units')
 
 # rename and simplify
 acs_data <- acs_data_reliability %>%
@@ -540,12 +542,12 @@ county_reg_data_rename <- county_reg_acs_data %>%
   dplyr::mutate(tenure = factor(case_when(label == "Estimate!!Owner-occupied housing units!!Occupied housing units" ~ "Owner_occupied_units",
                                           TRUE ~ 'Total_units')))
 
-county__reg_data_aggregate <- county_reg_data_rename %>% 
+county_reg_data_aggregate <- county_reg_data_rename %>% 
   dplyr::group_by(GEOID, name, tenure) %>% 
   dplyr::summarise(estimate=sum(estimate), .groups='drop')
 
 # pivot data to calculate percentage by census tract
-county_reg_data_group <- county__reg_data_aggregate %>% 
+county_reg_data_group <- county_reg_data_aggregate %>% 
   pivot_wider(names_from = tenure, values_from = estimate) %>%
   dplyr::mutate(own_occ_perc = ((Owner_occupied_units/Total_units)*100),
                 county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data

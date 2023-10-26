@@ -487,12 +487,8 @@ acs_data_edit <- acs_data %>% rename_at('label', ~'rent_burden')
 # Create variables
 acs_data_rename <- acs_data_edit %>% 
   mutate(rent_burden_group=factor(
-    case_when(grepl("Less than 10.0 percent|10.0 to 14.9 percent|15.0 to 19.9 percent|
-                    20.0 to 24.9 percent|25.0 to 29.9 percent", rent_burden) ~
-                    "Less than 30 percent",
-              grepl("30.0 to 34.9 percent|35.0 to 39.9 percent|35.0 to 39.9 percent|
-                    40.0 to 49.9 percent|50.0 percent or more", rent_burden) ~ 
-                  "Cost Burdened (More than 30 percent)",
+    case_when(grepl("Less than 10.0 percent|10.0 to 14.9 percent|15.0 to 19.9 percent|20.0 to 24.9 percent|25.0 to 29.9 percent",rent_burden) ~ "Less than 30 percent",
+              grepl("30.0 to 34.9 percent|35.0 to 39.9 percent|35.0 to 39.9 percent|40.0 to 49.9 percent|50.0 percent or more", rent_burden) ~"Cost Burdened (More than 30 percent)",
               grepl("Not computed", rent_burden) ~ "Not computed",
               !is.na(rent_burden) ~ "Total")))
 
@@ -516,22 +512,25 @@ acs_data_calc <- acs_data_pivot %>%
 # calculate moes
 acs_data_moes <- acs_data_calc %>%
   rowwise()%>%
-  mutate(moe_new_total=moe_sum(estimate=c(estimate_Total, `estimate_Not computed`), 
-                               moe=c(moe_Total,`moe_Not computed`)))%>%
-  mutate(moe_perc_cost_burdened=moe_prop(num=estimate_cost_burdened,
-                                         denom=estimate_new_total, 
-                                         moe_num=moe_cost_burdened, 
-                                         moe_denom=moe_new_total))
+  mutate(moe_new_total=tidycensus::moe_sum(estimate=c(estimate_Total, `estimate_Not computed`), 
+                                           moe=c(moe_Total,`moe_Not computed`)))%>%
+  # mutate(moe_perc_cost_burdened=moe_prop(num=estimate_cost_burdened,
+  #                                        denom=estimate_new_total, 
+  #                                        moe_num=moe_cost_burdened, 
+  #                                        moe_denom=moe_new_total)) %>% 
+  mutate(moe_cost_burdened=tidycensus::moe_sum(estimate = estimate_cost_burdened,
+                                               moe = moe_cost_burdened))
 
 acs_data_final<- acs_data_moes %>% 
-  dplyr::select(GEOID, estimate_cost_burdened, estimate_new_total, estimate_perc_cost_burdened,
-                moe_cost_burdened, moe_new_total, moe_perc_cost_burdened) %>%
+  # dplyr::select(GEOID, estimate_cost_burdened, estimate_new_total, estimate_perc_cost_burdened,
+  #               moe_cost_burdened, moe_new_total, moe_perc_cost_burdened) %>%
   dplyr::filter(!is.na(estimate_cost_burdened))
+
 
 # calculate reliability values
 acs_data_reliability <-reliability_calcs(acs_data_final,
-                                         estimate='estimate_perc_cost_burdened',
-                                         moe='moe_perc_cost_burdened')
+                                         estimate='estimate_cost_burdened',
+                                         moe='moe_cost_burdened')
 
 # rename and simplify
 acs_data <- acs_data_reliability %>%
@@ -558,19 +557,17 @@ county_reg_acs_data <- get_acs_recs(geography ='county',
 
 county_reg_data_rename <- county_reg_acs_data %>% 
   mutate(rent_burden=factor(
-             case_when(grepl("Less than 10.0 percent|10.0 to 14.9 percent|15.0 to 19.9 percent|20.0 to 24.9 percent|25.0 to 29.9 percent", label) ~
-                         "Less than 30 percent",
-                       grepl("30.0 to 34.9 percent|35.0 to 39.9 percent|35.0 to 39.9 percent|40.0 to 49.9 percent|50.0 percent or more", label) ~ 
-                         "Cost Burdened (More than 30 percent)",
+             case_when(grepl("Less than 10.0 percent|10.0 to 14.9 percent|15.0 to 19.9 percent|20.0 to 24.9 percent|25.0 to 29.9 percent", label) ~ "Less than 30 percent",
+                       grepl("30.0 to 34.9 percent|35.0 to 39.9 percent|35.0 to 39.9 percent|40.0 to 49.9 percent|50.0 percent or more", label) ~ "Cost Burdened (More than 30 percent)",
                        grepl("Not computed", label) ~ "Not computed",
                        !is.na(label) ~ "Total")))
 
-county__reg_data_aggregate <- county_reg_data_rename %>% 
+county_reg_data_aggregate <- county_reg_data_rename %>% 
   dplyr::group_by(GEOID, name, rent_burden) %>% 
   dplyr::summarise(estimate=sum(estimate), .groups='drop')
 
 # pivot data to calculate percentage by census tract
-county_reg_data_group <- county__reg_data_aggregate %>% 
+county_reg_data_group <- county_reg_data_aggregate %>% 
   pivot_wider(names_from = rent_burden, values_from = estimate) %>%
   rename('estimate_cost_burdened'='Cost Burdened (More than 30 percent)') %>% 
   dplyr::mutate(new_total=Total-`Not computed`,
