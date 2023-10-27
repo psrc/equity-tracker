@@ -96,7 +96,7 @@ indicator_title <- 'Overcrowding (>1.5 person/bedroom)'
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
-  distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
   dplyr::filter(indicator_type==indicator_measure) %>% 
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
@@ -1131,10 +1131,10 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # set up palettes
-# psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
-#                                       domain = acs_data_tract$estimate)
-psrc_palette <- leaflet::colorFactor(palette=psrc_colors$purples_inc,
-                                      domain = acs_data_tract$reliability_ord)
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = acs_data_tract$cv)
+# psrc_palette <- leaflet::colorFactor(palette=psrc_colors$purples_inc,
+#                                       domain = acs_data_tract$reliability_ord)
 
 # set the variable
 var_name <- "Overcrowding (% of hh's with >1.5 persons)"
@@ -1148,7 +1148,7 @@ tract_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$reliability_ord),
+              fillColor = psrc_palette(acs_data_tract$cv),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -1157,7 +1157,7 @@ tract_map <- leaflet() %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_tract$reliability_ord,
+                       values = acs_data_tract$cv,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
