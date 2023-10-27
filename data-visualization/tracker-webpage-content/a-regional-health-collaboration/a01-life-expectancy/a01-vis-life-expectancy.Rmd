@@ -344,7 +344,7 @@ x = "quintile_ord"
 y = "estimate"
 facet = "equity_group_ord"
 fill = "quintile_ord"
-y_min = 0
+y_min = 45
 y_max = 95
 dec = 1
 esttype = "number"
@@ -513,8 +513,6 @@ filter <- data_clean_column %>%
 df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
-y_min = 50
-y_max = 95
 color = "purples"
 
 line_chart <- equity_tracker_line_facet(df = df,
