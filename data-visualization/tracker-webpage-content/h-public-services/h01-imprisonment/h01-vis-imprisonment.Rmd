@@ -4,15 +4,16 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
+  
 ---
-
+  
 ```{r rmarkdown setup, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE, 
                       warning=FALSE, 
@@ -47,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -59,114 +60,114 @@ This code will help produce the three visuals that are going to be a part of eac
 ## Indicator Explanation
 Rate of incarcerated individuals per 100,000 in Washington State prisons by census tract. Understanding where incarcerated individuals come from can help us understand which communities are disproportionately impacted so better policies can be created to change negative outcomes. 
 
-Note about the data, the rate has been adjusted to the natural log to make the scale manageable.
-
 ## 1. Map of most recent data
-To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution. 
+To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution.
+
+The map scale has been adjusted to the natural log of the rate to make the map colors meaningful.
 ```{r map legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
-		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
-		  title = NULL, className = "info legend", layerId = NULL, 
-		  group = NULL, data = getMapData(map), decreasing = FALSE) {
-	position <- match.arg(position)
-	type <- "unknown"
-	na.color <- NULL
-	extra <- NULL
-	if (!missing(pal)) {
-		if (!missing(colors)) 
-			stop("You must provide either 'pal' or 'colors' (not both)")
-		if (missing(title) && inherits(values, "formula")) 
-			title <- deparse(values[[2]])
-		values <- evalFormula(values, data)
-		type <- attr(pal, "colorType", exact = TRUE)
-		args <- attr(pal, "colorArgs", exact = TRUE)
-		na.color <- args$na.color
-		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
-		    0) {
-			na.color <- NULL
-		}
-		if (type != "numeric" && !missing(bins)) 
-			warning("'bins' is ignored because the palette type is not numeric")
-		if (type == "numeric") {
-			cuts <- if (length(bins) == 1) 
-				pretty(values, bins)
-			else bins	
-			
-			if (length(bins) > 2) 
-				if (!all(abs(diff(bins, differences = 2)) <= 
-				         sqrt(.Machine$double.eps))) 
-					stop("The vector of breaks 'bins' must be equally spaced")
-			n <- length(cuts)
-			r <- range(values, na.rm = TRUE)
-			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
-			n <- length(cuts)
-			p <- (cuts - r[1])/(r[2] - r[1])
-			extra <- list(p_1 = p[1], p_n = p[n])
-			p <- c("", paste0(100 * p, "%"), "")
-			if (decreasing == TRUE){
-				colors <- pal(rev(c(r[1], cuts, r[2])))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}else{
-				colors <- pal(c(r[1], cuts, r[2]))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}
-			colors <- paste(colors, p, sep = " ", collapse = ", ")
-			
-		}
-		else if (type == "bin") {
-			cuts <- args$bins
-			n <- length(cuts)
-			mids <- (cuts[-1] + cuts[-n])/2
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "bin", cuts))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "bin", cuts)
-			}
-			
-		}
-		else if (type == "quantile") {
-			p <- args$probs
-			n <- length(p)
-			cuts <- quantile(values, probs = p, na.rm = TRUE)
-			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
-				 na.rm = TRUE)
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "quantile", cuts, p))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "quantile", cuts, p)
-			}
-		}
-		else if (type == "factor") {
-			v <- sort(unique(na.omit(values)))
-			colors <- pal(v)
-			labels <- labFormat(type = "factor", v)
-			if (decreasing == TRUE){
-				colors <- pal(rev(v))
-				labels <- rev(labFormat(type = "factor", v))
-			}else{
-				colors <- pal(v)
-				labels <- labFormat(type = "factor", v)
-			}
-		}
-		else stop("Palette function not supported")
-		if (!any(is.na(values))) 
-			na.color <- NULL
-	}
-	else {
-		if (length(colors) != length(labels)) 
-			stop("'colors' and 'labels' must be of the same length")
-	}
-	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
-	               na_color = na.color, na_label = na.label, opacity = opacity, 
-	               position = position, type = type, title = title, extra = extra, 
-	               layerId = layerId, className = className, group = group)
-	invokeMethod(map, data, "addLegend", legend)
+                                                    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+                                  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
+                                  title = NULL, className = "info legend", layerId = NULL, 
+                                  group = NULL, data = getMapData(map), decreasing = FALSE) {
+  position <- match.arg(position)
+  type <- "unknown"
+  na.color <- NULL
+  extra <- NULL
+  if (!missing(pal)) {
+    if (!missing(colors)) 
+      stop("You must provide either 'pal' or 'colors' (not both)")
+    if (missing(title) && inherits(values, "formula")) 
+      title <- deparse(values[[2]])
+    values <- evalFormula(values, data)
+    type <- attr(pal, "colorType", exact = TRUE)
+    args <- attr(pal, "colorArgs", exact = TRUE)
+    na.color <- args$na.color
+    if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
+        0) {
+      na.color <- NULL
+    }
+    if (type != "numeric" && !missing(bins)) 
+      warning("'bins' is ignored because the palette type is not numeric")
+    if (type == "numeric") {
+      cuts <- if (length(bins) == 1) 
+        pretty(values, bins)
+      else bins	
+      
+      if (length(bins) > 2) 
+        if (!all(abs(diff(bins, differences = 2)) <= 
+                 sqrt(.Machine$double.eps))) 
+          stop("The vector of breaks 'bins' must be equally spaced")
+      n <- length(cuts)
+      r <- range(values, na.rm = TRUE)
+      cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+      n <- length(cuts)
+      p <- (cuts - r[1])/(r[2] - r[1])
+      extra <- list(p_1 = p[1], p_n = p[n])
+      p <- c("", paste0(100 * p, "%"), "")
+      if (decreasing == TRUE){
+        colors <- pal(rev(c(r[1], cuts, r[2])))
+        labels <- rev(labFormat(type = "numeric", cuts))
+      }else{
+        colors <- pal(c(r[1], cuts, r[2]))
+        labels <- rev(labFormat(type = "numeric", cuts))
+      }
+      colors <- paste(colors, p, sep = " ", collapse = ", ")
+      
+    }
+    else if (type == "bin") {
+      cuts <- args$bins
+      n <- length(cuts)
+      mids <- (cuts[-1] + cuts[-n])/2
+      if (decreasing == TRUE){
+        colors <- pal(rev(mids))
+        labels <- rev(labFormat(type = "bin", cuts))
+      }else{
+        colors <- pal(mids)
+        labels <- labFormat(type = "bin", cuts)
+      }
+      
+    }
+    else if (type == "quantile") {
+      p <- args$probs
+      n <- length(p)
+      cuts <- quantile(values, probs = p, na.rm = TRUE)
+      mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
+                       na.rm = TRUE)
+      if (decreasing == TRUE){
+        colors <- pal(rev(mids))
+        labels <- rev(labFormat(type = "quantile", cuts, p))
+      }else{
+        colors <- pal(mids)
+        labels <- labFormat(type = "quantile", cuts, p)
+      }
+    }
+    else if (type == "factor") {
+      v <- sort(unique(na.omit(values)))
+      colors <- pal(v)
+      labels <- labFormat(type = "factor", v)
+      if (decreasing == TRUE){
+        colors <- pal(rev(v))
+        labels <- rev(labFormat(type = "factor", v))
+      }else{
+        colors <- pal(v)
+        labels <- labFormat(type = "factor", v)
+      }
+    }
+    else stop("Palette function not supported")
+    if (!any(is.na(values))) 
+      na.color <- NULL
+  }
+  else {
+    if (length(colors) != length(labels)) 
+      stop("'colors' and 'labels' must be of the same length")
+  }
+  legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
+                 na_color = na.color, na_label = na.label, opacity = opacity, 
+                 position = position, type = type, title = title, extra = extra, 
+                 layerId = layerId, className = className, group = group)
+  invokeMethod(map, data, "addLegend", legend)
 }
 ```
 
@@ -242,18 +243,18 @@ tract_map <- leaflet() %>%
               # label = round(data_tract$estimate, digits=1),
               label = labels) %>%
   
-# legends
-addLegend_decreasing(pal = psrc_palette,
-                     values = log(1+tract_data_plus_zero),
-                     bins = 5,
-                     position = "bottomright",
-                     title = var_name,
-                     group = var_name,
-                     opacity = 0.7,
-                     decreasing = TRUE,
-                     labFormat = labelFormat(
-                       transform = function(x) round(exp(1+x),-1)
-                     )) %>% 
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = log(1+tract_data_plus_zero),
+                       bins = 5,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat(
+                         transform = function(x) round(exp(1+x),-1)
+                       )) %>% 
   
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
@@ -277,7 +278,7 @@ Sources: Prison Policy Initiative analyzing data provided by Washington State De
 
 # set folder structure
 map_name <- 'h01-imprisonment-map.html'
-  
+
 # interactive webpage output process
 htmlwidgets::saveWidget(tract_map,
                         file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
@@ -292,7 +293,7 @@ data <- data_tract %>%
 
 # calculate call out information
 calc <- data %>%
-  mutate(Log_rate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
+  mutate(prison_rate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
 
 
 x<-rep(data$estimate,times=data$total_pop20)
@@ -301,13 +302,13 @@ summary(df1$x)
 median(df1$x, na.rm=TRUE)
 hist(df1$x)
 
-#   Min. 1st Qu.  Median    Mean  3rd Qu.  Max. 
-#  0.000   3.776   4.546   4.274   5.302   8.988
+#   Min. 1st Qu.  Median  Mean   3rd Qu.  Max. 
+#  0.000  43.66   94.25  180.12  200.80  8006.63 
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
 
-# 2 highest: 53053061400 (downtown Tacoma that includes the jail) Pierce (8.99), 53033008500 (Yesler Terrace are of Seattle that includes Harborview) King (8.54), 53053060200 (Port of Tacoma area) Pierce (8.44), 53061040700 (downtown Everett which includes the Snohomish County jail) Snohomish (8.19)
+# 2 highest: 53053061400 (downtown Tacoma that includes the jail) Pierce (8006.6262), 53033008500 (Yesler Terrace are of Seattle that includes Harborview) King (5127.6504), 53053060200 (Port of Tacoma area) Pierce (4624.0450), 53061040700 (downtown Everett which includes the Snohomish County jail) Snohomish (3608.0442)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
@@ -316,23 +317,23 @@ sort <- data %>%
 
 by_county <- data %>% 
   dplyr::group_by(County.Name) %>% 
-  dplyr::summarise(Log_rate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-  dplyr::arrange(desc(Log_rate))
-# King (3.864659), Snohomish (4.415889), Kitsap (4.905620), Pierce (4.967245)
+  dplyr::summarise(prison_rate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
+  dplyr::arrange(desc(prison_rate))
+# King (139.1627), Snohomish (158.3497), Kitsap (231.0399), Pierce (285.3764)
 
 # State average: state prison pop = 15094, state pop with prisoners added back into pop = 7527559, rate per 100,000 = 200.5165287, natural log of rate = 5.300896681
 
 ```
 
-1. 4.27: The region's average imprisonment rate
-2. 5.30: Washington State's average imprisonment rate
+1. 180.12: The region's average imprisonment rate
+2. 200.52: Washington State's average imprisonment rate
 \
 
 #### Insights & Analysis
 
 * The four census tracts with the highest imprisonment rates include census tracts with large facilities such as jails or Harborview Medical Center 
-* Pierce County has the highest imprisonment rate (4.97), followed by Kitsap (4.91), Snohomish (4.42), and King (3.86)
-* The census tracts with the highest imprisonment rate are Downtown Tacoma, Pierce County (8.99); Yesler Terrace area of Seattle, King County (8.54); Port of Tacoma area, Pierce County (8.44); Downtown Everett, Snohomish County (8.19)
+* Pierce County has the highest imprisonment rate (285.38), followed by Kitsap (231.04), Snohomish (158.35), and King (139.16)
+* The census tracts with the highest imprisonment rate are Downtown Tacoma, Pierce County (8006.63); Yesler Terrace area of Seattle, King County (5127.65); Port of Tacoma area, Pierce County (4624.05); Downtown Everett, Snohomish County (3608.04)
 * There are 99 census tracts with an imprisonment rate of zero in the region. For Pierce County, 3.1% of census tracts (6) have a rate of zero for imprisonment, followed by Kitsap with 5% of census tracts (3), Snohomish with 5.7% of census tracts (10), and then King county at 16.1% of census tracts (80).
 \
 \
@@ -340,12 +341,12 @@ by_county <- data %>%
 ## 2. Facet of most recent data
 ### Create Visual
 <style type="text/css">
-.main-container {
-  max-width: 100% !important;
-  margin: auto;
-}
+  .main-container {
+    max-width: 100% !important;
+    margin: auto;
+  }
 </style>
-
+  
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
 source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
@@ -370,14 +371,14 @@ y = "estimate"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0 
-y_max = 8
+y_max = 800
 dec = 1
 esttype = "number"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Imprisonment Rate per 100,000"
-subtitle = "Adjusted to Natural Log of Rate"
+title = "Imprisonment Rate"
+subtitle = "Per 100,000 People"
 source = paste("Prison Policy Initiative analyzing data provided by Washington State Department of Corrections", "U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -430,15 +431,15 @@ webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outpu
 ```
 
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
-`r title`
+  `r title`
 </p>
-<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-`r subtitle`
+  <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+  `r subtitle`
 </p>
 ```{r column chart output - tract, echo=FALSE}
 
 if (output_type == "html") {
-
+  
   column_chart  
   
 } else {
@@ -450,83 +451,88 @@ if (output_type == "html") {
 # column_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
+  `r source`
 </p> 
-
+  
 ```{r column facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
   filter(county=="Region",
          equity_group=="poc_quintile")
 
-# region low quintile poc households: 4.034064
-# region high quintile poc households: 4.613270
-# 4.613270-4.034064=0.579206
+# region low quintile poc households: 107.0394
+# region high quintile poc households: 230.6096
+# 230.6096-107.0394=123.5702
 
 filter <- data_clean_column %>% 
   filter(quintile=="High",
          equity_group=="income_quintile")
 
-# region high quintile low income households: 5.348792
-# king high quintile low income households: 5.080369
-# kitsap high quintile low income households: 5.901199
-# pierce high quintile low income households: 5.904947
-# snohomish high quintile low income households: 5.303626
-# 5.904947-5.080369=0.824578
+# region high quintile low income households: 383.3097
+# king high quintile low income households: 266.8788
+# kitsap high quintile low income households: 492.9817
+# pierce high quintile low income households: 713.1442
+# snohomish high quintile low income households: 321.0439
+# 713.1442-383.3097=329.8345
 
 filter <- data_clean_column %>% 
   filter(equity_group=="lep_quintile",
          quintile=="Low"|
            quintile=="High")
 
-# region dif bt high/low quintiles for lep: 4.634724-4.022319=0.612405
+# region dif bt high/low quintiles for lep: 214.62451-108.30399=106.3205
 
 filter <- data_clean_column %>% 
   filter(equity_group=="income_quintile",
          quintile=="Low"|
            quintile=="High")
 
-# region dif bt high/low quintiles for income: 5.348792-2.882136=2.466656
-# king dif bt high/low quintiles for income: 5.080369-2.306679=2.77369
-# kitsap dif bt high/low quintiles for income: 5.901199-4.231375=1.669824
-# pierce dif bt high/low quintiles for income: 5.904947-3.855332=2.049615
-# snohomish dif bt high/low quintiles for income: 5.303626-3.713748=1.589878
+# region dif bt high/low quintiles for income: 383.30974-48.66483=334.6449
+# king dif bt high/low quintiles for income: 266.87878-35.73872=231.1401
+# kitsap dif bt high/low quintiles for income: 492.98171-117.62698=375.3547
+# pierce dif bt high/low quintiles for income: 713.14421-74.01117=639.133
+# snohomish dif bt high/low quintiles for income: 321.04386-69.00852=252.0353
 
 filter <- data_clean_column %>% 
   filter(equity_group=="disability_quintile",
          quintile=="Low"|
            quintile=="High")
 
-# region dif bt high/low quintiles for disability: 5.260693-3.010260=2.250433
-# king dif bt high/low quintiles for disability: 4.912824-2.659749=2.253075
-# kitsap dif bt high/low quintiles for disability: 5.468296-3.715005=1.753291
-# pierce dif bt high/low quintiles for disability: 5.547184-3.812307=1.734877
-# snohomish dif bt high/low quintiles for disability: 5.137279-3.679690=1.457589
+# region dif bt high/low quintiles for disability: 326.40311-61.42979=264.9733
+# king dif bt high/low quintiles for disability: 221.33108-58.01088=163.3202
+# kitsap dif bt high/low quintiles for disability: 311.52873-125.09387=186.4349
+# pierce dif bt high/low quintiles for disability: 451.45180-101.29526=350.1565
+# snohomish dif bt high/low quintiles for disability: 317.52730-77.37100=240.1563
 
 filter <- data_clean_column %>% 
   filter(county!="Region",
          equity_group=="poc_quintile",
          quintile=="Low"|
            quintile=="High")
-# king dif bt high/low quintiles for income: 4.712045-3.325475=1.38657
-# kitsap dif bt high/low quintiles for income: 5.370220-3.534470=1.83575
-# pierce dif bt high/low quintiles for income: 5.694798-4.385939=1.308859
-# snohomish dif bt high/low quintiles for income: 4.389303-4.483414=-0.094111
+# king dif bt high/low quintiles for income: 238.82189-57.27276=181.5491
+# kitsap dif bt high/low quintiles for income: 324.01960-99.66457=224.355
+# pierce dif bt high/low quintiles for income: 417.13152-117.40980=299.7217
+# snohomish dif bt high/low quintiles for income: 123.56042-117.04332=6.5171
 
 # Information about incarceration is connected to poorer outcomes: https://www.irp.wisc.edu/resource/connections-among-poverty-incarceration-and-inequality/#_edn8
 
 ```
 \
 
+#### Data Call Outs
+1. Pierce County has almost twice the rate as the region for communities with the highest concentration of people of color and households with lower income.
+
+
 #### Insights & Analysis
 
 * Communities with the highest concentration of households with lower income or households with disabilities are the most disproportionately impacted by imprisonment rates
-* The county with the highest imprisonment rate for communities with the highest concentration of households with lower income is Pierce County (5.905), followed by Kitsap (5.901), Snohomish (5.30), King (5.08)
-* King County has the largest gap in imprisonment rate for lower income households which may be a reflection of the higher median income
+* The county with the highest imprisonment rate for communities with the highest concentration of households with lower income is Pierce County (713.14), followed by Kitsap (492.98), Snohomish (321.04), King (266.88), and the rate for the Region is 383.31
+* Pierce County has the largest gap in imprisonment rate for lower income households
 * King County has the highest median income at $102,620, followed by Snohomish $93,589, Pierce $80,236, Kitsap $76,814 (source: Office of Financial Management)
-* The county with the highest imprisonment rate for communities with the highest concentration of households with disabilities is Pierce County (5.69), followed by Kitsap (5.37), King (4.71), Snohomish (4.38)
-
+* The county with the highest imprisonment rate for communities with the highest concentration of households with disabilities is Pierce County (451.45), followed by Kitsap (311.53), King (221.33), Snohomish (317.53),
+and the rate for the Region is 326.40
 \
+
 This dataset first became available in 2020 due to a change in Washington State law requiring the Department of Corrections to report last known addresses for people incarcerated in state prisons during the 2020 Decennial Census. At this time, 2020 is the only year available and it is unclear if this data will be available again after the 2030 Decennial Census.
 \
 \
@@ -534,12 +540,12 @@ This dataset first became available in 2020 due to a change in Washington State 
 ## 3. Facet of trend data
 ### Create Visual
 <style type="text/css">
-.main-container {
-  max-width: 100% !important;
-  margin: auto;
-}
+  .main-container {
+    max-width: 100% !important;
+    margin: auto;
+  }
 </style>
-
+  
 ```{r line facet - tract, include=FALSE}
 # Create Facet Line Chart
 
@@ -548,7 +554,7 @@ df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0
-y_max = 8
+y_max = 800
 color = "purples"
 
 line_chart <- equity_tracker_line_facet(df = df,
@@ -606,14 +612,14 @@ webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outpu
 ```
 
 <p style="font-family: Poppins; font-size:14pt; font-weight:bold">
-`r title`
+  `r title`
 </p>
-<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-`r subtitle`
+  <p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+  `r subtitle`
 </p>
 ```{r line chart - tract, echo=FALSE}
 if (output_type == "html") {
-
+  
   line_chart  
   
 } else {
@@ -624,9 +630,9 @@ if (output_type == "html") {
 # line_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
+  `r source`
 </p> 
-
+  
 ```{r line facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>% 
@@ -646,7 +652,7 @@ filter <- data_clean %>%
          equity_group=="income_quintile",
          quintile=="Low" | 
            quintile=="High",
-           data_year=="2020")
+         data_year=="2020")
 
 # 2020 region low quintile income: 2.882521
 # 2020 region high quintile income: 5.352679
@@ -663,7 +669,7 @@ filter <- data_clean %>%
          equity_group=="income_quintile",
          quintile=="Low" | 
            quintile=="High",
-           data_year=="2020")
+         data_year=="2020")
 
 # 2020 King dif low/high income: 5.083316-2.306517=2.776799
 # 2020 Kitsap dif low/high income: 5.906103-4.232797=1.673306
@@ -675,7 +681,7 @@ filter <- data_clean %>%
          equity_group=="disability_quintile",
          quintile=="Low" | 
            quintile=="High",
-           data_year=="2020")
+         data_year=="2020")
 
 # 2020 King dif low/high disability: 4.912824-2.659749=2.253075
 # 2020 Kitsap dif low/high disability: 5.468296-3.715005=1.753291
@@ -709,7 +715,7 @@ file.copy(list.of.files,
 
 # keep only .Rmd files in Github (cleaner)
 files.in.dir <- list.files(current_folder, 
-                            full.names = T)
+                           full.names = T)
 files.to.keep <- list.files(current_folder, 
                             full.names = T,
                             pattern = "\\.Rmd$")
