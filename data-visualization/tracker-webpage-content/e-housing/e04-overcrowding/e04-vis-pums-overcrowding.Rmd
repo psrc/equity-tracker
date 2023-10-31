@@ -197,21 +197,19 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Overcrowding: <br> Percentage of Households <br> with >1.5 persons <br> per Bedroom" # the <br> could be adjusted depending on the length/spacing of the name
-#labels <- sprintf(
- # "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
-  #paste("$", # if doesn't require prefix, this can be removed
-   #     prettyNum((round(acs_data_tract$estimate, digits=-2)),
-    #              big.mark = ","))) %>%
-  #lapply(htmltools::HTML)
+var_name <- "Overcrowding: <br> % of Renter Households <br> with >1.5 persons <br> per Bedroom" # the <br> could be adjusted depending on the length/spacing of the name
 
-# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
 labels <- sprintf(
-   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-   paste(prettyNum((round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
-               big.mark = ","), #this wouldn't be necessary to include for %s    
-         '%')) %>%
-   lapply(htmltools::HTML)
+  "County: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body>",
+  acs_data_tract$name, # the code in <> makes the geoid value bold/italic
+  paste("County value: ",
+        prettyNum(round(acs_data_tract$estimate, digits=1)), 
+        '%'),
+  paste("County data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ",
+        prettyNum(round(acs_data_tract$reg_estimate, digits=1)),
+        '%')) %>%
+  lapply(htmltools::HTML)
 
 
 # map settings
@@ -223,7 +221,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_plus_zero),
+              fillColor = psrc_palette(acs_data_tract$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
