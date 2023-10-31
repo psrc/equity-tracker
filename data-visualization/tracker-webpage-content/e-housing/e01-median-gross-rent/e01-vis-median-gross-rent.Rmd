@@ -57,7 +57,7 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Gross rent measures the average rent for the location, in this case being census tract, and "median" indicates that the middle value in between the census tracts highest gross rent and lowest gross rent is what represents the gross median rent value. Oftentimes, a higher gross median rent can indicate that some families and households are priced out of an area, limiting options of living close to transit, in neighborhoods with good schools, and limiting opportunity and access. 
+Median gross rent measures the average rent for the location, in this case being census tract, and "median" indicates that the middle value in between the census tracts highest gross rent and lowest gross rent is what represents the median gross rent value. Oftentimes, a higher median gross rent can indicate that some families and households are priced out of an area, limiting options of living close to transit, in neighborhoods with good schools, and limiting opportunity and access. 
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -196,7 +196,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Gross Median <br> Rent (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Median Gross <br> Rent (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
@@ -275,64 +275,25 @@ htmlwidgets::saveWidget(acs_map,
 data <- acs_data_tract %>%
   st_drop_geometry()
 
-# calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
-
-x<-rep(data$estimate,times=data$total_pop20)
-df1<-data.frame(x)
-summary(df1$x)
-median(df1$x, na.rm=TRUE)
-hist(df1$x)
-# regional median life expectancy: 80.86 
-
-# getting data by region from PUMS
-pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
-                           level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
-# regional median income: 96453.13
-
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
-# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
-# 53033030501 (Auburn, around 167)
-
-# this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
-
-# getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B25031', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
-  dplyr::arrange(desc(estimate))%>%
-  filter(variable == "B25031_001")
 ```
 
-1. \$1,790: Regional median gross rent
-2. \$3,500: Highest median gross rent (in King County)
-3. \$1,440: Lowest median gross rent (in Pierce County)
+1. \$1,680: Regional median gross rent
+2. \$3,500: Highest median gross rent (seven tracts in King County)
+3. \$620: Lowest median gross rent (in Pierce County)*
 
 \
 
 #### Insights & Analysis
 
 * King County has the highest median gross rent (\$1,800), followed by Snohomish (\$1,640), and Kitsap and Pierce (both \$1,440)
-* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three tracts in southern Mercer Island, two in Clyde Hill/Hunts Point/Medina/Yarrow Point, two in Bellvue, two in Sammamish, and on in southwestern Bainbridge Island
-* The highest median gross rent in Pierce, Kitsap, and Snohomish County are: in the far eastern portion of Pierce county near Issaquah (\$3,110) by in the southwestern portion of Bainbridge (\$3,500), and southern Mulkiteo (\$3,400)
+* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three in southern Mercer Island, two in Clyde Hill/Hunts Point/Medina/Yarrow Point, two in Bellevue, two in Sammamish, and one in southwestern Bainbridge Island
+* The highest median gross rent in Pierce, Kitsap, and Snohomish County are: in the far eastern portion of Pierce county near Issaquah (\$3,110), in the southwestern portion of Bainbridge (\$3,500), and southern Mulkiteo (\$3,400)
+* *The two census tracts with the lowest median gross rent are in Pierce County, where Tacoma Housing Authority properties are located: Arlington Drive Youth Campus and Salishan Family Investment Center (\$620); Hillside Terrace 1500 Block and The Rise at 19th (\$740) 
 
 \
 \
@@ -377,7 +338,7 @@ esttype = "currency"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
-title = "Gross Median Rent"
+title = "Median Gross Rent"
 subtitle = "values are adjusted to 2021 dollars"
 source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
 
@@ -514,18 +475,18 @@ filter <- data_clean_column %>%
 
 ```
 
-1. \$500: Median gross rent for households in the region living below 200% of the federal poverty level is \$500 less those living above
-2. \$300: Households in the region with English proficiency pay an average of \$300 more than limited English proficient households
-3. \$300: Regional median gross rent for those with children is \$300 higher than those without
+1. \$500: Median gross rent for households in the region living below 200% of federal poverty level is \$500 less those living above
+2. \$300: English proficient households in the region pay \$300 more than limited English proficient households
+3. \$200: Regional median gross rent for those with children is \$300 higher than those without
 
 \
 
 #### Insights & Analysis
 
-* People of color in Snohomish, Pierce, and Kitsap counties are paying the same median gross rent as white non-Hispanic households, while in King County, white non-Hispanic households are paying $100 more in rent than people of color. 
-* For households living below 200% of the poverty level, King County households are paying the most at (\$1,700), followed by Snohomish (\$1,600), Pierce (\$1,500), and Kitsap (\$1,400).
-* Households with childen (youth under 18 years) are paying the most in King County (\$2,300), followed by Snohomish (\$2,100), then Kitsap and Pierce counties (\$1,900)
-* These insights may indicate that while low vulnerability households are paying more in median gross rent than high vulnerability categories, it may mean that high vulnerability folks cannot afford higher-rent homes
+* People of color in Snohomish, Pierce, and Kitsap counties are paying the same median gross rent as white non-Hispanic households, while in King County, white non-Hispanic households are paying $100 more in rent than people of color
+* For households living below 200% of poverty level, King County households are paying the most at (\$1,700), followed by Snohomish (\$1,600), Pierce (\$1,500), and Kitsap (\$1,400)
+* Households with children (youth under 18 years) are paying the most in King County (\$2,300), followed by Snohomish (\$2,100), then Kitsap and Pierce counties (\$1,900)
+* These insights may indicate that while people and households are paying more in median gross rent than their counterparts, it may mean that those within the select demographic groups cannot afford higher-rent homes
 
 \
 \
@@ -653,10 +614,10 @@ filter <- data_clean %>%
 # 2021 older: 1600
 # 2021 non-older: 2000
 # 2000-1600=400
-# 2011 older: 1200
+# 2011 older: 1100
 # 2011 non-older: 1300
-# 1300-1200= 100
-# ((400-100)/(100))*100: 300% change
+# 1300-1100= 200
+# ((400-200)/(200))*100: 100% change
 
 filter <- data_clean %>%
   filter(county=="Region",
@@ -710,9 +671,9 @@ filter <- data_clean %>%
 # Snohomish non-low income:2000-1300 = 700 +53%
 ```
 
-1. \$500: In 2021, households in the region living below 200% of federal poverty line paid an average of \$500 less than those living above; a 150% larger gap than in 2011
-2. \$100: Regionally, people of color spend an average \$100 less in median gross rent than white non-Hispanic households, a gap which has remained relatively consistent in King County and Regionally in the last ten years, but has narrowed in Kitsap, Pierce, and Snohomish counties
-3. 300%: Median gross rent of households in the region with older adults is \$400 lower than households without older adults, an increase of 300% from 2011
+1. 150%: Households in the region living below 200% of federal poverty line paid 150% more in 2021 than in 2011
+2. \$100: Regionally, people of color spend an average \$100 less in median gross rent than white non-Hispanic households, a gap which has remained relatively consistent in King County in the last ten years, but has narrowed in Kitsap, Pierce, and Snohomish counties
+3. 100%: Median gross rent of households in the region with older adults is \$400 lower than households without older adults, an increase of 100% from 2011
 
 
 \
@@ -720,9 +681,9 @@ filter <- data_clean %>%
 #### Insights & Analysis
 
 * Median gross rent has consistently increased across the entire region from 2011 to 2021
-* Median gross rent of households (regardless of income) stayed relatively static in Kitsap and Pierce County over time, while the median gross rent of households increased greatly in King County (more than 54% for households who are below 200% of federal poverty level and 64% for thos living above).
-* Similarly in Snohomish County households living below 200% of the poverty level are paying 45% more than they did in 2011 and 53% more for those living above
-* The gap between median gross rent for people with a disability compared to those living without remained relatively consistent in all counties (from 2016 to 2021)
+* Median gross rent of households (regardless of income) stayed relatively static in Kitsap and Pierce County over time, while median gross rent of households increased greatly in King County (more than 55% for households who are below 200% of federal poverty level and 64% for those living above)
+* Similarly, in Snohomish County, households living below 200% of poverty level are paying 45% more than they did in 2011 and 54% more for those living above
+* The gap in median gross rent between people with a disability compared to those living without remained relatively consistent in all counties (from 2016 to 2021)
 
 
 \
