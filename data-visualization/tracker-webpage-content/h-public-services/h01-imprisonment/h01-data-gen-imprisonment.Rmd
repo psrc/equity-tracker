@@ -436,8 +436,8 @@ summary(data_tract_nona$estimate)
 
 distrib <- rep(data_tract_nona$estimate, 1)
 
-avg.value <- data_tract_nona$estimate[1] #5.60 - pulling first value
-med.value <- median(distrib) #4.6
+avg.value <- data_tract_nona$estimate[1] #272.55 - pulling first value
+med.value <- median(distrib) #96.90
 ```
 *Average:* `r avg.value`
 \
@@ -624,7 +624,7 @@ The data sets need to be cleaned and pivoted to a longer table so that there is 
 # clean/simplify data sets
 data_equity_quintiles20 <- data_equity_tract20 %>% 
   dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Log_rate_num=as.numeric(Log_rate))
+  dplyr::mutate(prison_rate_num=as.numeric(prison_rate))
 
 # pivot data set so that there is one column with quintile designation
 data_equity_pivot20 <- data_equity_quintiles20 %>% 
@@ -651,7 +651,7 @@ The imprisonment rates are available at the census tract level, but we want to c
 data_equity_pivot20_calc <- data_equity_pivot20 %>% 
   filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
-  summarise(wt_Log_rate=(sum(Log_rate_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
+  summarise(wt_prison_rate=(sum(prison_rate_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>% 
   as_tibble() %>%
   mutate(data_year=2020) 
@@ -686,12 +686,12 @@ sum(tracts20.lyr$total_pop20) #4,294,373
 # calculations to get weighted average for imprisonment rate per equity group/quintile
 data_equity_wt20 <- data_equity_pivot20 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Log_rate_num) %>%
+  dplyr::mutate(tot_risk_tract=estimate*prison_rate_num) %>%
   dplyr::group_by(county, data_year, equity_group, quintile) %>%
   dplyr::summarise(tracts=length(GEOID),
                    tot_rate=(sum(tot_risk_tract, na.rm = TRUE)),
                    tot_pop=(sum(estimate, na.rm = TRUE))) %>%
-  dplyr::mutate(wt_Log_rate=tot_rate/tot_pop) 
+  dplyr::mutate(wt_prison_rate=tot_rate/tot_pop) 
 
 # check population
 data_equity_wt20_test <- data_equity_wt20 %>%
@@ -785,7 +785,7 @@ data_clean$data_year <- as.character(data_clean$data_year)
 
 # Minor edits to the data
 data_clean <- data_clean %>%
-  dplyr::mutate(estimate=as.numeric(wt_Log_rate)) #rename value variable for consistency
+  dplyr::mutate(estimate=as.numeric(wt_prison_rate)) #rename value variable for consistency
 
 # Sort the data to ensure the charts work
 data_clean <- data_clean %>%
