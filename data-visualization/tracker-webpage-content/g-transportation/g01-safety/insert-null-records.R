@@ -14,11 +14,11 @@ load(file = file.path(base_dir, theme_dir, ind_dir, "rda-data", rda))
 # insert null records ----
 standard_base_year <- 2010
 
-# main table
+## main table
 df_base <- data_clean %>% 
   mutate(data_year_num = as.numeric(data_year))
 
-# set-up columns to identify missing years by the unique categories/geography
+## set-up columns to identify missing years by the unique categories/geography
 d <- df_base %>% 
   group_by(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord) %>% 
   summarise(num_unique_years = length(unique(data_year)),
@@ -26,21 +26,21 @@ d <- df_base %>%
             end_year = as.numeric(max(unique(data_year)))) %>% 
   mutate(base_year = standard_base_year)
 
-# create list-column, a vector of missing years in a cell
+## create list-column, a vector of missing years in a cell
 d_calc <- d %>% 
   rowwise() %>% 
   mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
 
-# unpack so each missing year is a row of its own
+## unpack so each missing year is a row of its own
 d_unnest <- d_calc %>% 
   unnest(missing_years) 
 
-# create table with null records for chart
+## create table with null records for chart
 df_nulls <- d_unnest %>% 
   select(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord, data_year_num = missing_years) %>% 
   mutate(wt_combo_rate = NA, estimate = NA, data_year = as.character(data_year_num))
 
-# assemble main table  
+## assemble main table  
 df <- bind_rows(df_base, df_nulls) %>% 
   arrange(county_ord, equity_group_ord, data_year_num)
  
@@ -48,7 +48,6 @@ df <- bind_rows(df_base, df_nulls) %>%
 # prep line chart ----
 
 ## set variables
-
 x <- "data_year" 
 y <- "estimate"
 y_min <- 0
