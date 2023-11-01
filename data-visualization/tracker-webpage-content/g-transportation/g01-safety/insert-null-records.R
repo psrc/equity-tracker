@@ -53,20 +53,24 @@ x <- "data_year"
 y <- "estimate"
 y_min <- 0
 y_max <- 100
-color <- "purples"
+
 geo <- "county_ord"
 fill <- "quintile_ord" 
 facet <- "equity_group_ord"
+
 dec <- 1
 esttype <- "number"
 
+color <- "purples"
 num_colors <- 5
 color_rev <- FALSE
+
 title <- "Traffic Related Deaths and <br> Serious Injuries per 100,000"
 subtitle <- "Census Tract Level"
 source <- paste("Washington Traffic Safety Commission", 
                "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
+## create chart
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
                                         x = x,
