@@ -1197,6 +1197,7 @@ data_equity_pivot16_calc <- data_equity_pivot16 %>%
   mutate(data_year=2016)
 
 data_equity_pivot15_calc <- data_equity_pivot15 %>%
+  filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
   summarise(wt_combo_rate=(sum(combo_rate_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>%
@@ -1204,6 +1205,7 @@ data_equity_pivot15_calc <- data_equity_pivot15 %>%
   mutate(data_year=2015)
 
 data_equity_pivot14_calc <- data_equity_pivot14 %>%
+  filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
   summarise(wt_combo_rate=(sum(combo_rate_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>%
@@ -1211,6 +1213,7 @@ data_equity_pivot14_calc <- data_equity_pivot14 %>%
   mutate(data_year=2014)
 
 data_equity_pivot13_calc <- data_equity_pivot13 %>%
+  filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
   summarise(wt_combo_rate=(sum(combo_rate_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>%
@@ -1218,6 +1221,7 @@ data_equity_pivot13_calc <- data_equity_pivot13 %>%
   mutate(data_year=2013)
 
 data_equity_pivot12_calc <- data_equity_pivot12 %>%
+  filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
   summarise(wt_combo_rate=(sum(combo_rate_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>%
@@ -1225,6 +1229,7 @@ data_equity_pivot12_calc <- data_equity_pivot12 %>%
   mutate(data_year=2012)
 
 data_equity_pivot11_calc <- data_equity_pivot11 %>%
+  filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
   summarise(wt_combo_rate=(sum(combo_rate_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>%
@@ -1232,6 +1237,7 @@ data_equity_pivot11_calc <- data_equity_pivot11 %>%
   mutate(data_year=2011)
 
 data_equity_pivot10_calc <- data_equity_pivot10 %>%
+  filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
   summarise(wt_combo_rate=(sum(combo_rate_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>%
@@ -1325,11 +1331,8 @@ This data sets should include records for:
 ```{r}
 data_tract <- as.data.frame(rbind(data_equity_pivot10_calc, data_equity_pivot11_calc, data_equity_pivot12_calc, data_equity_pivot13_calc, data_equity_pivot14_calc, data_equity_pivot15_calc, data_equity_pivot16_calc, data_equity_pivot17_calc, data_equity_pivot18_calc, data_equity_pivot19_calc, data_equity_pivot20_calc,
         data_equity_pivot21_calc)) %>%
-   dplyr::select(-County.Name) 
-
-# %>%
-#   filter(!is.na(quintile))
-
+   dplyr::select(-County.Name) %>%
+   filter(!is.na(quintile))
 
 
 # data_tract <- data_equity_pivot21_calc %>% 
