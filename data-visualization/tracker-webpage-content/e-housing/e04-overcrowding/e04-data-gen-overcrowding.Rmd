@@ -249,7 +249,7 @@ county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
 focus_type_order <- c("People of Color", 
                       "Households with Lower Income", 
                       "People with a Disability", 
-                      "People with Limited English Proficiency", 
+                      "Households with Limited English Proficiency", 
                       "Households with Youth <18", 
                       "Households with Older Adults 65+")
 
@@ -270,7 +270,7 @@ data_clean <- data_full %>%
   mutate(focus_type_ord = case_when(
     focus_type=="POC_cat"~"People of Color",
     focus_type=="Disability_cat"~"People with a Disability",
-    focus_type=="LEP_cat"~"People with Limited English Proficiency",
+    focus_type=="LEP_cat"~"Households with Limited English Proficiency",
     focus_type=="Income_cat"~"Households with Lower Income",
     focus_type=="Youth_cat"~"Households with Youth <18",
     focus_type=="Older_cat"~"Households with Older Adults 65+")) %>%
@@ -421,6 +421,7 @@ head(data_clean) # make sure this is the correct data set
 
 # make any additional edits 
 data_clean <- data_clean %>% 
+  filter(indicator_attribute=="More than 1.5 persons per bedroom") %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
   mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds - retain consistent name
 ```
@@ -458,7 +459,7 @@ nrow(tracts10.lyr) #773
 ```
 
 #### Corresponding ACS table
-```{r acs data - tract level, include=FALSE}
+```{r acs data - tract level, include=FALSE, eval=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 
 # getting data by tract
@@ -568,7 +569,7 @@ acs_data <- acs_data_reliability %>% #just interested in renters for now
   dplyr::select(GEOID,estimate,reliability)
 ```
 
-```{r acs data - place level, include=FALSE}
+```{r acs data - place level, include=FALSE, eval=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 
 # getting data by tract
@@ -678,7 +679,7 @@ acs_data <- acs_data_reliability %>% #just interested in renters for now
   dplyr::select(GEOID,estimate,reliability)
 ```
 
-```{r acs data - county level, include=FALSE}
+```{r acs data - county level}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 
 # getting data by tract
@@ -753,44 +754,44 @@ acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
   dplyr::select(GEOID,county_name,estimate,reliability)
 
 # ----------------
-# for combined owners and renters
-# use the moe_sum function from tidycensus
-acs_data_group <- acs_data_filter %>% 
-  dplyr::group_by(GEOID, name, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
-  dplyr::summarise(estimate=sum(estimate), 
-                   moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-  dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
-
-# pivot data to calculate percentage by census tract
-acs_data_pivot<- acs_data_group %>%   
-  pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-
-# calculating percentage/share of population per tract instead of integer
-acs_data_calc <- acs_data_pivot %>%
-  mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total),
-         county_name=str_split(name, " ", simplify = TRUE)[,1])
-
-# calculate moes
-acs_data_moes <- acs_data_calc %>%
-  rowwise() %>% 
-  dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
-                                             moe = moe_Overcrowding))
-acs_data_final<- acs_data_moes %>% 
-  dplyr::filter(!is.na(estimate_Overcrowding))
-
-# calculate reliability values
-acs_data_reliability <- reliability_calcs(acs_data_final,
-                                          estimate='estimate_Overcrowding',
-                                          moe='moe_Overcrowding')
-
-# rename and simplify
-acs_data <- acs_data_reliability %>% 
-  rename(estimate_dec='estimate_perc_overcrowding') %>%
-  mutate(estimate=estimate_dec*100) %>% 
-  dplyr::select(GEOID,county_name, estimate,reliability)
+# # for combined owners and renters
+# # use the moe_sum function from tidycensus
+# acs_data_group <- acs_data_filter %>% 
+#   dplyr::group_by(GEOID, name, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
+#   dplyr::summarise(estimate=sum(estimate), 
+#                    moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
+#   dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
+# 
+# # pivot data to calculate percentage by census tract
+# acs_data_pivot<- acs_data_group %>%   
+#   pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
+# 
+# # calculating percentage/share of population per tract instead of integer
+# acs_data_calc <- acs_data_pivot %>%
+#   mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total),
+#          county_name=str_split(name, " ", simplify = TRUE)[,1])
+# 
+# # calculate moes
+# acs_data_moes <- acs_data_calc %>%
+#   rowwise() %>% 
+#   dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
+#                                              moe = moe_Overcrowding))
+# acs_data_final<- acs_data_moes %>% 
+#   dplyr::filter(!is.na(estimate_Overcrowding))
+# 
+# # calculate reliability values
+# acs_data_reliability <- reliability_calcs(acs_data_final,
+#                                           estimate='estimate_Overcrowding',
+#                                           moe='moe_Overcrowding')
+# 
+# # rename and simplify
+# acs_data <- acs_data_reliability %>% 
+#   rename(estimate_dec='estimate_perc_overcrowding') %>%
+#   mutate(estimate=estimate_dec*100) %>% 
+#   dplyr::select(GEOID,county_name, estimate,reliability)
 ```
 
-```{r acs data - puma level, include=FALSE}
+```{r acs data - puma level, include=FALSE, eval=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 
 # getting data by tract

@@ -100,7 +100,7 @@ indicator_title <- 'Housing Cost Burden (renters only)'
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
-  distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
   dplyr::filter(indicator_type==indicator_measure) %>% 
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
@@ -254,7 +254,7 @@ data_reord <- data_full %>%
                                                      TRUE~ indicator_attribute))%>% 
   dplyr::select(-indicator_fact_id)%>%
   dplyr::group_by(across(!c(fact_value, margin_of_error)))%>%
-  dplyr::summarise(fact_value = sum(fact_value, na.rm = TRUE), .groups = 'drop')
+  dplyr::summarise(fact_value = sum(fact_value), .groups = 'drop')
                    
 #                   margin_of_error = moe_sum(margin_of_error, wt_life_expec = fact_value, na.rm = TRUE))
 ```
@@ -536,7 +536,7 @@ acs_data_reliability <-reliability_calcs(acs_data_final,
 acs_data <- acs_data_reliability %>%
   rename(estimate_dec='estimate_perc_cost_burdened') %>%
   mutate(estimate=estimate_dec*100) %>% 
-  dplyr::select(GEOID,estimate,reliability)
+  dplyr::select(GEOID,estimate,cv,reliability)
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
 ```
@@ -702,6 +702,86 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 	               layerId = layerId, className = className, group = group)
 	invokeMethod(map, data, "addLegend", legend)
 }
+```
+
+```{r test map, include=FALSE,eval=FALSE}
+# # load puma shapefile
+# puma20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_PUMAS_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+# 
+# puma20.lyr<-st_read(puma20.url)
+# 
+# nrow(puma20.lyr) #34
+# 
+# # merge puma shapefile to puma level data
+# acs_data_tract_merge <- merge(puma20.lyr, acs_data,
+#                               by.x="pumace20",
+#                               by.y="PUMA5CE",
+#                               all.x=TRUE)
+# 
+reliability_order <- c("good",
+                       "fair",
+                       "use with caution",
+                       "use with extreme caution")
+
+acs_data_tract <- acs_data_tract %>%
+  dplyr::mutate(reliability_ord = factor(reliability, levels = reliability_order)) %>% 
+  dplyr::mutate(cv_no_inf = case_when(is.infinite(cv)~NA,
+                                      TRUE~as.numeric(cv)))
+
+# set map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = acs_data_tract$cv_no_inf)
+# psrc_palette <- leaflet::colorFactor(palette=psrc_colors$purples_inc,
+#                                       domain = acs_data_tract$reliability_ord)
+
+# set the variable
+var_name <- "Housing Cost Burden"
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=acs_data_tract,
+              fillColor = psrc_palette(acs_data_tract$cv_no_inf),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = round(acs_data_tract$estimate, digits=1)) %>%
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = acs_data_tract$cv_no_inf,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat()) %>% 
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
 ```
 
 ```{r explore map}
