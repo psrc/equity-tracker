@@ -1,5 +1,5 @@
 ---
-title: "Tree Canopy - 2011 and 2021"
+title: "Tree Canopy Average Percent Coverage - 2011 and 2021"
 subtite: "Data Gen: Exploring, Cleaning, Transforming (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -598,6 +598,33 @@ pop21 <- pop21_crosswalk %>%
 
 ```
 
+```{r, region and county numbers for map labels}
+# calculating data by county 
+county_tract_data <- data_tract %>% 
+  st_drop_geometry() %>%  #to remove spatial component
+  # dplyr::select(county_name, estimate, total_pop21) %>% #to simplify table to necessary fields
+  dplyr::group_by(county_name) %>% 
+  dplyr::mutate(cnty_estimate=(sum(estimate*total_pop21, na.rm =TRUE))/(sum(total_pop21, na.rm=TRUE))) %>% #calculate weighted value by county
+  dplyr::distinct(county_name, cnty_estimate)
+
+# calculating data by region
+reg_tract_data <- data_tract %>% 
+  st_drop_geometry() %>%  #to remove spatial component
+  dplyr::select(estimate, total_pop21) %>% #to simplify table to necessary fields
+  dplyr::mutate(reg_estimate=(sum(estimate*total_pop21, na.rm =TRUE))/(sum(total_pop21, na.rm=TRUE))) %>% #calculate weighted value for region
+  dplyr::distinct(reg_estimate)
+
+# add region data to county data
+county_reg_data <- county_tract_data %>% 
+  mutate(reg_estimate=reg_tract_data$reg_estimate)
+
+# merge tract, county, and region data into one data set 
+data_tract <- merge(data_tract, county_reg_data,
+                    by.x="county_name",
+                    by.y="county_name",
+                    all.x=TRUE)
+```
+
 ```{r}
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
@@ -620,19 +647,16 @@ save(data_tract, file = file.path(base_dir,
 equity_tracts_21 <- equity_tracts %>% 
   dplyr::filter(data_year==2021)
 
-canopy_21 %<>%
-  dplyr::rename("geoid" = "geoid20")
-
 # join data to equity quintiles (on 2020 census tracts)
 data_equity_tracts <- merge(canopy_21, equity_tracts_21,
-                            by.x="geoid",
+                            by.x="geoid20",
                             by.y="geoid", 
                             all.x=TRUE)
 
 # join 2021 acs population data to tree canopy data - this is for eventual weighting (which may not be necessary depending on the indicator)
 data_equity_tract21 <- merge(tract.21, data_equity_tracts,
                              by.x="GEOID",
-                             by.y="geoid", 
+                             by.y="geoid20", 
                              all.x=TRUE)
 
 # check data set
@@ -643,7 +667,7 @@ equity_tracts_11 <- equity_tracts %>%
   dplyr::filter(data_year==2011)
 
 canopy_11 %<>%
-  dplyr::rename("geoid" = "geoid20")
+  dplyr::rename("geoid" = "geoid10")
 
 # join data to equity quintiles (on 2020 census tracts)
 data_equity_tracts <- merge(canopy_11, equity_tracts_11,
