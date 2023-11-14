@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-    word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -331,7 +331,7 @@ by_county <- data %>%
 #### Insights & Analysis
 
 * The census tracts with the highest death and serious injury rate are the census tracts in Pierce County that includes the Port of Tacoma and the Tacoma Dome (1145.83) and the downtown Tacoma census tract next to the Tacoma Dome (601.81) and in King County the tracts in northwest Auburn that includes the Auburn airport and part of HWY 167 (912.48) and the tract that includes Lumen Field and T-Mobile Park (737.27)
-* There are 348 census tracts with census tracts with a death and serious injury rate of zero in the region. For Kitsap County, 27.1% of census tracts (16) have a rate of zero, followed by Pierce with 30.1% of census tracts (58) have a rate of zero, Snohomish with 41.0% of census tracts (71), and then King county at 41.1% of census tracts (203).
+* There are 348 census tracts with census tracts with a death and serious injury rate of zero in the region. For Kitsap County, 27.1% of census tracts (16) have a rate of zero, followed by Pierce with 30.1% of census tracts (58) have a rate of zero, Snohomish with 41.0% of census tracts (71), and then King county at 41.1% of census tracts (203)
 * Pierce County has the highest death and serious injury rate (53.72), followed by Kitsap (47.24), King (38.92), and Snohomish (36.17)
 
 \
@@ -528,12 +528,11 @@ filter <- data_clean_column %>%
 
 #### Insights & Analysis
 
-* As a region, communities with the highest concentration of households with lower income or people with a disability are most disproportionately impacted by traffic related deaths and serious injuries
+* As a region, communities with the highest proportions of households with lower income or people with a disability are most disproportionately impacted by traffic related deaths and serious injuries
 * The counties with the largest gap in the highest and lowest quintiles for households with lower income are King and Pierce counties
 * The counties with the largest gap in the highest and lowest quintiles for people with a disability are King and Pierce counties
 * The counties with the largest gap in the highest and lowest quintiles for people of color are King and Pierce counties
-* The counties with the largest gap in the medium high/highest and lowest quintiles for households with limited English proficiency are Kitsap and Pierce counties
-
+* The counties with the largest gap in the medium high/highest and lowest proportions for households with limited English proficiency are Kitsap and Pierce counties
 \
 \
 \
@@ -580,7 +579,7 @@ df_nulls <- d_unnest %>%
 
 ## assemble main table  
 df <- bind_rows(df_base, df_nulls) %>% 
-  arrange(county_ord, equity_group_ord, data_year_num)
+  arrange(county_ord, equity_group_ord, quintile_ord, data_year_num)
 
 ```
 
@@ -680,28 +679,28 @@ filter <- data_clean %>%
          equity_group=="poc_quintile",
          quintile=="Low" | 
            quintile=="High",
-         data_year=="2011" |
+         data_year=="2010" |
            data_year=="2021")
 
-# 2011 region low quintile poc households: 37.45361
-# 2011 region high quintile poc households: 39.34862
-# 39.34862-37.45361=1.89501
+# 2010 region low quintile poc households: 42.95469
+# 2010 region high quintile poc households: 46.26651
+# 46.26651-42.95469=3.31182
 
 # 2021 region low quintile poc households: 40.09794
 # 2021 region high quintile poc households: 45.52987
-# 45.52987-40.09794=5.43193
+# 45.52987-40.09794=5.43197
 
 filter <- data_clean %>% 
   filter(county=="Region",
          equity_group=="income_quintile",
          quintile=="Low" | 
            quintile=="High",
-           data_year=="2011" |
+           data_year=="2010" |
            data_year=="2021")
 
-# 2011 region low quintile poc households: 21.33407
-# 2011 region high quintile poc households: 46.56119
-# 46.56119-21.33407=25.22712
+# 2010 region low quintile poc households: 23.55852
+# 2010 region high quintile poc households: 57.64777
+# 57.64777-23.55852=34.08925
 
 # 2021 region low quintile income: 23.04458
 # 2021 region high quintile income: 63.27904
@@ -718,16 +717,16 @@ filter <- data_clean %>%
          equity_group=="income_quintile",
          quintile=="Low" | 
            quintile=="High",
-           data_year=="2021")
+           data_year=="2010")
 
 # 2021 King dif high/low income: 64.10860-21.93954=42.16906
-# 2011 King dif high/low income: 48.39113-21.19678=27.19435
+# 2010 King dif high/low income: 60.75987-21.74776=39.01211
 # 2021 Kitsap dif high/low income: 31.13163-34.61027=-3.47864
-# 2011 Kitsap dif high/low income: 23.00120-33.13905=-10.13785
+# 2010 Kitsap dif high/low income: 30.69803-20.31034=10.38769
 # 2021 Pierce dif high/low income: 72.92637-24.43752=48.48885
-# 2011 Pierce dif high/low income: 45.85053-17.04460=28.80593
+# 2010 Pierce dif high/low income: 54.26409-25.61320=28.65089
 # 2021 Snohomish dif high/low income: 38.17942-25.27950=12.89992
-# 2011 Snohomish dif high/low income: 51.68101-25.23083=26.45018
+# 2010 Snohomish dif high/low income: 53.81320-28.45158=25.36162
 
 filter <- data_clean %>% 
   filter(county!="Region",
@@ -735,16 +734,16 @@ filter <- data_clean %>%
          quintile=="Low" | 
            quintile=="High",
            data_year=="2021" |
-           data_year=="2011")
+           data_year=="2010")
 
- 2021 King dif high/low poc: 23.96616-36.13557=-12.16941
- 2011 King dif high/low poc: 26.84780-36.87327=-10.02547
- 2021 Kitsap dif high/low poc: 31.95647-54.21209=-22.25562
- 2011 Kitsap dif high/low poc: 40.15100-52.52396=-12.37296
- 2021 Pierce dif high/low poc: 19.35792-36.43676=-17.07884
- 2011 Pierce dif high/low poc: 18.04459-37.49361=-19.44902
- 2021 Snohomish dif high/low poc: 28.00900-39.92032=-11.91132
- 2011 Snohomish dif high/low poc: 28.56320-39.62815=-11.06495
+# 2021 King dif high/low poc: 50.59890-32.17532=18.42358
+# 2010 King dif high/low poc: 54.73807-42.02231=12.71576
+# 2021 Kitsap dif high/low poc: 41.81601-40.23451=1.5815
+# 2010 Kitsap dif high/low poc: 38.96188-44.11278=-5.1509
+# 2021 Pierce dif high/low poc: 71.31924-38.98953=32.32971
+# 2010 Pierce dif high/low poc: 47.91625-44.68400=3.23225
+# 2021 Snohomish dif high/low poc: 43.27552-36.38348=6.89204
+# 2010 Snohomish dif high/low poc: 34.94911-33.87377=1.07534
 
 filter <- data_clean %>% 
   filter(county!="Region",
@@ -752,27 +751,26 @@ filter <- data_clean %>%
          quintile=="Low" | 
            quintile=="High",
            data_year=="2021" |
-           data_year=="2016")
+           data_year=="2012")
 
- 2021 King dif high/low dis: 23.96616-36.13557=-12.16941
- 2011 King dif high/low dis: 26.84780-36.87327=-10.02547
- 2021 Kitsap dif high/low dis: 31.95647-54.21209=-22.25562
- 2011 Kitsap dif high/low dis: 40.15100-52.52396=-12.37296
- 2021 Pierce dif high/low dis: 19.35792-36.43676=-17.07884
- 2011 Pierce dif high/low dis: 18.04459-37.49361=-19.44902
- 2021 Snohomish dif high/low dis: 28.00900-39.92032=-11.91132
- 2011 Snohomish dif high/low dis: 28.56320-39.62815=-11.06495
+# 2021 King dif high/low dis: 57.48949-22.37906=35.11043
+# 2012 King dif high/low dis: 48.07225-27.30314=20.76911
+# 2021 Kitsap dif high/low dis: 52.42154-31.92657=20.49497
+# 2012 Kitsap dif high/low dis: 19.63624-26.50504=-6.8688
+# 2021 Pierce dif high/low dis: 69.23790-20.86430=48.3736
+# 2012 Pierce dif high/low dis: 42.34221-20.77239=21.56982
+# 2021 Snohomish dif high/low dis: 39.38283-27.19674=12.18609
+# 2012 Snohomish dif high/low dis: 51.69600-21.09331=30.60269
  
 ```
+
 
 
 #### Insights & Analysis
 
 * Households with lower income and people with disabilities have been disproportionately impacted by traffic related deaths and serious injuries consistently from 2010 to 2021
-* King and Pierce counties have the largest gap between the highest and lowest quintiles for housesholds with lower income between 2011 and 2021
-* All four counties have as reduced the gap between the highest and lowest quintiles for communities with lower income between 2011 and 2021 due to decreased average tree canopy for the communities in the lowest quintile
-* Snohomish County has reduced the gap between the highest and lowest quintiles for communities with lower income between 2011 and 2021 due to an increase in average tree canopy for the communities in the highest quintile and a decrease for the communities in the lowest quintile
-
+* Pierce County has the largest gap increase between the highest and lowest quintiles for people of color and housesholds with lower income between 2010 and 2021
+* King and Pierce counties have the largest gap increase between the highest and lowest quintiles for people with disabilities between 2016 and 2021
  
 \
 \
