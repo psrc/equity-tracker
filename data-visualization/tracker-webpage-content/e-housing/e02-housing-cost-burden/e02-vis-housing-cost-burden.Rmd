@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,7 +47,7 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
+# output_type <- "word"
 output_type <- "html"
 ```
 # 3 visuals for webpage
@@ -55,6 +55,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 \
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+
+## Indicator Explanation
+Housing Cost Burden, in this case, refers to renters that are paying more than 30% of their income on rent, rendering them "burdened" by the cost of housing. As rent increases and income remains unchanged, or as affordable housing becomes less available, people are over-extending themselves in order to afford housing. This contributes to the housing crisis and also to people being unable to access opportunity in the same way that affluent, or low-vulnerability, communities can.
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -183,26 +186,36 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # setting color palette
-psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
-                                      domain = acs_data_tract$wt_life_expec) # this is the value field
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = acs_data_plus_zero) # this is the value field
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
+#                                       domain = acs_data_tract$wt_life_expec) # this is the value field
 
 # setting the legend/label variables
 var_name <- "Rent <br> Burdened" # the <br> could be adjusted depending on the length/spacing of the name
-#labels <- sprintf(
- # "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
-  #paste("%", # if doesn't require prefix, this can be removed
-   #     prettyNum((round(acs_data_tract$wt_life_expec, digits=-0)),
-    #              big.mark = ","))) %>%
-  #lapply(htmltools::HTML)
+# labels <- sprintf(
+#    "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+#    paste(prettyNum((round(acs_data_tract$wt_life_expec, digits=0)), #the digits would probably be 2 for %
+#          '%')) %>%
+#    lapply(htmltools::HTML))
 
-#if the label required a suffix instead of a prefix, for example a %, the code would look like this:
 labels <- sprintf(
-   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-   paste(prettyNum((round(acs_data_tract$wt_life_expec, digits=0)), #the digits would probably be 2 for %
-               big.mark = ","), #this wouldn't be necessary to include for %s    
-         '%')) %>%
-   lapply(htmltools::HTML)
-
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
+  paste("Tract value: ",
+        prettyNum(round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
+        '%'),
+  paste("Tract data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ",
+        prettyNum(round(acs_data_tract$reg_estimate, digits=0)),
+        '%'),
+  paste("County value: ",
+        prettyNum(round(acs_data_tract$cnty_estimate, digits=0)),
+        '%', paste0("(",acs_data_tract$county_name," County)"))) %>%
+  lapply(htmltools::HTML)
 
 # map settings
 acs_map <- leaflet() %>%
@@ -213,7 +226,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$wt_life_expec),
+              fillColor = psrc_palette(acs_data_plus_zero),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -222,7 +235,7 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_tract$wt_life_expec,
+                       values = acs_data_plus_zero,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -246,7 +259,7 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 acs_map
 ```
 
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles`
+Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
@@ -303,10 +316,10 @@ sort <- data %>%
 # 53033030501 (Auburn, around 167)
 
 # this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
+by_county <- data %>% 
+   dplyr::group_by(county_name) %>% 
+   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
+   dplyr::arrange(desc(income.wgt))
 
 # getting data by county from acs 
 county_acs_data <- get_acs_recs(geography ='county', 
@@ -318,18 +331,17 @@ county_acs_data <- acs_data_tract %>%
   dplyr::arrange(desc(estimate))
 ```
 
-1. 6.8%: Average percentage of cost-burdened households by census tract
-2. 12%: Highest percentage of rent-burdened households in a census tract
-3. 1.6%: Lowest proportion of rent-burdened households
+1. 46%: Average percentage of cost-burdened households by census tract
+2. 6: Six census tracts have the highest percentage of rent-burdened households at 100%
+3. 48%: Pierce County has the highest percentage of rent-burdened households (48%)
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest population in the region and the highest percentage of rent-burdened households (12%)
-* The five census tracts tied with the highest representation of cost-burdened households are in the Issaquah Highlands (12%) and Hollywood (10.7%) in King County, Clearview (11%) in Snohomish County, and the Fort Lewis (10.7%) and West Frederickson (10.5%) in Pierce County
-* The three census tracts with the lowest representation of rent-burdened households are Seattle's Bellevue (1.6%), Snohomish County's southern tip of Edmonds (1.7%), and Seattle's Georgetown neighborhood (2%) 
-
+* Pierce County has the highest percentage of rent-burdened households (48%), followed by Snohomish (47%), Kitsap (46%), and King (45%)
+* The six census tracts tied with the highest representation of cost-burdened households are in the Issaquah Highlands and by Cottage Lake and Covington (close to the outer edges of the county) in King County, and  southwestern Woodway near Shoreline and the northeastern corner of Snohomish County
+* Questions about 0% and 100% cost burden representation **
 \
 \
 
@@ -345,8 +357,8 @@ county_acs_data <- acs_data_tract %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
-#source('equity-tracker-chart-functions.R')
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'e02-housing-cost-burden-data.rda'
@@ -357,8 +369,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2021") %>%
-  dplyr::filter(indicator_attribute != "Less than 30 percent") #filter on most recent year
+  dplyr::filter(data_year=="2021") #filter on most recent year
 
 # set variables 
 df = data_clean_column
@@ -372,6 +383,8 @@ y_max = 1
 dec = 0
 esttype = "percent"
 color = "purples"
+num_colors = 2
+color_rev = TRUE
 title = "Rent Burdened Housholds"
 subtitle = "Percentage"
 source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
@@ -386,8 +399,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
-
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
 ```
 
 ```{r output final column chart - pums, include=FALSE}
@@ -398,7 +412,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'e02-housing-cost-burden-column'
 
 # column Chart - html for interactive
-rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -409,6 +423,8 @@ rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualizat
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
@@ -458,8 +474,9 @@ filter <- data_clean_column %>%
 # 2.7% more likely
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         county=="Region")
+  filter(focus_type=="LEP_cat")
+
+#         county=="Region")
 # 50% versus 60%
 
 filter <- data_clean_column %>% 
@@ -469,8 +486,7 @@ filter <- data_clean_column %>%
 # same across the region
 
 filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Youth_cat")
+  filter(focus_type=="Youth_cat")
 
 # region youth households: 141389.8	
 # region non-youth households: 102097.0
@@ -503,18 +519,15 @@ filter <- data_clean_column %>%
 
 ```
 
-1. 2.7x: Households who are living below 200% of the poverty level are 2.7 times more likely to be cost-burdened than households who are living above it
-2. 60%: The percentage of Non-English proficient households that are at risk of being rent burdened across the region
-3. 50%: Snohomish County narrows the gap between people with disabilities and those living without, as well as households with older adults (65+ years old) nd those without
-
-\
+1. 2.5: Households in the region who are living below 200% of the poverty level are 2.7 times more likely to be cost-burdened than households who are living above
+2. 60%: Sixty percent of limited English proficient households are at risk of being rent burdened
+3. 57%: The highest percentage of people with disabilities that are rent burdened
 
 #### Insights & Analysis
 
-* Households that are living below 200% of the poverty level are the households at highest risk of experiencing rent burden, and are equally represented across all counties.
-* King County has the highest gap between households with English proficiency and households that are non-English proficient (20%), versus other counties with smaller gaps (10%)
-* Snohomish County narrows the gap between households with people with disabilities and households with older adults (65+ years old) from 20% to 10%, and narrows the gap for households with people of color to 0%
-
+* Households that are living below 200% federal poverty level are the households at highest risk of experiencing rent burden, and are equally represented across all counties.
+* Limited English proficient households are at highest risk of rent burden in Kitsap County (64%), with the lowest risk limited English households in Pierce (56%)
+* Snohomish County is the only county where households with children (18 years or younger) are paying the same as households without children
 \
 \
 
@@ -548,6 +561,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
                                         width = '420px',
                                         height = '380px')
 ```
@@ -560,7 +575,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 file_name <- 'e02-housing-cost-burden-line'
 
 # Line Chart - html for interactive
-rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -572,6 +587,8 @@ rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualizat
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,
@@ -671,26 +688,27 @@ filter <- data_clean %>%
 # ((4088.07-15777.04)/(15777.04))*100: -74.08849% change
 
 filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="Income_cat",
+  filter(county=="Region",
+         focus_type=="Disability_cat",
          vulnerability=="low vulnerability",
-         data_year=="2011" |
-           data_year=="2021")
+         data_year=="2016" |
+           data_year=="2021",
+         indicator_attribute != "Less than 30 percent")
 # king non-low income:150511.89-98506.82=52005.07
 # Snohomish non-low income:130900.06-97445.42=33454.64
 ```
 
-1. 1.5%: In 2021, the percentage points between households in the region who were living below 200% of the poverty line and households living above
-2. 50%: Regionally, people of color are as likely to be rent burdened as white non-Hispanic households, a proportion which has remained relatively consistent in the last ten years
-3. 0%: Percentage increase for households with and without people living with disabilities
+1. 1.5: In 2021, the percentage points between households in the region who were living below 200% federal poverty line and households living above
+2. 48%: In the region, people of color are as more likely to be rent burdened than white non-Hispanic households, a proportion that is 3 percentage points higher than white non-Hispanic households
+3. 43%: Rent burdened households with and without disabilities have remained constant from 2016 to 2021
 
 \
 
 #### Insights & Analysis
 
-* In 2021, the difference between households in the region who were below 200% of the poverty line and households above the 200% poverty line was 1.5%, which has remained consistent, but the proportion of rent burdened households based on income has increased by 166% from 2011
-* Since 2011, King County is the only county where the gap between households with youth (18 years or younger) has grown (from 50% to 60%), whereas households without youth decreased their rent burden (from 50% to 40%)
-* Households with older adults that are rent-burdened have increased in King and Snohomish County, while they have decreased the gap between households in Kitsap and Pierce counties.
+* In 2021, the difference between households in the region living below 200% federal poverty line and households above was 1.5%, which has remained consistent, but the proportion of rent burdened households based on income has increased by 166% from 2011
+* Since 2011, King County is the only county where the gap between households with youth (18 years or younger) has grown (from 50% to 60%)
+* Households with older adults (65 years or older) that are rent-burdened have increased in King and Snohomish County over the last decade, while they have decreased the gap between households in Kitsap and Pierce counties.
 
 
 \

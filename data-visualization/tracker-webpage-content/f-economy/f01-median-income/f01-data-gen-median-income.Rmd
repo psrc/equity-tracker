@@ -4,13 +4,13 @@ subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -465,14 +465,14 @@ x <- tidycensus::load_variables(2021,"acs5") %>%
                   (geography=="tract"))
 
 # getting data by tract
-acs_data <- get_acs_recs(geography ='tract', 
-                         table.names = 'B19013', #subject table code
-                         years = c(2021),
-                         acs.type = 'acs5')
+base_acs_data <- get_acs_recs(geography ='tract', 
+                              table.names = 'B19013', #subject table code
+                              years = c(2021),
+                              acs.type = 'acs5')
 
-# filter only fields of interest - census tract and population
-acs_data <- acs_data %>% 
-  dplyr::select(GEOID, estimate)
+# filter only fields of interest - census tract, value, and reliability (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
+acs_data <- base_acs_data %>% 
+  dplyr::select(GEOID, estimate, reliability)
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
 ```
@@ -480,9 +480,36 @@ acs_data <- acs_data %>%
 ### Joining data
 ```{r}
 # merge to 2020 census tract spatial file
-acs_data_tract <- merge(tracts20.lyr, acs_data,
-                        by.x="geoid20",
-                        by.y="GEOID",
+acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
+                              by.x="geoid20",
+                              by.y="GEOID",
+                              all.x=TRUE)
+
+# getting data by county from acs 
+county_acs_data <- get_acs_recs(geography ='county', 
+                                table.names = 'B19013', #subject table code
+                                years = c(2021),
+                                acs.type = 'acs5')
+county_data <- county_acs_data %>% 
+  dplyr::select(name,estimate) %>% #to simplify table
+  dplyr::rename(cnty_estimate=estimate) %>% #to distinguish between tract and county values
+  mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
+
+# getting data by region from PUMS
+pums_data <- get_psrc_pums(span = 5,
+                           dyear = 2021,
+                           level = "h",
+                           vars = "HINCP")
+reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
+
+# add region median to county data
+county_reg_data <- county_data %>% 
+  mutate(reg_estimate=reg_median$HINCP_median)
+
+# merge tract, county, and region data into one data set 
+acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
+                        by.x="county_name",
+                        by.y="county_name",
                         all.x=TRUE)
 ```
 

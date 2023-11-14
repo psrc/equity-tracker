@@ -13,6 +13,8 @@ params:
   dec: 1
   esttype: number
   color: greens
+  num_colors: 2
+  color_rev: TRUE
   width: 420px
   height: 380px
   title: Life Expectancy
@@ -51,6 +53,8 @@ if (params$charttype == "bar") {
                                      dec = params$dec,
                                      esttype = params$esttype,
                                      color = params$color,
+                                     num_color = params$num_colors,
+                                     color_rev = params$color_rev,
                                      width = params$width,
                                      height = params$height)
 }
@@ -69,6 +73,8 @@ if (params$charttype == "line") {
                                      dec = params$dec,
                                      esttype = params$esttype,
                                      color = params$color,
+                                     num_color = params$num_colors,
+                                     color_rev = params$color_rev,
                                      width = params$width,
                                      height = params$height)
   

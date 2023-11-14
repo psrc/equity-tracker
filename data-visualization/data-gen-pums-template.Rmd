@@ -68,7 +68,8 @@ library(showtextdb) #required for showtext
 The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
 ```{r, include=FALSE}
 # PUMS/OSPI data set
-pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
+pums_ospi_elmer <- get_table(schema="equity",
+                             tbl_name="v_tracker_indicators")
 ```
 \
 This data set was compiled from PUMS data.
@@ -96,11 +97,11 @@ indicator_title <- 'Median household income'
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
-  distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
   dplyr::filter(indicator_type==indicator_measure) %>% 
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
-  filter(indicator_attribute!="Total") %>%
+  # filter(indicator_attribute!="Total") %>%
   dplyr::mutate(data_year_yr=format(data_year,format="%Y"))
 ```
 
@@ -147,7 +148,12 @@ num_row <- num_yr*num_county*num_group*2*num_indatt #180
 There are **`r num_county`** geographies and **`r num_group`** equity focus groups (each with **2** subgroups). There are **`r num_yr`** years in the data set and the indicator specific field has **`r num_indatt`** attribute(s), which means there should be a total of **`r num_row`** rows.
 ```{r}
 # count number of rows
-nrow(data_full) #170
+nrow(data_full) #180 in the full data set
+
+data_full_nona <- data_full %>% 
+  dplyr::filter(!is.na(fact_value))
+
+nrow(data_full_nona) #170 - there are some NAs in the data
 ```
 <span style="color: #00A7A0">There are some missing data.</span> 
 \
@@ -160,8 +166,8 @@ num_yr_geo <- num_group*2*num_indatt #12
 ```
 If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
 ```{r, include=FALSE, eval=FALSE}
-table(data_full$data_year,
-      data_full$county)
+table(data_full_nona$data_year,
+      data_full_nona$county)
 ```
 <span style="color: #00A7A0">
 2011 is missing some data for all geographies.
@@ -175,8 +181,8 @@ num_yr_grp <- num_county*2*num_indatt #10
 ```
 If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
 ```{r}
-table(data_full$data_year,
-      data_full$focus_type)
+table(data_full_nona$data_year,
+      data_full_nona$focus_type)
 ```
 <span style="color: #00A7A0">
 The disability category is missing all data in 2011.
@@ -190,8 +196,8 @@ num_yr_subgrp <- num_county*num_indatt #5
 ```
 If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
 ```{r}
-table(data_full$data_year,
-      data_full$focus_attribute)
+table(data_full_nona$data_year,
+      data_full_nona$focus_attribute)
 ```
 \
 \
@@ -202,8 +208,8 @@ num_yr_ind <- num_county*num_group*2 #60
 ```
 If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
 ```{r}
-table(data_full$data_year,
-      data_full$indicator_attribute)
+table(data_full_nona$data_year,
+      data_full_nona$indicator_attribute)
 ```
 \
 \
@@ -215,7 +221,7 @@ To check for *0*s and *NULL*s
 summary(data_full$fact_value)
 ```
 <span style="color: #00A7A0">
-There are no 0s or nulls.
+There are nulls.
 </span> 
 \
 \
@@ -472,9 +478,9 @@ base_acs_data <- get_acs_recs(geography ='tract',
                               years = c(2021),
                               acs.type = 'acs5')
 
-# filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
+# filter only fields of interest - census tract, value, and reliability (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
 acs_data <- base_acs_data %>% 
-  dplyr::select(GEOID, estimate)
+  dplyr::select(GEOID, estimate, reliability)
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
 ```
@@ -482,9 +488,36 @@ acs_data <- base_acs_data %>%
 ### Joining data
 ```{r}
 # merge to 2020 census tract spatial file
-acs_data_tract <- merge(tracts20.lyr, acs_data,
-                        by.x="geoid20",
-                        by.y="GEOID",
+acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
+                              by.x="geoid20",
+                              by.y="GEOID",
+                              all.x=TRUE)
+
+# getting data by county from acs 
+county_acs_data <- get_acs_recs(geography ='county', 
+                                table.names = 'B19013', #subject table code
+                                years = c(2021),
+                                acs.type = 'acs5')
+county_data <- county_acs_data %>% 
+  dplyr::select(name,estimate) %>% #to simplify table
+  dplyr::rename(cnty_estimate=estimate) %>% #to distinguish between tract and county values
+  mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
+
+# getting data by region from PUMS
+pums_data <- get_psrc_pums(span = 5,
+                           dyear = 2021,
+                           level = "h",
+                           vars = "HINCP")
+reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
+
+# add region median to county data
+county_reg_data <- county_data %>% 
+  mutate(reg_estimate=reg_median$HINCP_median)
+
+# merge tract, county, and region data into one data set 
+acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
+                        by.x="county_name",
+                        by.y="county_name",
                         all.x=TRUE)
 ```
 

@@ -96,7 +96,7 @@ indicator_title <- 'Housing Tenure'
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
-  distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
   dplyr::filter(indicator_type==indicator_measure) %>% 
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
@@ -473,33 +473,104 @@ base_acs_data <- get_acs_recs(geography ='tract',
                               years = c(2021),
                               acs.type = 'acs5')
 
-# cleaning data to include total percentage of owner-occupied units
-acs_data <- base_acs_data %>% rename_at('label', ~'tenure')%>%
-  rename_at ('variable', ~ 'column')
+# filter to the variables of interest
+acs_data_filter <- base_acs_data %>% 
+  dplyr::filter(variable == 'S2502_C03_001'| 
+                  variable== 'S2502_C01_001') %>%
+  dplyr::mutate(tenure = factor(case_when(label == "Estimate!!Owner-occupied housing units!!Occupied housing units" ~ "Owner_occupied_units",
+                                          TRUE ~ 'Total_units'))) %>% 
+  dplyr::select(GEOID, variable, tenure, estimate, moe)
 
-acs_data <- dplyr::select(filter(acs_data, column== 'S2502_C03_001'| column== 'S2502_C01_001'), c('GEOID', 'estimate', 'tenure')) %>%
-  mutate(tenure = factor(case_when(tenure == "Estimate!!Owner-occupied housing units!!Occupied housing units" ~ "Owner_occupied_units",
-                                   TRUE ~ 'Total_units')))
+# use the moe_sum function from tidycensus
+acs_data_group <- acs_data_filter %>% 
+  dplyr::group_by(GEOID, tenure)%>%
+  dplyr::summarise(estimate=sum(estimate), 
+                   moe=tidycensus::moe_sum(estimate=estimate, moe=moe))
 
 # pivot data to calculate percentage by census tract
-acs_data <- acs_data %>% 
-  pivot_wider(names_from = tenure, values_from = estimate)
+acs_data_pivot<- acs_data_group %>%   
+  pivot_wider(names_from = tenure, values_from = c(estimate,moe))
 
-acs_data$estimate <- ((acs_data$Owner_occupied_units/acs_data$Total_units)*100)
+# calculating percentage/share of population per tract instead of integer
+acs_data_calc <- acs_data_pivot %>%
+  mutate(estimate_perc_own_occ=estimate_Owner_occupied_units/estimate_Total_units)
 
-# filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
-acs_data <- acs_data %>% 
-  dplyr::select(GEOID, estimate)%>%
-  dplyr::filter(!is.na(estimate)) #estimate = total owner-occupied housing units in percentage
+# calculate moes
+acs_data_moes <- acs_data_calc %>%
+  rowwise() %>%
+  # mutate(moe_perc_own_occ=moe_prop(num=estimate_Owner_occupied_units,
+  #                                  denom=estimate_Total_units, 
+  #                                  moe_num=moe_Owner_occupied_units, 
+  #                                  moe_denom=moe_Total_units)) %>% 
+  mutate(moe_cost_burdened=tidycensus::moe_sum(estimate = estimate_Owner_occupied_units,
+                                               moe = moe_Owner_occupied_units))
 
+acs_data_final<- acs_data_moes %>% 
+  # dplyr::select(GEOID, estimate_Owner_occupied_units, estimate_Total_units, estimate_perc_own_occ,
+  #               moe_Owner_occupied_units, moe_Total_units, moe_perc_own_occ) %>%
+  dplyr::filter(!is.na(estimate_Owner_occupied_units))
+
+# calculate reliability values
+acs_data_reliability <-reliability_calcs(acs_data_final,
+                                         estimate='estimate_Owner_occupied_units',
+                                         moe='moe_Owner_occupied_units')
+
+# rename and simplify
+acs_data <- acs_data_reliability %>%
+  rename(estimate_dec='estimate_perc_own_occ') %>%
+  mutate(estimate=estimate_dec*100) %>% 
+  dplyr::select(GEOID,estimate,reliability)
 ```
 
 ### Joining data
 ```{r}
 # merge to 2020 census tract spatial file
-acs_data_tract <- merge(tracts20.lyr, acs_data,
-                        by.x="geoid20",
-                        by.y="GEOID",
+acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
+                              by.x="geoid20",
+                              by.y="GEOID",
+                              all.x=TRUE)
+
+# getting data by county and region from acs 
+county_reg_acs_data <- get_acs_recs(geography ='county', 
+                                table.names = 'S2502', #subject table code
+                                years = c(2021),
+                                acs.type = 'acs5')
+
+county_reg_data_rename <- county_reg_acs_data %>% 
+  dplyr::filter(variable == 'S2502_C03_001'| 
+                  variable== 'S2502_C01_001') %>%
+  dplyr::mutate(tenure = factor(case_when(label == "Estimate!!Owner-occupied housing units!!Occupied housing units" ~ "Owner_occupied_units",
+                                          TRUE ~ 'Total_units')))
+
+county_reg_data_aggregate <- county_reg_data_rename %>% 
+  dplyr::group_by(GEOID, name, tenure) %>% 
+  dplyr::summarise(estimate=sum(estimate), .groups='drop')
+
+# pivot data to calculate percentage by census tract
+county_reg_data_group <- county_reg_data_aggregate %>% 
+  pivot_wider(names_from = tenure, values_from = estimate) %>%
+  dplyr::mutate(own_occ_perc = ((Owner_occupied_units/Total_units)*100),
+                county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
+
+county_data <- county_reg_data_group %>% 
+  dplyr::filter(name != "Region") %>% 
+  dplyr::rename(cnty_estimate=own_occ_perc) %>% #to distinguish between tract and county values
+  dplyr::select(county_name, cnty_estimate) #simplify table
+
+# getting data by region
+region_data <- county_reg_data_group %>% 
+  dplyr::filter(name == "Region") %>% 
+  dplyr::rename(reg_estimate=own_occ_perc) %>% #to distinguish between tract and county values
+  dplyr::select(county_name, reg_estimate) #simplify table
+
+# add region median to county data
+county_reg_data <- county_data %>% 
+  mutate(reg_estimate=region_data$reg_estimate)
+
+# merge tract, county, and region data into one data set 
+acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
+                        by.x="county_name",
+                        by.y="county_name",
                         all.x=TRUE)
 ```
 

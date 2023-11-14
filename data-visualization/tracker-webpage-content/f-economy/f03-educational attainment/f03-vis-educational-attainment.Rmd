@@ -56,6 +56,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
+## Indicator Explanation
+Education is associated with a wide range of benefits to both individuals and society. People with higher levels of education are more likely to find employment, remain employed, learn new skills on the job, and earn more over their working life relative to those with lower levels of education. For this measure, we are defining educational attainment as adults 25 years and older who have a bachelor's degree or higher.
+
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
 ```{r map legend settings, include=FALSE}
@@ -180,7 +183,9 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 # need to convert estimate from decimal to whole number % for map to show correct value
 acs_data_tract <- acs_data_tract %>% 
   rename(estimate_dec=estimate) %>% 
-  dplyr::mutate(estimate=estimate_dec*100)
+  dplyr::mutate(estimate=estimate_dec*100) %>% 
+  dplyr::mutate(reg_estimate=reg_estimate*100) %>% 
+  dplyr::mutate(cnty_estimate=cnty_estimate*100)
 ```
 
 ```{r acs map}
@@ -190,19 +195,28 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # setting color palette
-psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
-                                      domain = acs_data_tract$estimate) # this is the value field
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = acs_data_plus_zero) # this is the value field
 
 # setting the legend/label variables
 var_name <- "Educational <br> Attainment" # the <br> could be adjusted depending on the length/spacing of the name
-
-# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-  paste(prettyNum(round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
-        '%')) %>%
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
+  paste("Tract value: ",
+        prettyNum(round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
+        '%'),
+  paste("Tract data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ",
+        prettyNum(round(acs_data_tract$reg_estimate, digits=0)),
+        '%'),
+  paste("County value: ",
+        prettyNum(round(acs_data_tract$cnty_estimate, digits=0)),
+        '%', paste0("(",acs_data_tract$county_name," County)"))) %>%
   lapply(htmltools::HTML)
-
 
 # map settings
 acs_map <- leaflet() %>%
@@ -213,7 +227,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$estimate),
+              fillColor = psrc_palette(acs_data_plus_zero),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -222,7 +236,7 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_tract$estimate,
+                       values = acs_data_plus_zero,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -345,6 +359,8 @@ y_max = 1
 dec = 0
 esttype = "percent"
 color = "purples"
+num_colors = 2
+color_rev = TRUE
 title = "Educational Attainment"
 subtitle = "Bachelor's degree or higher"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
@@ -359,7 +375,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
 
 ```
 
@@ -382,6 +400,8 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
@@ -510,6 +530,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
                                         width = '420px',
                                         height = '380px')
 ```
@@ -534,6 +556,8 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,

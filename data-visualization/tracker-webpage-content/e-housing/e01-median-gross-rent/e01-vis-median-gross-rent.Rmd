@@ -1,16 +1,16 @@
 ---
 title: "Median Gross Rent"
-subtitle: "Visuals for Equity Tracker (PUMS data)"
+subtitle: 'Visuals for Equity Tracker (PUMS data)'
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -57,7 +57,7 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Gross rent measures the average rent for the location, in this case being census tract, and "median" indicates that the middle value in between the census tracts highest gross rent and lowest gross rent is what represents the gross median rent value. Oftentimes, a higher gross median rent can indicate that some families and households are priced out of an area, limiting options of living close to transit, in neighborhoods with good schools, and limiting opportunity and access. 
+Median gross rent measures the average rent for the location, in this case being census tract, and "median" indicates that the middle value in between the census tracts highest gross rent and lowest gross rent is what represents the median gross rent value. Oftentimes, a higher median gross rent can indicate that some families and households are priced out of an area, limiting options of living close to transit, in neighborhoods with good schools, and limiting opportunity and access. 
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -186,26 +186,31 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # setting color palette
-psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
-                                      domain = acs_data_tract$estimate) # this is the value field
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = acs_data_plus_zero) # this is the value field
+
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
+#                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Gross Median <br> Rent (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Median Gross <br> Rent (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
-  paste("$", # if doesn't require prefix, this can be removed
-        prettyNum((round(acs_data_tract$estimate, digits=0)),
-                  big.mark = ","))) %>%
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
+  paste("Tract value: ","$", # if doesn't require prefix, this can be removed
+        prettyNum((round(acs_data_tract$estimate, digits=-1)),
+                  big.mark = ",")),
+  paste("Tract data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ","$",
+        prettyNum((round(acs_data_tract$reg_estimate, digits=-1)),
+                  big.mark = ",")),
+  paste("County value: ","$",
+        prettyNum((round(acs_data_tract$cnty_estimate, digits=-1)),
+                  big.mark = ","), paste0("(",acs_data_tract$county_name," County)"))) %>%
   lapply(htmltools::HTML)
-
-# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
-#               big.mark = ","), #this wouldn't be necessary to include for %s    
-#         '%')) %>%
-#   lapply(htmltools::HTML)
-
 
 # map settings
 acs_map <- leaflet() %>%
@@ -216,7 +221,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$estimate),
+              fillColor = psrc_palette(acs_data_plus_zero),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -225,7 +230,7 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_tract$estimate,
+                       values = acs_data_plus_zero,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -270,64 +275,25 @@ htmlwidgets::saveWidget(acs_map,
 data <- acs_data_tract %>%
   st_drop_geometry()
 
-# calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
-
-x<-rep(data$estimate,times=data$total_pop20)
-df1<-data.frame(x)
-summary(df1$x)
-median(df1$x, na.rm=TRUE)
-hist(df1$x)
-# regional median life expectancy: 80.86 
-
-# getting data by region from PUMS
-pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
-                           level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
-# regional median income: 96453.13
-
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
-# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
-# 53033030501 (Auburn, around 167)
-
-# this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
-
-# getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B25031', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
-  dplyr::arrange(desc(estimate))%>%
-  filter(variable == "B25031_001")
 ```
 
-1. \$1,790: Regional median gross rent
-2. \$3,500: Highest median gross rent (in King County)
-3. \$1,440: Lowest median gross rent (in Pierce County)
+1. \$1,680: Regional median gross rent
+2. \$3,500: Highest median gross rent (seven tracts in King County)
+3. \$620: Lowest median gross rent (in Pierce County)*
 
 \
 
 #### Insights & Analysis
 
 * King County has the highest median gross rent (\$1,800), followed by Snohomish (\$1,640), and Kitsap and Pierce (both \$1,440)
-* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three tracts in southern Mercer Island, two in CLyde Hill/Hunts POint/Medina/Yarrow Point, two in Bellvue, two in Sammamish, and on in southwestern Bainbridge Island
-* The highest median gross rent in Pierce, Kitsap, and Snohomish County are:  and the Tulalip Reservation (\$775)
+* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three in southern Mercer Island, two in Clyde Hill/Hunts Point/Medina/Yarrow Point, two in Bellevue, two in Sammamish, and one in southwestern Bainbridge Island
+* The highest median gross rent in Pierce, Kitsap, and Snohomish County are: in the far eastern portion of Pierce county near Issaquah (\$3,110), in the southwestern portion of Bainbridge (\$3,500), and southern Mulkiteo (\$3,400)
+* *The two census tracts with the lowest median gross rent are in Pierce County, where Tacoma Housing Authority properties are located: Arlington Drive Youth Campus and Salishan Family Investment Center (\$620); Hillside Terrace 1500 Block and The Rise at 19th (\$740) 
 
 \
 \
@@ -344,8 +310,8 @@ coutny_acs_data <- coutny_acs_data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
-#source('equity-tracker-chart-functions.R')
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'e01-median-gross-rent.rda'
@@ -370,7 +336,9 @@ y_max = 4000
 dec = 0
 esttype = "currency"
 color = "purples"
-title = "Gross Median Rent"
+num_colors = 2
+color_rev = TRUE
+title = "Median Gross Rent"
 subtitle = "values are adjusted to 2021 dollars"
 source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
 
@@ -384,8 +352,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
-
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
 ```
 
 ```{r output final column chart - pums, include=FALSE}
@@ -396,7 +365,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'e01-median-gross-rent-column'
 
 # column Chart - html for interactive
-rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD",
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -407,6 +376,8 @@ rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualizat
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
@@ -471,8 +442,8 @@ filter <- data_clean_column %>%
 # 71.45515-63.50990=7.94525
 
 filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Youth_cat")
+  filter(focus_type=="Youth_cat", 
+         vulnerability == "high vulnerability")
 
 # region youth households: 141389.8	
 # region non-youth households: 102097.0
@@ -499,23 +470,23 @@ filter <- data_clean_column %>%
 # 134637.12-81508.16=53128.96
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="Income_cat",
-         vulnerability=="high vulnerability") %>% 
+  filter(focus_type=="Income_cat") %>% 
   dplyr::arrange(desc(fact_value))
 
 ```
 
-1. \$515: The difference in gross median rent for households that are below 200% of the poverty level and those above
-2. \$300: Households with English proficiency pay an average of \$300 more than Non-English proficient households
-3. \$200-\$300: Regional median gross rent for those with children is \$200-\$300 higher than those without
+1. \$500: Median gross rent for households in the region living below 200% of federal poverty level is \$500 less those living above
+2. \$300: English proficient households in the region pay \$300 more than limited English proficient households
+3. \$200: Regional median gross rent for those with children is \$300 higher than those without
 
 \
 
 #### Insights & Analysis
 
-* Snohomish County has the smallest difference in gross median rent payments between people of color and white non-Hispanic (\$4,100), while King County has the largest difference (\$19,400)
-* For households living below 200% of the poverty level, the largest difference in gross median rent is in King County (\$1,700-\$2,300), followed by Kitsap (\$1,900-\$1,400), Snohomish (\$2,000-\$1,600), and Pierce (\$1,800-\$1,500)
-* The largest difference in gross median rent between households with childen (youth under 18 years) is in Kitsap, Pierce, and Snohomish Counties (\$300), while the smallest difference is in King County (\$200)
+* People of color in Snohomish, Pierce, and Kitsap counties are paying the same median gross rent as white non-Hispanic households, while in King County, white non-Hispanic households are paying $100 more in rent than people of color
+* For households living below 200% of poverty level, King County households are paying the most at (\$1,700), followed by Snohomish (\$1,600), Pierce (\$1,500), and Kitsap (\$1,400)
+* Households with children (youth under 18 years) are paying the most in King County (\$2,300), followed by Snohomish (\$2,100), then Kitsap and Pierce counties (\$1,900)
+* These insights may indicate that while people and households are paying more in median gross rent than their counterparts, it may mean that those within the select demographic groups cannot afford higher-rent homes
 
 \
 \
@@ -550,6 +521,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
                                         width = '420px',
                                         height = '380px')
 ```
@@ -562,7 +535,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 file_name <- 'e01-median-gross-rent-line'
 
 # Line Chart - html for interactive
-rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD",
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -574,6 +547,8 @@ rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualizat
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,
@@ -639,10 +614,10 @@ filter <- data_clean %>%
 # 2021 older: 1600
 # 2021 non-older: 2000
 # 2000-1600=400
-# 2011 older: 1200
+# 2011 older: 1100
 # 2011 non-older: 1300
-# 1300-1200= 100
-# ((400-100)/(100))*100: 300% change
+# 1300-1100= 200
+# ((400-200)/(200))*100: 100% change
 
 filter <- data_clean %>%
   filter(county=="Region",
@@ -696,9 +671,9 @@ filter <- data_clean %>%
 # Snohomish non-low income:2000-1300 = 700 +53%
 ```
 
-1. \$500: In 2021, households in the region living below 200% of the poverty line paid an average of \$500 less than households above the 200% poverty line, a 150% larger gap than in 2011
-2. \$100: Regionally, people of color spend an average \$100 lower in gross median rent than white non-Hispanic households, a gap which has remained relatively consistent in King County and Regionally in the last ten years, but has narrowed in Kitsap, Pierce, and Snohomish counties
-3. 300%: The median gross rent of households in the region with older adults is \$400 lower than households without older adults, an increase of 300% from 2011
+1. 150%: Households in the region living below 200% of federal poverty line paid 150% more in 2021 than in 2011
+2. \$100: Regionally, people of color spend an average \$100 less in median gross rent than white non-Hispanic households, a gap which has remained relatively consistent in King County in the last ten years, but has narrowed in Kitsap, Pierce, and Snohomish counties
+3. 100%: Median gross rent of households in the region with older adults is \$400 lower than households without older adults, an increase of 100% from 2011
 
 
 \
@@ -706,8 +681,9 @@ filter <- data_clean %>%
 #### Insights & Analysis
 
 * Median gross rent has consistently increased across the entire region from 2011 to 2021
-* The median gross rent of households (regardless of income) stayed relatively static in Kitsap and Pierce County over time, while the the gross median rent of households increased greatly in King County (more than 54% for households who are below 200% of the poverty level and 64% for For households who are above 200% of the poverty level). Similarly in Snohomish County households who are below 200% of the poverty level are paying 45% more than they did in 2011 and 53% more for households who are above 200% of the poverty level
-* The difference in gross median rent for people with a disability compared to those living without remained relatively consistent in all counties (from 2016 to 2021), including King County
+* Median gross rent of households (regardless of income) stayed relatively static in Kitsap and Pierce County over time, while median gross rent of households increased greatly in King County (more than 55% for households who are below 200% of federal poverty level and 64% for those living above)
+* Similarly, in Snohomish County, households living below 200% of poverty level are paying 45% more than they did in 2011 and 54% more for those living above
+* The gap in median gross rent between people with a disability compared to those living without remained relatively consistent in all counties (from 2016 to 2021)
 
 
 \

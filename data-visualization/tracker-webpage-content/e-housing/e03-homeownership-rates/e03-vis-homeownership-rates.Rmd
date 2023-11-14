@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -48,7 +48,7 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
+# output_type <- "word"
 output_type <- "html"
 ```
 # 3 visuals for webpage
@@ -56,6 +56,9 @@ This code will help produce the three visuals that are going to be a part of eac
 \
 \
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+
+## Indicator Explanation
+Homeownership rates are directly related to income, but can also be related to indicators regardless of income. Discrimination and discriminatory policies of the past have created generational wealth gaps and disparities amongst communities, leading to a need for intentional and active systemic changes. 
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -184,26 +187,39 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # setting color palette
-psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
-                                      domain = acs_data_tract$estimate) # this is the value field
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = acs_data_plus_zero) # this is the value field
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
+#                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Housing <br> Tenure" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Homeownership <br> Rates" # the <br> could be adjusted depending on the length/spacing of the name
 
-#labels <- sprintf(
- # "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20, # the code in <> makes the geoid value italic
-  #paste("$", # if doesn't require prefix, this can be removed
-   #     prettyNum((round(acs_data_tract$estimate, digits=-2)),
-    #              big.mark = ","))) %>%
-  #lapply(htmltools::HTML)
-
-# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
 labels <- sprintf(
-   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-   paste(prettyNum((round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
-               big.mark = ","), #this wouldn't be necessary to include for %s    
-         '%')) %>%
-   lapply(htmltools::HTML)
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
+  paste("Tract value: ",
+        prettyNum(round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
+        '%'),
+  paste("Tract data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ",
+        prettyNum(round(acs_data_tract$reg_estimate, digits=0)),
+        '%'),
+  paste("County value: ",
+        prettyNum(round(acs_data_tract$cnty_estimate, digits=0)),
+        '%', paste0("(",acs_data_tract$county_name," County)"))) %>%
+  lapply(htmltools::HTML)
+
+# # if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+# labels <- sprintf(
+#    "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+#    paste(prettyNum((round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
+#                big.mark = ","), #this wouldn't be necessary to include for %s    
+#          '%')) %>%
+#    lapply(htmltools::HTML)
 
 
 # map settings
@@ -215,7 +231,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$estimate),
+              fillColor = psrc_palette(acs_data_plus_zero),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -224,7 +240,7 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_tract$estimate,
+                       values = acs_data_plus_zero,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -248,6 +264,8 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 acs_map
 ```
 
+Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
@@ -267,28 +285,6 @@ htmlwidgets::saveWidget(acs_map,
 data <- acs_data_tract %>%
   st_drop_geometry()
 
-# calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
-
-x<-rep(data$estimate,times=data$total_pop20)
- df1<-data.frame(x)
- summary(df1$x)
- median(df1$x, na.rm=TRUE)
- hist(df1$x)
-# regional median homeownership rates: 67%
-
-# getting data by region from PUMS
-#pums_data <- get_psrc_pums(span = 5,
- #                          dyear = 2021,
-  #                         level = "h",
-   #                        vars = "OWN_RENT")
-#reg_count <- psrc_pums_count(pums_data, stat_var = "OWN_RENT")
-# regional median income: 96453.13
-
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
 # 53061050600 (Woodway and Edmonds Waterfront), 53061042005 (Mukilteo), and 53061052206 (south of Lake Roesiger) in Snohomish County and, 53033032328 (Sammamish) and 53033031709 (west of Covington) in King County
@@ -298,33 +294,20 @@ sort <- data %>%
   dplyr::arrange(estimate)
 # 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
 # 53033030501 (Auburn, around 167)
-
-# this calculation doesn't work for median income because median is unique - need to retrieve from census 
-by_county <- data %>% 
-   dplyr::group_by(county_name) %>% 
-   dplyr::summarise(ownership.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-   dplyr::arrange(desc(ownership.wgt))
-
-# getting data by county from acs 
-#coutny_acs_data <- get_acs_recs(geography ='county', 
- #                               table.names = 'B19013', #subject table code
-  #                              years = c(2021),
-   #                             acs.type = 'acs5')
-#coutny_acs_data <- coutny_acs_data %>% 
- # dplyr::arrange(desc(estimate))
 ```
 
-1. 67%: The region's average rate of homeownership
-2. 99%: The highest homeownership rates (99%) belong to five tracts in King and Snohomish Counties
-3. 0%: Nine census tracts in the region have rates of 0% homeownership (King, Pierce, and Kitsap counties)
+1. 61%: The region's average rate of homeownership
+2. 69%: Kitsap County has the highest homeownership rates
+3. 57%: King County has the lowest percentage of homeowners
 
 \
 
 #### Insights & Analysis
 
-* Snohomish County has the highest homeownership rates (70%), followed by Kitsap (69%), Pierce (65%), and King (59%)
+* Kitsap County has the highest homeownership rates (69%), followed by Snohomish (68%), Pierce (64%), and King (57%)
 * The five census tracts tied with the highest rates of homeownership (99-97%) are in Snohomish (Woodway and Edmonds Waterfront, Mukilteo, and south of Lake Roesiger) and King County (Sammamish and west of Covington)
-* Five census tracts with the lowest homeownership rates (0%) are in King County; four in Seattle's University District and one in the South Lake Union neighborhood. Snohomish County is the only county without 0% homeowmership rates
+* Five census tracts with the lowest homeownership rates are in King County; four in Seattle's University District and one in the South Lake Union neighborhood. 
+* Snohomish County is the only county without 0% homeowmership rates, while there are 5 tracts in King, 2 in Kitsap, and 3 in Pierce. The census tract with the lowest homeownership rate in Snohomish (16%) is in the Westwood neighborhood.
 
 \
 \
@@ -341,8 +324,8 @@ by_county <- data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
-#source('equity-tracker-chart-functions.R')
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'e03-homeownership-rates-data.rda'
@@ -367,6 +350,8 @@ y_max = 1
 dec = 0
 esttype = "percent"
 color = "purples"
+num_colors = 2
+color_rev = TRUE
 title = "Homeownership Rates"
 subtitle = "percentage"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
@@ -381,8 +366,9 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             y_max = y_max,
                                             dec = dec,
                                             esttype = esttype,
-                                            color = color)
-
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
 ```
 
 ```{r output final column chart - pums, include=FALSE}
@@ -393,7 +379,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'e03-homeownership-rates-column'
 
 # column Chart - html for interactive
-rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -404,6 +390,8 @@ rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualizat
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle),
@@ -497,18 +485,18 @@ filter <- data_clean_column %>%
 
 ```
 
-1. 34%: Difference between regional homeownership rates for households living above or below 200% of the poverty level
-2. 66%: The median homeownership rates of households living with children (below 18 years old) is 66%, only 7 percentage points higher than households without children
-3. 23%: Non-English proficient households have homeownership rates that are 23 percentage points lower than English proficient households
+1. 34%: Difference between regional homeownership rates for households living above or below 200% of federal poverty level
+2. 66%: Homeownership rates of households living with children (below 18 years old) is 66%, only 7 percentage points higher than households without children
+3. 21%: Limited English proficient households have homeownership rates 21 percentage points lower than English proficient households
 
 
 \
 
 #### Insights & Analysis
 
-* For households who are living below 200% of the poverty level, homeownership rates were highest in Kitsap County (42%) followed by Pierce (38%), Snohomish (37%), and King (29%) 
+* For households living below 200% federal poverty level, homeownership rates were highest in Kitsap County (42%) followed by Pierce (38%), Snohomish (37%), and King (29%) 
 * The largest difference in homeownership rates between people of color and white non-Hispanic is in Kitsap and Pierce County (19 percentage points), while the smallest difference is in Snohomish County (10 percentage points)
-* King County is the only county where Non-English proficient households have lower homeownership rates (39%) than the region's Non-English proficient households (41%)
+* King County is the only county where limited English proficient households have lower homeownership rates (39%) than the region's limited English proficient households (41%)
 
 \
 \
@@ -543,6 +531,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         dec = dec,
                                         esttype = esttype,
                                         color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
                                         width = '420px',
                                         height = '380px')
 ```
@@ -555,7 +545,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 file_name <- 'e03-homeownership-rates-line'
 
 # Line Chart - html for interactive
-rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -567,6 +557,8 @@ rmarkdown::render("C:/Coding/CURRENT_REPOS_GITHUB/equity-tracker/data-visualizat
                                 dec = dec,
                                 esttype = esttype,
                                 color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
                                 title = title,
                                 source = source,
                                 subtitle = subtitle,
@@ -669,17 +661,17 @@ filter <- data_clean %>%
 # Snohomish non-low income:130900.06-97445.42=33454.64
 ```
 
-1. 34%: In 2021, households in the region who were living below 200% of the poverty level had homeownership rates 34 percentage points less than households above the 200% poverty line, a 13% smaller gap than in 2011
-2. 54%: King County has the lowest rates of homeownership for people living with a disability (at 54%)
-3. 20%: The homeownership rates of households in the region with older adults has remained consistently 20 percentage points lower than households without older adults, since 2016
+1. 13%: The homeownership rate gap between households in the region who were living below 200% federal poverty level and those above decreased 13% between 2011 and 2021
+2. 41%: The 2021 homeownership rate for households with limited English proficiency,  a 11% increase from 2016
+3. 43%: The difference in homeownership rates between households with older adults and those wiwihtout in the region has increased 43% between 2011 and 2021
 
 \
 
 #### Insights & Analysis
 
-* The difference in homeownership rates for people of color and white non-Hispanic over time has shifted the greatest in Snohomish County (-50%), Pierce County (-27%), and King County (-20%), while remaining unchanged in Kitsap COunty
-* In 2021, people of color have the lowest homeownership rates in King County (46%), and the highest rates of homeownership in Snohomish County (61%)
-* The difference in homeownership rates of people with a disability compared to those living without a disability has stayed relatively the same between 2016 and 2021 in all counties, except un Snohomish County, where there has been a 5% increase in homeownership rates for people living with a disability, narrowing the gap
+* The difference in homeownership rates for people of color and white non-Hispanic over time has shifted the greatest in Snohomish County (-10 percentage points), Pierce County (+5 percentage points), and King County (-4 percentage points), while remaining unchanged in Kitsap County
+* People of color have consistently had the lowest homeownership rates in King County, and the highest rates of homeownership in Snohomish County between 2011 and 2021
+* The difference in homeownership rates of people with a disability compared to those living without has stayed relatively consistent between 2016 and 2021 in all counties, except in Snohomish County, where there was a 5 percentage point increase in homeownership rates for people living with a disability
 
 
 \

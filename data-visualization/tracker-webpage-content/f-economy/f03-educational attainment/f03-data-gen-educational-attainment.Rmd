@@ -22,6 +22,8 @@ knitr::opts_chunk$set(echo=FALSE,
 ```{r library setup, include=FALSE}
 # devtools::install_github("psrc/psrcplot",
 #                          force=TRUE)
+# devtools::install_github("psrc/psrccensus",
+#                          force=TRUE)
 library(tidyverse)
 library(psrcelmer)
 library(psrccensus)
@@ -31,6 +33,7 @@ library(rlang) #required for psrccensus
 library(emmeans) #required for rlang
 library(magrittr)
 library(ggplot2)
+library(tidyr) #moe calculations
 
 library(summarytools) #freq
 library(vtable) #summary stats
@@ -96,7 +99,7 @@ indicator_title <- 'Educational attainment'
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
-  distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
   dplyr::filter(indicator_type==indicator_measure) %>% 
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
@@ -477,25 +480,106 @@ base_acs_data <- get_acs_recs(geography ='tract',
                               acs.type = 'acs5')
 
 # filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
-acs_data <- base_acs_data %>% 
-  dplyr::filter(variable=="S1501_C01_015"|
-                  variable=="S1501_C01_006") %>% 
-  dplyr::select(GEOID, estimate, label)
-
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
-acs_data <- acs_data %>% 
-  pivot_wider(names_from = label, values_from = estimate) %>% 
-  dplyr::rename(bach_plus="Estimate!!Total!!AGE BY EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Bachelor's degree or higher",
-                pop_25_plus="Estimate!!Total!!AGE BY EDUCATIONAL ATTAINMENT!!Population 25 years and over") %>% 
-  mutate(estimate=bach_plus/pop_25_plus) #consistent variable name
+bach_plus_data <- base_acs_data %>% 
+  dplyr::filter(variable=="S1501_C01_015") %>% 
+  dplyr::select(GEOID, estimate, moe) %>% 
+  dplyr::rename(bach_plus_estimate=estimate,
+                bach_plus_moe=moe)
+
+pop_25_plus_data <- base_acs_data %>% 
+  dplyr::filter(variable=="S1501_C01_006") %>% 
+  dplyr::select(GEOID, estimate, moe) %>% 
+  dplyr::rename(pop_25_estimate=estimate,
+                pop_25_moe=moe)
+
+merge_data <- merge(bach_plus_data, pop_25_plus_data,
+                    by.x="GEOID",
+                    by.y="GEOID",
+                    all.x=TRUE)
+
+
+# acs_data_pivot <- acs_data %>% 
+#   pivot_wider(names_from = label, values_from = estimate) %>% 
+#   dplyr::rename(bach_plus="Estimate!!Total!!AGE BY EDUCATIONAL ATTAINMENT!!Population 25 years and over!!Bachelor's degree or higher",
+#                 pop_25_plus="Estimate!!Total!!AGE BY EDUCATIONAL ATTAINMENT!!Population 25 years and over") %>% 
+#   mutate(estimate=bach_plus/pop_25_plus) #consistent variable name
+
+# calculate moes
+acs_data_group <- merge_data %>%
+  rowwise() %>%
+  mutate(estimate=bach_plus_estimate/pop_25_estimate) %>% 
+  mutate(moe_perc_edu=tidycensus::moe_prop(num=bach_plus_estimate, denom=pop_25_estimate, 
+                                           moe_num=bach_plus_moe, moe_denom=pop_25_moe))
+
+acs_data_final<-reliability_calcs(acs_data_group, 
+                                  estimate='estimate', 
+                                  moe='moe_perc_edu')
 ```
 
 ### Joining data
 ```{r}
 # merge to 2020 census tract spatial file
-acs_data_tract <- merge(tracts20.lyr, acs_data,
-                        by.x="geoid20",
-                        by.y="GEOID",
+acs_data_tract_merge <- merge(tracts20.lyr, acs_data_final,
+                              by.x="geoid20",
+                              by.y="GEOID",
+                              all.x=TRUE)
+
+# getting data by county and region from acs 
+county_acs_data <- get_acs_recs(geography ='county', 
+                                table.names = 'S1501', #subject table code
+                                years = c(2021),
+                                acs.type = 'acs5')
+
+# county transformations
+county_bach <- county_acs_data %>% 
+  dplyr::filter(variable=="S1501_C01_015",
+                name!="Region") %>% 
+  dplyr::select(name, estimate) %>% 
+  dplyr::rename(bach_plus=estimate)
+county_pop <- county_acs_data %>% 
+  dplyr::filter(variable=="S1501_C01_006",
+                name!="Region") %>% 
+  dplyr::select(name, estimate) %>% 
+  dplyr::rename(pop_plus=estimate)
+
+county_merge <- merge(county_bach, county_pop,
+                      by.x="name",
+                      by.y="name",
+                      all.x=TRUE)
+county_data_simp <- county_merge %>% 
+  dplyr::mutate(cnty_estimate=bach_plus/pop_plus) %>% 
+  dplyr::mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) %>% #for join to tract level data
+  dplyr::select(county_name,cnty_estimate) #to simplify table
+
+# region transformations
+reg_bach <- county_acs_data %>% 
+  dplyr::filter(variable=="S1501_C01_015",
+                name=="Region") %>% 
+  dplyr::select(name, estimate) %>% 
+  dplyr::rename(bach_plus=estimate)
+reg_pop <- county_acs_data %>% 
+  dplyr::filter(variable=="S1501_C01_006",
+                name=="Region") %>% 
+  dplyr::select(name, estimate) %>% 
+  dplyr::rename(pop_plus=estimate)
+
+reg_merge <- merge(reg_bach, reg_pop,
+                      by.x="name",
+                      by.y="name",
+                      all.x=TRUE)
+reg_data <- reg_merge %>% 
+  dplyr::mutate(reg_estimate=bach_plus/pop_plus) %>% 
+  dplyr::select(name,reg_estimate)
+
+# add region median to county data
+county_reg_data <- county_data_simp %>% 
+  mutate(reg_estimate=reg_data$reg_estimate)
+
+# merge tract, county, and region data into one data set 
+acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
+                        by.x="county_name",
+                        by.y="county_name",
                         all.x=TRUE)
 ```
 

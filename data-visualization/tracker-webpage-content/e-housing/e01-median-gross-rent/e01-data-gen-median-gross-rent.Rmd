@@ -31,6 +31,7 @@ library(rlang) #required for psrccensus
 library(emmeans) #required for rlang
 library(magrittr)
 library(ggplot2)
+library(dplyr)
 
 library(summarytools) #freq
 library(vtable) #summary stats
@@ -96,7 +97,7 @@ indicator_title <- 'Median Gross Rent'
 ```{r}
 # clean data set
 data_full <- pums_ospi_elmer %>% 
-  distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
   dplyr::filter(indicator_type==indicator_measure) %>% 
   dplyr::filter(focus_type!="Total") %>% 
   filter(focus_attribute!="Total") %>%
@@ -470,23 +471,21 @@ base_acs_data <- get_acs_recs(geography ='tract',
                          years = c(2021),
                          acs.type = 'acs5')
 
-# data wrangling for grouping >30% and under 30% - census tract and population
-acs_data <- base_acs_data %>% rename_at('variable', ~'column')
-
 # clean up to median rent per census tract
-acs_data <- acs_data %>%
-  dplyr::select(filter(column == 'B25031_001'), c('GEOID', 'column', 'label', 'estimate', 'moe')) %>%
+acs_data <- base_acs_data %>%
+  dplyr::filter(variable =='B25031_001') %>% 
+  dplyr::select('GEOID', 'variable', 'label', 'estimate', 'moe', 'reliability') %>% 
   mutate(label = factor(case_when(label == "Estimate!!Median gross rent --!!Total:" ~ "Median Rent",
                                    TRUE ~ as.character(label))))
 
 # calculate relative reliability score
-acs_data$reliability <- (((acs_data$moe/1.645)/acs_data$estimate)*100) 
-acs_data$reliability <- round(acs_data$reliability, 1)
-acs_data$estimate <- signif(acs_data$estimate, digits=floor(log10(acs_data$estimate)))
+# acs_data$reliability <- (((acs_data$moe/1.645)/acs_data$estimate)*100) 
+# acs_data$reliability <- round(acs_data$reliability, 1)
+# acs_data$estimate <- signif(acs_data$estimate, digits=floor(log10(acs_data$estimate)))
 
 # filter only fields of interest - census tract and estimate (gross_median_rent)
 acs_data <- acs_data %>% 
-  dplyr::select(GEOID, estimate, moe, reliability)%>%
+  dplyr::select(GEOID, estimate, reliability)%>%
   filter(!is.na(estimate))
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher (done)
@@ -495,9 +494,37 @@ acs_data <- acs_data %>%
 ### Joining data
 ```{r}
 # merge to 2020 census tract spatial file
-acs_data_tract <- merge(tracts20.lyr, acs_data,
-                        by.x="geoid20",
-                        by.y="GEOID",
+acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
+                              by.x="geoid20",
+                              by.y="GEOID",
+                              all.x=TRUE)
+
+# getting data by county from acs 
+county_acs_data <- get_acs_recs(geography ='county', 
+                                table.names = 'B25031', #subject table code
+                                years = c(2021),
+                                acs.type = 'acs5')
+county_data <- county_acs_data %>% 
+  dplyr::filter(variable =='B25031_001') %>% 
+  dplyr::select(name,estimate) %>% #to simplify table
+  dplyr::rename(cnty_estimate=estimate) %>% #to distinguish between tract and county values
+  mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
+
+# getting data by region from PUMS
+pums_data <- get_psrc_pums(span = 5,
+                           dyear = 2021,
+                           level = "h",
+                           vars = "GRNTP")
+reg_median <- psrc_pums_median(pums_data, stat_var = "GRNTP")
+
+# add region median to county data
+county_reg_data <- county_data %>% 
+  mutate(reg_estimate=reg_median$GRNTP_median)
+
+# merge tract, county, and region data into one data set 
+acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
+                        by.x="county_name",
+                        by.y="county_name",
                         all.x=TRUE)
 ```
 
