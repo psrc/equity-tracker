@@ -169,7 +169,7 @@ pums_efa_singleyear <- function(dyear, span=5){
                                 levels=c("Greater than 50 percent",
                                          "Between 30 and 50 percent",
                                          "Less than 30 percent")),
-                 rent_burden=factor(case_when(                                                    # Define the rent burden subject variable
+               rent_burden=factor(case_when(                                                       # Define the rent burden subject variable
                                          GRPIP<30|(is.na(GRNTP) & OWN_RENT=="Rented") ~ "Less than 30 percent",
                                          dplyr::between(GRPIP,30,50) ~ "Between 30 and 50 percent",
                                          GRPIP>50|is.na(HINCP)       ~ "Greater than 50 percent"),
@@ -177,6 +177,13 @@ pums_efa_singleyear <- function(dyear, span=5){
                                              "Between 30 and 50 percent",
                                              "Less than 30 percent")),
                crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_,          # Define the crowding subject variable
+                                           NP/BDSP <= 1   & OWN_RENT=="Rented" ~ "One person per bedroom or less",
+                                           NP/BDSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per bedroom",
+                                           NP/BDSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per bedroom"),
+                                 levels=c("More than 1.5 persons per bedroom",
+                                          "Between 1 and 1.5 person(s) per bedroom",
+                                          "One person per bedroom or less")),
+               rent_crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_,          # Define the crowding subject variable
                                            NP/BDSP <= 1                  ~ "One person per bedroom or less",
                                            NP/BDSP <= 1.5                ~ "Between 1 and 1.5 person(s) per bedroom",
                                            NP/BDSP  > 1.5                ~ "More than 1.5 persons per bedroom"),
@@ -196,6 +203,7 @@ pums_efa_singleyear <- function(dyear, span=5){
   deep_pocket$"rent_burden"             <- bulk_count_efa(hh_df, "rent_burden")
   deep_pocket$"median_gross_rent"       <- bulk_stat_efa(hh_df, "median", "GRNTP2020")
   deep_pocket$"crowding"                <- bulk_count_efa(hh_df, "crowding")                       # i.e. persons per bedroom
+  deep_pocket$"rent_crowding"           <- bulk_count_efa(hh_df, "rent_crowding")                       # i.e. persons per bedroom
   deep_pocket$"SNAP"                    <- bulk_count_efa(hh_df, "FS")                             # food stamp/SNAP
   deep_pocket$"internet_access"         <- bulk_count_efa(hh_df, "internet")
 
