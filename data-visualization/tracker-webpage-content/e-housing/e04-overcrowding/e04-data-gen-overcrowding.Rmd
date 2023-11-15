@@ -1,5 +1,5 @@
 ---
-title: "Overcrowding" 
+title: "Overcrowding (Renters)" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -87,8 +87,8 @@ unique(pums_ospi_elmer$data_year)
 
 ```{r indicator specific information, include=FALSE}
 # set indicator information
-indicator_measure <- 'crowding'
-indicator_title <- 'Overcrowding (>1.5 person/bedroom)'
+indicator_measure <- 'rent_crowding'
+indicator_title <- 'Renter Overcrowding (>1.5 person/bedroom)'
 ```
 
 ## 1. Explore data
