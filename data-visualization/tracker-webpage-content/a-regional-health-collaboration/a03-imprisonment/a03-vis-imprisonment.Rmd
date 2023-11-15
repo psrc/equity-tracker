@@ -11,7 +11,6 @@ output:
     toc: yes
     toc_depth: 6
     toc_float: yes
-  
 ---
   
 ```{r rmarkdown setup, include=FALSE}
@@ -175,9 +174,9 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```{r map .rda}
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'h-public-services'
-ind_dir <- 'h01-imprisonment'
-rda <- 'h01-imprisonment-map-data.rda'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a03-imprisonment'
+rda <- 'a03-imprisonment-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
@@ -206,8 +205,11 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 # set the variable
 var_name <- "Imprisonment <br> Rate"
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$geoid20, # the code in <> makes the geoid value italic 
-  paste(prettyNum(round(data_tract$estimate, -1)), " rate") )%>% 
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
+  paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " rate"),
+  paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=1))), " rate"),
+  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=1))), 
+        paste0("(",data_tract$county_name," County)"))) %>% 
   lapply(htmltools::HTML)
 
 # if the label required a prefix, for example a $, the code would look like this:
@@ -274,10 +276,10 @@ tract_map
 Sources: Prison Policy Initiative analyzing data provided by Washington State Department of Corrections; U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 
 ```{r generate tract map html, include=FALSE}
-# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\h-public-services\h01-imprisonment\webpage-html-outputs
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a03-imprisonment\webpage-html-outputs
 
 # set folder structure
-map_name <- 'h01-imprisonment-map.html'
+map_name <- 'a03-imprisonment-map.html'
 
 # interactive webpage output process
 htmlwidgets::saveWidget(tract_map,
@@ -353,7 +355,7 @@ source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functio
 #source('equity-tracker-chart-functions.R')
 
 # set folder structure
-rda <- 'h01-imprisonment-data.rda'
+rda <- 'a03-imprisonment-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -397,11 +399,11 @@ column_chart <- equity_tracker_column_facet(df = df,
 ```
 
 ```{r output final column chart - tract, include=FALSE}
-# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\h-public-services\h01-imprisonment\webpage-html-outputs
-# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\h-public-services\static-images
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a03-imprisonment\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # set folder structure
-file_name <- 'h01-imprisonment-column'
+file_name <- 'a03-imprisonment-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -575,11 +577,11 @@ line_chart <- equity_tracker_line_facet(df = df,
 ```
 
 ```{r output final line chart - tract, include=FALSE}
-# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\h-public-services\h01-imprisonment\webpage-html-outputs
-# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\h-public-services\static-images
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a03-imprisonment\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # set folder structure
-file_name <- 'h01-imprisonment-line'
+file_name <- 'a03-imprisonment-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
