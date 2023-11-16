@@ -435,6 +435,7 @@ data_clean <- data_clean %>%
   mutate(fact_value_notrounded=round(fact_value, digits=3)) %>% #create column to retain full median income values
   mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds - retain consistent name
 ```
+
 Save final data set (.rda) for charts
 ```{r}
 # set folder structure
@@ -566,7 +567,7 @@ county_reg_data_aggregate <- county_reg_data_rename %>%
   dplyr::group_by(GEOID, name, rent_burden) %>% 
   dplyr::summarise(estimate=sum(estimate), .groups='drop')
 
-# pivot data to calculate percentage by census tract
+# pivot data to calculate percentage by geography
 county_reg_data_group <- county_reg_data_aggregate %>% 
   pivot_wider(names_from = rent_burden, values_from = estimate) %>%
   rename('estimate_cost_burdened'='Cost Burdened (More than 30 percent)') %>% 
@@ -853,5 +854,7 @@ save(acs_data_tract, file = file.path(base_dir,
                                       ind_dir, "rda-data",
                                       paste0(file_name,'.rda')))
 ```
+
+
 
 <a href="#top">Back to top of the page</a>
