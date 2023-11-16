@@ -376,7 +376,7 @@ esttype = "number"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Traffic Related Deaths and <br> Serious Injuries per 100,000"
+title = "Traffic Related Deaths and Serious Injuries per 100,000"
 subtitle = "Census Tract Level"
 source = paste("Washington Traffic Safety Commission", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
@@ -523,7 +523,16 @@ filter <- data_clean_column %>%
 
 ```
 
+#### Data call outs
 
+As a region:
+\
+
+1. 2.75x: Communities with the highest proportions of households with lower income are 2.75 times more likely to have a collision with a death or serious injury occur in their community
+
+2. 2.25x: Communities with the highest proportions of people with a disability are 2.25 times more likely to have these collisions
+
+3. 1.5x: Communities with the highest proportions of households with limited English proficiency are 1.5 times more likely to have these collisions
 \
 
 #### Insights & Analysis
@@ -764,7 +773,19 @@ filter <- data_clean %>%
  
 ```
 
+#### Data call outs
 
+As a region:
+\
+
+1. 1.5x: In 2016, communities with the highest and lowest proportions of households with limited English proficiency had nearly the same rate of collisions with a death or serious injury but by 2021 - the gap had increased by 1.5 times
+
+2. 50% larger gap: The gap increased 50% between communities with highest and lowest proportions of people with a disability between 2012 and 2021
+
+3. 25% larger gap: The gap increased 25% between communities with highest and lowest proportions of households with lower income between 2010 and 2021
+
+
+\
 
 #### Insights & Analysis
 

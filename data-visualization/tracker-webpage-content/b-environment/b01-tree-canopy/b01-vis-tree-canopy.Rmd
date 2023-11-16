@@ -513,6 +513,14 @@ filter <- data_clean_column %>%
 ```
 \
 
+#### Data call outs
+
+1. 2x: At the regional level, communities with the lowest concentration of households with lower income have almost twice the canopy cover as communities with the highest concentration of households with lower income
+2. 1.5x: At the regional level, communities with the lowest concentration of people of color have about 1.5 times the canopy cover as communities with the highest concentration of people of color
+3. Tree canopy coverage is comparable across communities with differing concentrations of people with a disability
+
+\
+
 #### Insights & Analysis
 
 *	Communities with the highest concentration of people of color, households with lower income, or households with limited English proficiency are most disproportionately impacted by lower average tree canopy cover
@@ -729,6 +737,7 @@ filter <- data_clean %>%
 # 2020 Snohomish dif low/high disability: 
 
 ```
+
 
 
 #### Insights & Analysis
