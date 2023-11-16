@@ -39,8 +39,9 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
           stop("The vector of breaks 'bins' must be equally spaced")
       
       n <- length(cuts)
+      
       r <- range(values, na.rm = TRUE)
-      cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+      cuts <- cuts[cuts >= r[1] & cuts <= (r[2])]
       n <- length(cuts)
       p <- (cuts - r[1])/(r[2] - r[1])
       extra <- list(p_1 = p[1], p_n = p[n])
@@ -48,9 +49,6 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
       
       if(decreasing == TRUE){
         colors <- pal(rev(c(r[1], cuts, r[2])))
-        # "#4A0048" "#808080" "#4D004B" "#7B1779" "#AC5AAA" "#D0A1CF" "#F2CDF7" "#FFFFFF" "#808080" "#FFFFFF"
-        # "#4A0048" "#808080" "#4D004B" "#7B1779" "#AC5AAA" "#D0A1CF" "#F2CDF7" "#FFFFFF" "#808080"
-        # colors <- pal(rev(c(r[1], cuts, r[2]))) #### Something funny here!!!! ----
         labels <- rev(labFormat(type = "numeric", cuts))
       } else {
         colors <- pal(c(r[1], cuts, r[2]))
@@ -135,7 +133,7 @@ map.zoom <- 8.5
 psrc_purple_plus <- c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
 
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-                                      domain = data_tract$estimate)
+                                      domain = c(min(data_tract$estimate,na.rm = TRUE),100))
 
 # set the variable
 var_name <- "Life Expectancy"
@@ -168,7 +166,7 @@ tract_map <- leaflet() %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
-                       values = data_tract$estimate,
+                       values = c(min(data_tract$estimate,na.rm = TRUE),100, NA),
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
