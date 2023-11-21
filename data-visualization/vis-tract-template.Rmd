@@ -369,7 +369,7 @@ color = "purples"
 num_colors = 5
 color_rev = FALSE
 title = "Life Expectancy"
-subtitle = "values are adjusted to 2021 dollars"
+subtitle = "Number of years a newborn can be expected to live based on current conditions"
 source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
