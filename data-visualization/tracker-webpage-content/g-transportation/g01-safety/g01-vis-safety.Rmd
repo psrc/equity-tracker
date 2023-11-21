@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+    word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+#output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -322,17 +322,17 @@ by_county <- data %>%
 
 ```
 
-1. 42.10: The region's average rate for traffic related deaths and serious injuries per 100,000 per census tract in 2021
-2. 1145.83: highest rate for a census tract in 2021
+1. 42: The region's average rate for traffic related deaths and serious injuries per 100,000 per census tract in 2021
+2. 1146: highest rate for a census tract in 2021
 3. 348: number of census tracts with a rate of zero in 2021
 
 \
 
 #### Insights & Analysis
 
-* The census tracts with the highest death and serious injury rate are the census tracts in Pierce County that includes the Port of Tacoma and the Tacoma Dome (1145.83) and the downtown Tacoma census tract next to the Tacoma Dome (601.81) and in King County the tracts in northwest Auburn that includes the Auburn airport and part of HWY 167 (912.48) and the tract that includes Lumen Field and T-Mobile Park (737.27)
-* There are 348 census tracts with census tracts with a death and serious injury rate of zero in the region. For Kitsap County, 27.1% of census tracts (16) have a rate of zero, followed by Pierce with 30.1% of census tracts (58) have a rate of zero, Snohomish with 41.0% of census tracts (71), and then King county at 41.1% of census tracts (203)
-* Pierce County has the highest death and serious injury rate (53.72), followed by Kitsap (47.24), King (38.92), and Snohomish (36.17)
+* The census tracts with the highest death and serious injury rate are the census tracts in Pierce County that includes the Port of Tacoma and the Tacoma Dome (1146) and the downtown Tacoma census tract next to the Tacoma Dome (602) and in King County the tracts in northwest Auburn that includes the Auburn airport and part of HWY 167 (912) and the tract that includes Lumen Field and T-Mobile Park (737)
+* There are 348 census tracts with a death and serious injury rate of zero in the region. For Kitsap County, 27% of census tracts (16) have a rate of zero, followed by Pierce with 30% (58), Snohomish with 41% (71), and King county 41% (203)
+* Pierce County has the highest death and serious injury rate (54), followed by Kitsap (47), King (39), and Snohomish (36)
 
 \
 \
@@ -528,20 +528,20 @@ filter <- data_clean_column %>%
 As a region:
 \
 
-1. 2.75x: Communities with the highest proportions of households with lower income are 2.75 times more likely to have a collision with a death or serious injury occur in their community
+1. 2.75x: Communities with high concentrations of households with lower income are 2.75 times more likely to have a collision with a death or serious injury occur in their community
 
-2. 2.25x: Communities with the highest proportions of people with a disability are 2.25 times more likely to have these collisions
+2. 2.25x: Communities with high concentrations of people with a disability are 2.25 times more likely to have these collisions
 
-3. 1.5x: Communities with the highest proportions of households with limited English proficiency are 1.5 times more likely to have these collisions
+3. 1.5x: Communities with high concentrations of households with limited English proficiency are 1.5 times more likely to have these collisions
 \
 
 #### Insights & Analysis
 
-* As a region, communities with the highest proportions of households with lower income or people with a disability are most disproportionately impacted by traffic related deaths and serious injuries
-* The counties with the largest gap in the highest and lowest quintiles for households with lower income are King and Pierce counties
-* The counties with the largest gap in the highest and lowest quintiles for people with a disability are King and Pierce counties
-* The counties with the largest gap in the highest and lowest quintiles for people of color are King and Pierce counties
-* The counties with the largest gap in the medium high/highest and lowest proportions for households with limited English proficiency are Kitsap and Pierce counties
+* As a region, communities with high concentrations of households with lower income or people with a disability are most disproportionately impacted by traffic related deaths and serious injuries
+* The counties with the largest gap between low and high concentrations of households with lower income are King and Pierce counties
+* The counties with the largest gap between low and high concentrations of people with a disability are King and Pierce counties
+* The counties with the largest gap between low and high concentrations of people of color are King and Pierce counties
+* The counties with the largest gap between low and medium high/high concentrations of households with limited English proficiency are Kitsap and Pierce counties
 \
 \
 \
@@ -778,11 +778,11 @@ filter <- data_clean %>%
 As a region:
 \
 
-1. 1.5x: In 2016, communities with the highest and lowest proportions of households with limited English proficiency had nearly the same rate of collisions with a death or serious injury but by 2021 - the gap had increased by 1.5 times
+1. 1.5x: In 2016, communities with low and high concentrations of households with limited English proficiency had nearly the same rate of collisions with a death or serious injury but by 2021 - the gap had increased by 1.5 times
 
-2. 50% larger gap: The gap increased 50% between communities with highest and lowest proportions of people with a disability between 2012 and 2021
+2. 50%: The gap increased 50% between communities with low and high concentrations of people with a disability between 2012 and 2021
 
-3. 25% larger gap: The gap increased 25% between communities with highest and lowest proportions of households with lower income between 2010 and 2021
+3. 25% larger gap: The gap increased 25% between communities with low and high concentrations of households with lower income between 2010 and 2021
 
 
 \
@@ -790,8 +790,8 @@ As a region:
 #### Insights & Analysis
 
 * Households with lower income and people with disabilities have been disproportionately impacted by traffic related deaths and serious injuries consistently from 2010 to 2021
-* Pierce County has the largest gap increase between the highest and lowest quintiles for people of color and housesholds with lower income between 2010 and 2021
-* King and Pierce counties have the largest gap increase between the highest and lowest quintiles for people with disabilities between 2016 and 2021
+* Pierce County has the largest gap increase between the communities with low and high concentrations of people of color and households with lower income between 2010 and 2021
+* King and Pierce counties have the largest gap increase between communities with low and high concentrations of people with disabilities between 2016 and 2021
  
 \
 \
