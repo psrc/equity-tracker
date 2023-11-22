@@ -464,7 +464,8 @@ nrow(tracts10.lyr) #773
 
 # getting data by tract
 acs_data <- get_acs_recs(geography ='tract', 
-                         table.names = 'B25014', #subject table code
+                         table.names = 'B25014', #room
+                         # table.names = 'B25042', #bedroom
                          years = c(2021),
                          acs.type = 'acs5')
 
@@ -679,12 +680,13 @@ acs_data <- acs_data_reliability %>% #just interested in renters for now
   dplyr::select(GEOID,estimate,reliability)
 ```
 
-```{r acs data - county level}
+```{r acs data - county level, include=FALSE, eval=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 
 # getting data by tract
 acs_data <- get_acs_recs(geography ='county', 
                          table.names = 'B25014', #subject table code
+                         # table.names = 'B25042',
                          years = c(2021),
                          acs.type = 'acs5')
 
@@ -791,6 +793,78 @@ acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
 #   dplyr::select(GEOID,county_name, estimate,reliability)
 ```
 
+```{r pums data - county level}
+# access pums data - 2021
+crowd_2021 <- get_psrc_pums(span = 5,
+                            dyear = 2021,
+                            level = "h", # Unit of analysis == household
+                            vars = c("NP","BDSP", "OWN_RENT")) # Number of persons in household, Number of bedrooms, Own/rent tenure status
+
+# calculate NP/BDSP
+crowding <- crowd_2021 %>% 
+  dplyr::mutate(crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_, 
+                                            NP/BDSP <= 1 ~ "One person per bedroom or less",
+                                            NP/BDSP <= 1.5 ~ "Between 1 and 1.5 person(s) per bedroom",
+                                            NP/BDSP  > 1.5 ~ "More than 1.5 persons per bedroom"),
+                                  levels=c("More than 1.5 persons per bedroom",
+                                           "Between 1 and 1.5 person(s) per bedroom",
+                                           "One person per bedroom or less")),
+                rent_crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_, 
+                                                 NP/BDSP <= 1   & OWN_RENT=="Rented" ~ "One person per bedroom or less",
+                                                 NP/BDSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per bedroom",
+                                                 NP/BDSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per bedroom"),
+                                       levels=c("More than 1.5 persons per bedroom",
+                                                "Between 1 and 1.5 person(s) per bedroom",
+                                                "One person per bedroom or less")))
+
+# calculate count statistics based on adjusted variables
+# for all households
+# dt_21 <- psrc_pums_count(crowding, 
+#                          group_vars=c("crowding","COUNTY"), 
+#                          rr = TRUE)
+# for renter households
+dt_21 <- psrc_pums_count(crowding, 
+                         group_vars=c("rent_crowding","COUNTY"), 
+                         rr = TRUE)
+
+totals <- dt_21 %>% 
+  dplyr::filter(!is.na(rent_crowding),
+                rent_crowding != "Total") %>% 
+  dplyr::group_by(COUNTY) %>% 
+  dplyr::mutate(geo_total_rent=sum(count),
+                share_rent=count/geo_total_rent) %>% 
+  dplyr::filter(rent_crowding=="More than 1.5 persons per bedroom")
+
+# county data
+county_data <- totals %>% 
+  dplyr::filter(COUNTY != "Region") %>% 
+  dplyr::rename(cnty_estimate=share_rent)
+
+# region data
+region_data <- totals %>%
+  dplyr::filter(COUNTY == "Region") %>%
+  dplyr::rename(reg_estimate=share_rent) %>%
+  dplyr::select(COUNTY, reg_estimate) #simplify table
+
+# add region to county data
+county_reg_data <- county_data %>%
+  mutate(reg_estimate=region_data$reg_estimate)
+
+# rename and simplify
+acs_data <- county_reg_data %>%
+  rename(estimate_dec='cnty_estimate') %>%
+  mutate(estimate=estimate_dec*100) %>% 
+  rename(reg_estimate_dec='reg_estimate') %>% 
+  mutate(reg_estimate=reg_estimate_dec*100) %>% 
+  dplyr::select(COUNTY,estimate,reg_estimate, reliability)
+
+# merge to 2020 county spatial file
+acs_data_tract <- merge(county.lyr, acs_data,
+                        by.x="county_name",
+                        by.y="COUNTY",
+                        all.x=FALSE)
+```
+
 ```{r acs data - puma level, include=FALSE, eval=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 
@@ -818,7 +892,7 @@ acs_data_filter <- acs_data %>%
   # dplyr::filter(type != 'Owner')    #this can be commented out for inclusion of both Owners and Renters
 
 # import tracts to pumas crosswalk
-tracts_pumas_crosswalk <- read.csv("T:/2023October/Mary/EquityTracker/crosswalk/Census_Tract_to_2020_PUMA.txt")
+tracts_pumas_crosswalk <- read.csv("T:/2023November/Mary/EquityTracker/crosswalk/Census_Tract_to_2020_PUMA.txt")
 
 psrc_pumas_crosswalk <- tracts_pumas_crosswalk %>% 
   dplyr::filter(STATEFP==53 &

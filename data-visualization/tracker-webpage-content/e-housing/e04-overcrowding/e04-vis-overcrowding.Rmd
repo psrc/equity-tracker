@@ -201,7 +201,7 @@ var_name <- "Overcrowding: <br> % of Renter Households <br> with >1.5 persons <b
 
 labels <- sprintf(
   "County: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body>",
-  acs_data_tract$name, # the code in <> makes the geoid value bold/italic
+  paste(acs_data_tract$county_name, " County"), # the code in <> makes the geoid value bold/italic
   paste("County value: ",
         prettyNum(round(acs_data_tract$estimate, digits=1)), 
         '%'),
@@ -241,7 +241,7 @@ acs_map <- leaflet() %>%
   # set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
   addEasyButton(easyButton(
-    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)  
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
     title ="Region",
     onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
 
