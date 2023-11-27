@@ -42,7 +42,7 @@ df_nulls <- d_unnest %>%
 
 ## assemble main table  
 df <- bind_rows(df_base, df_nulls) %>% 
-  arrange(county_ord, equity_group_ord, data_year_num)
+  arrange(county_ord, equity_group_ord, quintile_ord, data_year_num)
  
 
 # prep line chart ----
