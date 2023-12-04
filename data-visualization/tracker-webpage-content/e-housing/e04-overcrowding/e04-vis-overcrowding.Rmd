@@ -189,10 +189,10 @@ map.zoom<- 8.5
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
-acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+pums_data_plus_zero<-append(pums_data_county$estimate,0)
 
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-                                      domain = acs_data_plus_zero) # this is the value field
+                                      domain = pums_data_plus_zero) # this is the value field
 # psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
 #                                       domain = acs_data_tract$estimate) # this is the value field
 
@@ -201,13 +201,13 @@ var_name <- "Overcrowding: <br> % of Renter Households <br> with >1.5 persons <b
 
 labels <- sprintf(
   "County: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body>",
-  paste(acs_data_tract$county_name, " County"), # the code in <> makes the geoid value bold/italic
+  paste(pums_data_county$county_name, " County"), # the code in <> makes the geoid value bold/italic
   paste("County value: ",
-        prettyNum(round(acs_data_tract$estimate, digits=1)), 
+        prettyNum(round(pums_data_county$estimate, digits=1)), 
         '%'),
-  paste("County data reliability: ", acs_data_tract$reliability),
+  paste("County data reliability: ", pums_data_county$reliability),
   paste("Region value: ",
-        prettyNum(round(acs_data_tract$reg_estimate, digits=1)),
+        prettyNum(round(pums_data_county$reg_estimate, digits=1)),
         '%')) %>%
   lapply(htmltools::HTML)
 
@@ -220,8 +220,8 @@ acs_map <- leaflet() %>%
   leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
-  addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$estimate),
+  addPolygons(data=pums_data_county,
+              fillColor = psrc_palette(pums_data_county$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -230,7 +230,7 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_plus_zero,
+                       values = pums_data_plus_zero,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -271,26 +271,24 @@ htmlwidgets::saveWidget(acs_map,
 #### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
-data <- acs_data_tract %>%
+data <- pums_data_county %>%
   st_drop_geometry()
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033005303 (University District), 53033011801 (Dunlap), 53035081400 (Kitsap - Port of Bremerton), 53053073132 (Pierce - South of South Hill), 53033007503 (NE of First Hill Neighborhood)
-
 ```
 
-1. 2.9%: The regional average of overcrowded renting households
-2. 3.5%: King County has the highest rate of overcrowding renting households
-3. 1.2%: Average percentage of households in Kitsap County, the county with the lowest overcrowding rates
+1. 21.5%: The regional average of overcrowded renting households
+2. 23.3%: King County has the highest rate of overcrowding renting households
+3. 14.5%: Average percentage of households in Kitsap County, the county with the lowest overcrowding rates
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest rates of overcrowding among renters (3.5%), followed by Snohomish (2.4%), Pierce (2.1%), and Kitsap (1.2%)
+* King County has the highest rates of overcrowding among renters (23%), followed by Snohomish (20%), Pierce (19%), and Kitsap (15%)
 * King County's higher rates of overcrowding for renters is likely related to having the lowest homeownership rates within the region
-* Compared to King County, Kitsap County's overcrowding rate among renters is about one-third as high, while Pierce is about two-thirds as high
+* Compared to King County, Kitsap County's overcrowding rate among renters is about two-thirds19 as high, while Pierce is about four-fifths as high
 
 \
 \
@@ -431,7 +429,7 @@ filter <- data_clean_column %>%
 # snohomish low income-other: 0.25-0.18=0.07, ((0.25-0.18)/(0.18))*100: 39% difference
 ```
 
-1. 12: Among renting households in the region, the rate for people of color is 12 percentage points higher than white non-Hispanic households
+1. 12: Among renting households in the region, the overcrowding rate for people of color is 12 percentage points higher than white non-Hispanic households
 2. 26%: Over one-quarter of the region's households below 200% of federal poverty line that are experiencing overcrowding
 3. 36%: Percentage of limited English proficient households experiencing overcrowding, 16 percentage points higher than than English proficient households
 
