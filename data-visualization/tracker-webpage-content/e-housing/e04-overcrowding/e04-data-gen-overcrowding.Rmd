@@ -423,7 +423,7 @@ head(data_clean) # make sure this is the correct data set
 data_clean <- data_clean %>% 
   filter(indicator_attribute=="More than 1.5 persons per bedroom") %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds - retain consistent name
+  mutate(fact_value=round(fact_value, digits=3)) #round percentage to tenth decimal - retain consistent name
 ```
 Save final data set (.rda) for charts
 ```{r}
@@ -453,6 +453,7 @@ tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/servi
 tracts20.lyr<-st_read(tracts20.url)
 tracts10.lyr<-st_read(tracts10.url)
 county.lyr <- st_read_elmergeo('wa_counties_water_removed')
+places.lyr <- st_read_elmergeo('place2020')
 
 nrow(tracts20.lyr) #919
 nrow(tracts10.lyr) #773
@@ -583,7 +584,7 @@ acs_data <- get_acs_recs(geography ='place',
 acs_data_filter <- acs_data %>%
   # dplyr::filter(type %in% row_names) %>%
   dplyr::filter(variable != 'B25014_001') %>% #remove total households
-  mutate(per_bedroom = factor(
+  mutate(per_room = factor(
     case_when(variable == "B25014_002" ~ "Total",
               variable == "B25014_008" ~ "Total",
               grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", label) ~ "Less than or equal to 1.5 persons per bedroom",
@@ -600,14 +601,14 @@ acs_data_filter <- acs_data %>%
 # for separate owners and renters
 # use the moe_sum function from tidycensus
 acs_data_group <- acs_data_filter %>% 
-  dplyr::group_by(GEOID, per_bedroom, type) %>% #add 'type' if want to distinguish b/t Owners and Renters
+  dplyr::group_by(GEOID, per_room, type) %>% #add 'type' if want to distinguish b/t Owners and Renters
   dplyr::summarise(estimate=sum(estimate), 
                    moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-  dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
+  dplyr::filter(per_room != "Less than or equal to 1.5 persons per bedroom")
 
 # pivot data to calculate percentage by census tract
 acs_data_pivot<- acs_data_group %>%   
-  pivot_wider(names_from = c(per_bedroom, type), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
+  pivot_wider(names_from = c(per_room, type), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
 
 # calculating percentage/share of population per tract instead of integer
 acs_data_calc <- acs_data_pivot %>%
@@ -642,6 +643,16 @@ acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
   rename(estimate_dec='estimate_perc_overcrowding_rent') %>%
   mutate(estimate=estimate_dec*100) %>% 
   dplyr::select(GEOID,estimate,reliability)
+
+# connect to place shapefile to get names instead of just geoid
+acs_data_place <- merge(places.lyr, acs_data,
+                        by.x="geoid20",
+                        by.y="GEOID",
+                        all.x=FALSE)
+
+# export table to excel
+# library("writexl")
+# write_xlsx(acs_data_place,"T:/2023November/Mary/EquityTracker/temp/overcrowding_renters_acs_place.xlsx")
 
 # ----------------
 # for combined owners and renters
@@ -833,15 +844,40 @@ totals <- dt_21 %>%
   dplyr::group_by(COUNTY) %>% 
   dplyr::mutate(geo_total_rent=sum(count),
                 share_rent=count/geo_total_rent) %>% 
-  dplyr::filter(rent_crowding=="More than 1.5 persons per bedroom")
+  dplyr::filter(rent_crowding=="More than 1.5 persons per bedroom") %>% 
+  dplyr::select(-reliability, - share, -share_moe)
 
-# county data
-county_data <- totals %>% 
+
+# calculate moes/relative reliability -----
+totals_moes <- totals %>%
+  rowwise() %>% 
+  dplyr::mutate(moe_rent=tidycensus::moe_sum(estimate = count,
+                                             moe = count_moe))
+                # moe_own=tidycensus:moe_prop(num=estimate_Overcrowding_Owner,
+                #                           denom=estimate_Total_units,
+                #                           moe_num=moe_Overcrowding_Owner,
+                #                           moe_denom=moe_Total_units),
+                # moe_own=tidycensus::moe_sum(estimate = estimate_Overcrowding_Owner,
+                #                             moe = moe_Overcrowding_Owner))
+totals_final<- totals_moes %>% 
+  dplyr::filter(!is.na(count))
+
+# calculate reliability values
+totals_reliability_rent <- reliability_calcs(totals_final,
+                                             estimate='count',
+                                             moe='moe_rent')
+# acs_data_reliability_own <- reliability_calcs(acs_data_final,
+#                                               estimate='estimate_Overcrowding_Owner',
+#                                               moe='moe_own')
+
+
+# filter county data
+county_data <- totals_reliability_rent %>% 
   dplyr::filter(COUNTY != "Region") %>% 
   dplyr::rename(cnty_estimate=share_rent)
 
-# region data
-region_data <- totals %>%
+# filter region data
+region_data <- totals_reliability_rent %>%
   dplyr::filter(COUNTY == "Region") %>%
   dplyr::rename(reg_estimate=share_rent) %>%
   dplyr::select(COUNTY, reg_estimate) #simplify table
@@ -851,18 +887,42 @@ county_reg_data <- county_data %>%
   mutate(reg_estimate=region_data$reg_estimate)
 
 # rename and simplify
-acs_data <- county_reg_data %>%
+pums_data <- county_reg_data %>%
   rename(estimate_dec='cnty_estimate') %>%
   mutate(estimate=estimate_dec*100) %>% 
   rename(reg_estimate_dec='reg_estimate') %>% 
   mutate(reg_estimate=reg_estimate_dec*100) %>% 
   dplyr::select(COUNTY,estimate,reg_estimate, reliability)
 
-# merge to 2020 county spatial file
-acs_data_tract <- merge(county.lyr, acs_data,
-                        by.x="county_name",
-                        by.y="COUNTY",
-                        all.x=FALSE)
+
+# # calculate moes -----
+# acs_data_moes <- acs_data_calc %>%
+#   rowwise() %>% 
+#   dplyr::mutate(moe_rent=tidycensus::moe_sum(estimate = estimate_Overcrowding_Renter,
+#                                              moe = moe_Overcrowding_Renter),
+#                 # moe_own=tidycensus:moe_prop(num=estimate_Overcrowding_Owner,
+#                 #                           denom=estimate_Total_units,
+#                 #                           moe_num=moe_Overcrowding_Owner,
+#                 #                           moe_denom=moe_Total_units),
+#                 moe_own=tidycensus::moe_sum(estimate = estimate_Overcrowding_Owner,
+#                                             moe = moe_Overcrowding_Owner))
+# acs_data_final<- acs_data_moes %>% 
+#   dplyr::filter(!is.na(estimate_Overcrowding_Renter),
+#                 !is.na(estimate_Overcrowding_Owner))
+# 
+# # calculate reliability values
+# acs_data_reliability_rent <- reliability_calcs(acs_data_final,
+#                                                estimate='estimate_Overcrowding_Renter',
+#                                                moe='moe_rent')
+# acs_data_reliability_own <- reliability_calcs(acs_data_final,
+#                                               estimate='estimate_Overcrowding_Owner',
+#                                               moe='moe_own')
+# 
+# # rename and simplify
+# acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
+#   rename(estimate_dec='estimate_perc_overcrowding_rent') %>%
+#   mutate(estimate=estimate_dec*100) %>% 
+#   dplyr::select(PUMA5CE,estimate,cv,reliability)
 ```
 
 ```{r acs data - puma level, include=FALSE, eval=FALSE}
@@ -1021,10 +1081,10 @@ acs_data <- acs_data_reliability %>% #just interested in renters for now
 #                         all.x=TRUE)
 
 # merge to 2020 county spatial file
-acs_data_merge <- merge(county.lyr, acs_data,
-                        by.x="county_name",
-                        by.y="county_name",
-                        all.x=FALSE)
+pums_data_county <- merge(county.lyr, pums_data,
+                          by.x="county_name",
+                          by.y="COUNTY",
+                          all.x=FALSE)
 
 # # getting data by county and region from acs
 # county_reg_acs_data <- get_acs_recs(geography ='county',
@@ -1080,9 +1140,9 @@ acs_data_merge <- merge(county.lyr, acs_data,
 #   mutate(reg_estimate=region_data$reg_estimate)
 
 # add region to county data
-region_data <- acs_data %>% 
-  dplyr::filter(county_name=="Region") %>% 
-  dplyr::mutate(reg_estimate=estimate)
+# region_data <- acs_data %>% 
+#   dplyr::filter(county_name=="Region") %>% 
+#   dplyr::mutate(reg_estimate=estimate)
 
 
 # # merge tract, county, and region data into one data set 
@@ -1092,8 +1152,8 @@ region_data <- acs_data %>%
 #                         all.x=TRUE)
 
 # merge county and region data into one data set 
-acs_data_tract <- cbind(acs_data_merge, region_data$reg_estimate) %>% 
-  dplyr::rename(reg_estimate=region_data.reg_estimate)
+# acs_data_tract <- cbind(acs_data_merge, region_data$reg_estimate) %>% 
+#   dplyr::rename(reg_estimate=region_data.reg_estimate)
 ```
 
 ### Explore map/acs data
@@ -1233,7 +1293,7 @@ map.zoom<- 8.5
 
 # set up palettes
 psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
-                                      domain = acs_data_tract$estimate)
+                                      domain = acs_data_place$estimate)
 # psrc_palette <- leaflet::colorFactor(palette=psrc_colors$purples_inc,
 #                                       domain = acs_data_tract$reliability_ord)
 
@@ -1248,17 +1308,17 @@ tract_map <- leaflet() %>%
   leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
-  addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$estimate),
+  addPolygons(data=acs_data_place,
+              fillColor = psrc_palette(acs_data_place$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
               group = var_name,
-              label = round(acs_data_tract$estimate, digits=1)) %>%
+              label = round(acs_data_place$estimate, digits=1)) %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_tract$estimate,
+                       values = acs_data_place$estimate,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -1282,7 +1342,7 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 tract_map
 ```
 
-```{r explore map}
+```{r explore map, include=FALSE, eval=FALSE}
 # set map extent
 map.lat<- 47.615
 map.lon<- -122.257
@@ -1346,7 +1406,7 @@ Save final data set (.rda) for map
 file_name <- 'e04-overcrowding-map-data'
 
 # save final data set as .rda
-save(acs_data_tract, file = file.path(base_dir,
+save(pums_data_county, file = file.path(base_dir,
                                       theme_dir,
                                       ind_dir, "rda-data",
                                       paste0(file_name,'.rda')))
