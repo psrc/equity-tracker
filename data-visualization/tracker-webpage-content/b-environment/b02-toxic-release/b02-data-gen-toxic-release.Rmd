@@ -64,7 +64,7 @@ library(showtextdb) #required for showtext
 
 # Download data 
 ## Primary data 
-Data comes from [EPA](https://www.epa.gov/toxics-release-inventory-tri-program). Separate CSVs at the point-level geography are available (manual download) for 1y increments, updated annually, with the most recent year being 2023.
+Data comes from [EPA](https://www.epa.gov/toxics-release-inventory-tri-program). Separate CSVs at the point-level geography are available [manual download](https://www.epa.gov/toxics-release-inventory-tri-program/tri-basic-data-files-calendar-years-1987-present) for 1y increments, updated annually, with the most recent year being 2023.
 
 ```{r, include=FALSE}
 # Data for this indicator comes from GIS buffer analysis
