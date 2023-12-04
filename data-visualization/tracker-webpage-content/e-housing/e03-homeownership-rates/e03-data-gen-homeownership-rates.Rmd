@@ -481,6 +481,9 @@ acs_data_filter <- base_acs_data %>%
                                           TRUE ~ 'Total_units'))) %>% 
   dplyr::select(GEOID, variable, tenure, estimate, moe)
 
+# test <- acs_data_filter %>%
+#   dplyr::select(GEOID, estimate, moe, label, reliability, tenure)
+
 # use the moe_sum function from tidycensus
 acs_data_group <- acs_data_filter %>% 
   dplyr::group_by(GEOID, tenure)%>%
@@ -498,11 +501,11 @@ acs_data_calc <- acs_data_pivot %>%
 # calculate moes
 acs_data_moes <- acs_data_calc %>%
   rowwise() %>%
-  # mutate(moe_perc_own_occ=moe_prop(num=estimate_Owner_occupied_units,
-  #                                  denom=estimate_Total_units, 
-  #                                  moe_num=moe_Owner_occupied_units, 
-  #                                  moe_denom=moe_Total_units)) %>% 
-  mutate(moe_cost_burdened=tidycensus::moe_sum(estimate = estimate_Owner_occupied_units,
+  # mutate(moe_perc_own_occ=tidycensus::moe_prop(num=estimate_Owner_occupied_units,
+  #                                              denom=estimate_Total_units,
+  #                                              moe_num=moe_Owner_occupied_units,
+  #                                              moe_denom=moe_Total_units)) %>%
+  mutate(moe_perc_own_occ=tidycensus::moe_sum(estimate = estimate_Owner_occupied_units,
                                                moe = moe_Owner_occupied_units))
 
 acs_data_final<- acs_data_moes %>% 
@@ -519,7 +522,34 @@ acs_data_reliability <-reliability_calcs(acs_data_final,
 acs_data <- acs_data_reliability %>%
   rename(estimate_dec='estimate_perc_own_occ') %>%
   mutate(estimate=estimate_dec*100) %>% 
-  dplyr::select(GEOID,estimate,reliability)
+  dplyr::select(GEOID,estimate,cv, reliability)
+
+
+# TEST - why moe_prop() doesn't work ---------------- but it actually does?
+# calculate moes
+# acs_data_moes <- acs_data_calc %>%
+#   rowwise()%>%
+#   mutate(moe_perc_own_occ=tidycensus::moe_prop(num=estimate_Owner_occupied_units,
+#                                                denom=estimate_Total_units,
+#                                                moe_num=moe_Owner_occupied_units,
+#                                                moe_denom=moe_Total_units))
+# 
+# acs_data_final<- acs_data_moes %>% 
+#   dplyr::select(GEOID, estimate_Owner_occupied_units, estimate_Total_units, estimate_perc_own_occ,
+#                 moe_Owner_occupied_units, moe_Total_units, moe_perc_own_occ) %>%
+#   dplyr::filter(!is.na(estimate_Owner_occupied_units))
+# 
+# 
+# # calculate reliability values
+# acs_data_reliability <-reliability_calcs(acs_data_final,
+#                                          estimate='estimate_Owner_occupied_units',
+#                                          moe='moe_Owner_occupied_units')
+# 
+# # rename and simplify
+# acs_data <- acs_data_reliability %>%
+#   rename(estimate_dec='estimate_perc_own_occ') %>%
+#   mutate(estimate=estimate_dec*100) %>% 
+#   dplyr::select(GEOID,estimate,cv, reliability)
 ```
 
 ### Joining data

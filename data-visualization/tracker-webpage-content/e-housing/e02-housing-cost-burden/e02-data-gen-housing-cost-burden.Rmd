@@ -540,6 +540,37 @@ acs_data <- acs_data_reliability %>%
   dplyr::select(GEOID,estimate,cv,reliability)
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
+
+
+# TEST - why moe_prop() doesn't work ----------------
+# calculate moes
+# acs_data_moes <- acs_data_calc %>%
+#   rowwise()%>%
+#   mutate(moe_new_total=tidycensus::moe_sum(estimate=c(estimate_Total, `estimate_Not computed`),
+#                                            moe=c(moe_Total,`moe_Not computed`)))%>%
+#   mutate(moe_perc_cost_burdened=tidycensus::moe_prop(num=estimate_cost_burdened,
+#                                                      denom=estimate_new_total,
+#                                                      moe_num=moe_cost_burdened,
+#                                                      moe_denom=moe_new_total)) #%>%
+#   # mutate(moe_cost_burdened=tidycensus::moe_sum(estimate = estimate_cost_burdened,
+#   #                                              moe = moe_cost_burdened))
+# 
+# acs_data_final<- acs_data_moes %>% 
+#   dplyr::select(GEOID, estimate_cost_burdened, estimate_new_total, estimate_perc_cost_burdened,
+#                 moe_cost_burdened, moe_new_total, moe_perc_cost_burdened) %>%
+#   dplyr::filter(!is.na(estimate_cost_burdened))
+# 
+# 
+# # calculate reliability values
+# acs_data_reliability <-reliability_calcs(acs_data_final,
+#                                          estimate='estimate_perc_cost_burdened',
+#                                          moe='moe_perc_cost_burdened')
+# 
+# # rename and simplify
+# acs_data <- acs_data_reliability %>%
+#   rename(estimate_dec='estimate_perc_cost_burdened') %>%
+#   mutate(estimate=estimate_dec*100) %>% 
+#   dplyr::select(GEOID,estimate,cv,reliability)
 ```
 
 ### Joining data
