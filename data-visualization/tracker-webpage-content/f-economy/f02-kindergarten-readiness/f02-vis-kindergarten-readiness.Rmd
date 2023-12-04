@@ -194,6 +194,10 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 
 # psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
 #                                       domain = ospi_data_tract$Percent_num) # this is the value field
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(data_tract$estimate,na.rm = TRUE),90, NA))
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(tract_data_plus_zero,na.rm = TRUE),90, NA))
 
 # setting the legend/label variables
 var_name <- "Kindergarten <br> Readiness <br> (2022-23)" # the <br> could be adjusted depending on the length/spacing of the name
@@ -225,7 +229,9 @@ ospi_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = tract_data_plus_zero,
+                       # values = tract_data_plus_zero,
+                       # values = c(min(data_tract$estimate,na.rm = TRUE),90, NA),
+                       values = c(min(tract_data_plus_zero,na.rm = TRUE),90, NA),
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
