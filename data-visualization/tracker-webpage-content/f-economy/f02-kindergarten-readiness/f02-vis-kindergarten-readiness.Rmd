@@ -199,8 +199,6 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 # psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
 #                                       domain = ospi_data_tract$Percent_num) # this is the value field
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-                                      domain = c(min(data_tract$estimate,na.rm = TRUE),90, NA))
-psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(tract_data_plus_zero,na.rm = TRUE),90, NA))
 
 # setting the legend/label variables
