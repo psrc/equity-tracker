@@ -185,6 +185,10 @@ map.lat<- 47.615
 map.lon<- -122.257
 map.zoom<- 8.5
 
+# check maximum value of data
+# summary(ospi_data_tract$Percent_num) # max is 80.51, so rounding to 90 makes sense
+max_value <- 90 # this value will be the max value in the legend
+
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
 tract_data_plus_zero<-append(ospi_data_tract$Percent_num,0)
