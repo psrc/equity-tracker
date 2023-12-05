@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -61,7 +61,7 @@ This code will help produce the three visuals that are going to be a part of eac
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
-```{r map legend settings, include=FALSE}
+```{r map legend settings}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
 			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
@@ -172,9 +172,9 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```{r map .rda}
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-rda <- 'f01-median-income-map-data.rda'
+theme_dir <- 'h-public-services'
+ind_dir <- 'h01-internet-access'
+rda <- 'h01-internet-access-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
@@ -185,38 +185,37 @@ map.lat<- 47.615
 map.lon<- -122.257
 map.zoom<- 8.5
 
+# check maximum value of data
+# summary(acs_data_tract$estimate) # max is 100
+max_value <- 100 # this value will be the max value in the legend
+
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
 acs_data_plus_zero<-append(acs_data_tract$estimate,0)
 
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+#                                       domain = acs_data_plus_zero) # this is the value field
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-                                      domain = acs_data_plus_zero) # this is the value field
+                                      domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+#                                       domain = c(min(acs_data_tract$estimate,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Median Household <br> Income (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Internet <br> Access" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
-  paste("Tract value: ","$", # if doesn't require prefix, this can be removed
-        prettyNum((round(acs_data_tract$estimate, digits=-2)),
-                  big.mark = ",")),
+  paste("Tract value: ", # if doesn't require prefix, this can be removed
+        prettyNum((round(acs_data_tract$estimate, digits=0)),
+                  big.mark = ","), '%'),
   paste("Tract data reliability: ", acs_data_tract$reliability),
-  paste("Region value: ","$",
-        prettyNum((round(acs_data_tract$reg_estimate, digits=-2)),
-                  big.mark = ",")),
-  paste("County value: ","$",
-        prettyNum((round(acs_data_tract$cnty_estimate, digits=-2)),
-                  big.mark = ","), paste0("(",acs_data_tract$county_name," County)"))) %>%
+  paste("Region value: ",
+        prettyNum((round(acs_data_tract$reg_estimate, digits=0)),
+                  big.mark = ","),'%'),
+  paste("County value: ",
+        prettyNum((round(acs_data_tract$cnty_estimate, digits=0)),
+                  big.mark = ","), '%', paste0("(",acs_data_tract$county_name," County)"))) %>%
   lapply(htmltools::HTML)
-
-# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
-#               big.mark = ","), #this wouldn't be necessary to include for %s    
-#         '%')) %>%
-#   lapply(htmltools::HTML)
-
 
 # map settings
 acs_map <- leaflet() %>%
@@ -236,12 +235,14 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_plus_zero,
+                       # values = acs_data_tract$estimate,
+                       # values = acs_data_plus_zero,
+                       values = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA),
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
-                       labFormat = labelFormat(prefix = "$"),
+                       labFormat = labelFormat(suffix = "%"),
                        decreasing = TRUE) %>% #to get legend high-low with correct color order
   
   # set view extent
@@ -261,10 +262,10 @@ acs_map
 ```
 Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
-# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-acs_mapcontent\f-economy\f01-median-income\webpage-html-outputs
 
 # set folder structure
-map_name <- 'f01-median-income-map.html'
+map_name <- 'h01-internet-access-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
@@ -356,7 +357,7 @@ source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/eq
 source('equity-tracker-chart-functions.R') 
 
 # set folder structure
-rda <- 'f01-median-income-data.rda'
+rda <- 'h01-internet-access-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -374,14 +375,14 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 180000
+y_max = 1
 dec = 0
-esttype = "currency"
+esttype = "percent"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
-title = "Median Household Income"
-subtitle = "values are adjusted to 2021 dollars"
+title = "Internet Access"
+subtitle = "Share of households with internet access"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -404,7 +405,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-column'
+file_name <- 'h01-internet-access-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -567,9 +568,7 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         num_colors = num_colors,
                                         color_rev = color_rev,
                                         width = '420px',
-                                        height = '380px',
-                                        num_colors = 2,
-                                        color_rev = TRUE)
+                                        height = '380px')
 ```
 
 ```{r output final line chart - pums, include=FALSE}
@@ -577,7 +576,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-line'
+file_name <- 'h01-internet-access-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 

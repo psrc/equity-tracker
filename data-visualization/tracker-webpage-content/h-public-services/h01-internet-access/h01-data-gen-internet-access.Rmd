@@ -441,9 +441,9 @@ Save final data set (.rda) for charts
 ```{r}
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-file_name <- 'f01-median-income-data'
+theme_dir <- 'h-public-services'
+ind_dir <- 'h01-internet-access'
+file_name <- 'h01-internet-access-data'
 
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,
@@ -504,12 +504,12 @@ acs_data_calc <- acs_data_pivot %>%
 # calculate moes
 acs_data_moes <- acs_data_calc %>%
   rowwise() %>%
-  # mutate(moe_perc_own_occ=moe_prop(num=estimate_Owner_occupied_units,
-  #                                  denom=estimate_Total_units, 
-  #                                  moe_num=moe_Owner_occupied_units, 
-  #                                  moe_denom=moe_Total_units)) %>% 
-  mutate(moe_cost_burdened=tidycensus::moe_sum(estimate = estimate_with_internet,
-                                               moe = moe_with_internet))
+  # mutate(moe_internet=tidycensus:moe_prop(num=estimate_with_internet,
+  #                                         denom=estimate_total_households,
+  #                                         moe_num=moe_with_internet,
+  #                                         moe_denom=moe_total_households)) #%>%
+  mutate(moe_internet=tidycensus::moe_sum(estimate = estimate_with_internet,
+                                          moe = moe_with_internet))
 
 acs_data_final<- acs_data_moes %>% 
   # dplyr::select(GEOID, estimate_Owner_occupied_units, estimate_Total_units, estimate_perc_own_occ,
@@ -749,7 +749,7 @@ Save final data set (.rda) for map
 # This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
 
 # set folder structure
-file_name <- 'f01-median-income-map-data'
+file_name <- 'h01-internet-access-map-data'
 
 # save final data set as .rda
 save(acs_data_tract, file = file.path(base_dir,
