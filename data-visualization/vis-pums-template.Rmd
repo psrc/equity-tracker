@@ -574,8 +574,8 @@ line_chart <- equity_tracker_line_facet(df = df,
                                         color_rev = color_rev,
                                         width = '420px',
                                         height = '380px',
-                                        num_colors = 2,
-                                        color_rev = TRUE)
+                                        num_colors = num_colors,
+                                        color_rev = color_rev)
 ```
 
 ```{r output final line chart - pums, include=FALSE}
