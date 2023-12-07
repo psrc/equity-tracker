@@ -1,0 +1,17 @@
+elmer_conn_string: DRIVER={ODBC Driver 17 for SQL Server}; SERVER=AWS-PROD-SQL\Sockeye; DATABASE=Elmer; trusted_connection=yes
+
+buffer_size: 10560
+
+crs: 2285
+
+census_geog: 'tract'
+
+column_dict: {'1. YEAR' : 'year', '2. TRIFD' : 'trifd', '3. FRS ID' : 'frs_id', '4. FACILITY NAME': 'facility_name', '12. LATITUDE' : 'lat', '13. LONGITUDE' : 'long', '62. ON-SITE RELEASE TOTAL' : 'on_site_release_total'}
+
+site_id_column_name: 'trifd'  
+
+toxic_release_columns: ['on_site_release_total']
+
+toxic_release_data_path: Y:/Equity Indicators/tracker-webpage-content/b-environment/b02-toxic-release/raw-data/EPA_TRI_data
+
+output_file: T:/2023December/Stefan/toxic_release_exposure.csv
