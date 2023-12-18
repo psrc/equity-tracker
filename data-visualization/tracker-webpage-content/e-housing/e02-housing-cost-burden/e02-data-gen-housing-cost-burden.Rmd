@@ -435,6 +435,7 @@ data_clean <- data_clean %>%
   mutate(fact_value_notrounded=round(fact_value, digits=3)) %>% #create column to retain full median income values
   mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds - retain consistent name
 ```
+
 Save final data set (.rda) for charts
 ```{r}
 # set folder structure
@@ -539,6 +540,37 @@ acs_data <- acs_data_reliability %>%
   dplyr::select(GEOID,estimate,cv,reliability)
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher 
+
+
+# TEST - why moe_prop() doesn't work ----------------
+# calculate moes
+# acs_data_moes <- acs_data_calc %>%
+#   rowwise()%>%
+#   mutate(moe_new_total=tidycensus::moe_sum(estimate=c(estimate_Total, `estimate_Not computed`),
+#                                            moe=c(moe_Total,`moe_Not computed`)))%>%
+#   mutate(moe_perc_cost_burdened=tidycensus::moe_prop(num=estimate_cost_burdened,
+#                                                      denom=estimate_new_total,
+#                                                      moe_num=moe_cost_burdened,
+#                                                      moe_denom=moe_new_total)) #%>%
+#   # mutate(moe_cost_burdened=tidycensus::moe_sum(estimate = estimate_cost_burdened,
+#   #                                              moe = moe_cost_burdened))
+# 
+# acs_data_final<- acs_data_moes %>% 
+#   dplyr::select(GEOID, estimate_cost_burdened, estimate_new_total, estimate_perc_cost_burdened,
+#                 moe_cost_burdened, moe_new_total, moe_perc_cost_burdened) %>%
+#   dplyr::filter(!is.na(estimate_cost_burdened))
+# 
+# 
+# # calculate reliability values
+# acs_data_reliability <-reliability_calcs(acs_data_final,
+#                                          estimate='estimate_perc_cost_burdened',
+#                                          moe='moe_perc_cost_burdened')
+# 
+# # rename and simplify
+# acs_data <- acs_data_reliability %>%
+#   rename(estimate_dec='estimate_perc_cost_burdened') %>%
+#   mutate(estimate=estimate_dec*100) %>% 
+#   dplyr::select(GEOID,estimate,cv,reliability)
 ```
 
 ### Joining data
@@ -566,7 +598,7 @@ county_reg_data_aggregate <- county_reg_data_rename %>%
   dplyr::group_by(GEOID, name, rent_burden) %>% 
   dplyr::summarise(estimate=sum(estimate), .groups='drop')
 
-# pivot data to calculate percentage by census tract
+# pivot data to calculate percentage by geography
 county_reg_data_group <- county_reg_data_aggregate %>% 
   pivot_wider(names_from = rent_burden, values_from = estimate) %>%
   rename('estimate_cost_burdened'='Cost Burdened (More than 30 percent)') %>% 
@@ -853,5 +885,7 @@ save(acs_data_tract, file = file.path(base_dir,
                                       ind_dir, "rda-data",
                                       paste0(file_name,'.rda')))
 ```
+
+
 
 <a href="#top">Back to top of the page</a>

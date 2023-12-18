@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+    word_document:
 ---
   
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+#output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -57,7 +57,7 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Rate of incarcerated individuals per 100,000 in Washington State prisons by census tract. Understanding where incarcerated individuals come from can help us understand which communities are disproportionately impacted so better policies can be created to change negative outcomes. 
+The rate of incarcerated individuals in Washington State prisons per 100,000 residents by census tract, based on each incarcerated person’s last known address. Understanding where incarcerated individuals come from can help us understand which communities are disproportionately impacted so better policies can be created to change negative outcomes. 
 
 ## 1. Map of most recent data
 To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution.
@@ -203,7 +203,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = acs_data_plus_zero)
 
 # set the variable
-var_name <- "Imprisonment <br> Rate"
+var_name <- "Imprisonment <br> Rate*"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
   paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " rate"),
@@ -273,7 +273,8 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: Prison Policy Initiative analyzing data provided by Washington State Department of Corrections; U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Sources: Prison Policy Initiative analyzing data provided by Washington State Department of Corrections, 2020; U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+* Note: color ramp uses log scale
 
 ```{r generate tract map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a03-imprisonment\webpage-html-outputs
@@ -327,16 +328,17 @@ by_county <- data %>%
 
 ```
 
-1. 180.12: The region's average imprisonment rate
-2. 200.52: Washington State's average imprisonment rate
+1. 180: The region's average imprisonment rate
+2. 200: Washington State's average imprisonment rate
+3. 276: Number of census tracts in the region above the region's average imprisonment rate
 \
 
 #### Insights & Analysis
 
-* The four census tracts with the highest imprisonment rates include census tracts with large facilities such as jails or Harborview Medical Center 
-* Pierce County has the highest imprisonment rate (285.38), followed by Kitsap (231.04), Snohomish (158.35), and King (139.16)
-* The census tracts with the highest imprisonment rate are Downtown Tacoma, Pierce County (8006.63); Yesler Terrace area of Seattle, King County (5127.65); Port of Tacoma area, Pierce County (4624.05); Downtown Everett, Snohomish County (3608.04)
-* There are 99 census tracts with an imprisonment rate of zero in the region. For Pierce County, 3.1% of census tracts (6) have a rate of zero for imprisonment, followed by Kitsap with 5% of census tracts (3), Snohomish with 5.7% of census tracts (10), and then King county at 16.1% of census tracts (80).
+* The four census tracts with the highest average imprisonment rates all include large facilities such as jails or Harborview Medical Center, which may indicate that these places were used as last known addresses for some incarcerated individuals
+* The census tracts with the highest imprisonment rate are Downtown Tacoma, Pierce County (8006); Yesler Terrace area of Seattle, King County (5127); Port of Tacoma area, Pierce County (4624); Downtown Everett, Snohomish County (3608)
+* Pierce County has the highest average imprisonment rate (285), followed by Kitsap (231), Snohomish (158), and King (139)
+* There are 99 census tracts with an imprisonment rate of zero in the region. For Pierce County, 3% of census tracts (6) have a rate of zero for imprisonment, followed by Kitsap with 5% (3), Snohomish with 6% (10), and then King county with 16% (80).
 \
 \
 
@@ -381,7 +383,7 @@ num_colors = 5
 color_rev = FALSE
 title = "Imprisonment Rate"
 subtitle = "Per 100,000 People"
-source = paste("Prison Policy Initiative analyzing data provided by Washington State Department of Corrections", "U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+source = paste("Prison Policy Initiative analyzing data provided by Washington State Department of Corrections, 2020", "U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -522,17 +524,17 @@ filter <- data_clean_column %>%
 \
 
 #### Data Call Outs
-1. Pierce County has almost twice the rate as the region for communities with the highest concentration of people of color and households with lower income.
+1. 8x: As a region, communities with high concentrations of households with lower income have almost eight times higher imprisonment rate
+2. 5x higher: As a region, communities with high concentrations of people with disabilities have five times higher imprisonment rate
+3. 2x: Pierce County has almost twice the imprisonment rate as the region for communities with high concentrations of households with people of color or lower income
 
 
 #### Insights & Analysis
 
-* Communities with the highest concentration of households with lower income or households with disabilities are the most disproportionately impacted by imprisonment rates
-* The county with the highest imprisonment rate for communities with the highest concentration of households with lower income is Pierce County (713.14), followed by Kitsap (492.98), Snohomish (321.04), King (266.88), and the rate for the Region is 383.31
-* Pierce County has the largest gap in imprisonment rate for lower income households
-* King County has the highest median income at $102,620, followed by Snohomish $93,589, Pierce $80,236, Kitsap $76,814 (source: Office of Financial Management)
-* The county with the highest imprisonment rate for communities with the highest concentration of households with disabilities is Pierce County (451.45), followed by Kitsap (311.53), King (221.33), Snohomish (317.53),
-and the rate for the Region is 326.40
+* Communities with high concentrations of households with lower income or people with disabilities are most disproportionately impacted by imprisonment
+* Pierce County has the highest imprisonment rate (713) for communities with high concentration of households with lower income, followed by Kitsap (493), Snohomish (321), and King (267); the average rate for high concentration of households with lower income across the Region is 383
+* The highest imprisonment rate for communities with high concentration of people with disabilities is Pierce County (451), followed by Kitsap (312), King (221), Snohomish (318); the average rate for high concentration of people with disabilities across the Region is 326
+and the rate for the Region is 326
 \
 
 This dataset first became available in 2020 due to a change in Washington State law requiring the Department of Corrections to report last known addresses for people incarcerated in state prisons during the 2020 Decennial Census. At this time, 2020 is the only year available and it is unclear if this data will be available again after the 2030 Decennial Census.

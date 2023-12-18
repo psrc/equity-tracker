@@ -342,7 +342,7 @@ color = "purples"
 num_colors = 5
 color_rev = FALSE
 title = "Cardiovascular Disease Mortality"
-subtitle = "age adjusted rate per 100,000"
+subtitle = "Age adjusted rate per 100,000"
 source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,

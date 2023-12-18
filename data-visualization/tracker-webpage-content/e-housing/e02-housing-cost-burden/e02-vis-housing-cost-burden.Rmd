@@ -57,7 +57,7 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Housing Cost Burden, in this case, refers to renters that are paying more than 30% of their income on rent, rendering them "burdened" by the cost of housing. As rent increases and income remains unchanged, or as affordable housing becomes less available, people are over-extending themselves in order to afford housing. This contributes to the housing crisis and also to people being unable to access opportunity in the same way that affluent, or low-vulnerability, communities can.
+Housing cost burden, in this case, refers to renters that are paying more than 30% of their income on rent, rendering them "burdened" by the cost of housing. As rent increases and income remains unchanged, or as affordable housing becomes less available, people are over-extending themselves in order to afford housing. This contributes to the housing crisis and also to people being unable to access opportunity in the same way that affluent, or low-vulnerability, communities can.
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -195,13 +195,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = acs_data_tract$wt_life_expec) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Rent <br> Burdened" # the <br> could be adjusted depending on the length/spacing of the name
-# labels <- sprintf(
-#    "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-#    paste(prettyNum((round(acs_data_tract$wt_life_expec, digits=0)), #the digits would probably be 2 for %
-#          '%')) %>%
-#    lapply(htmltools::HTML))
-
+var_name <- "Renter Cost <br> Burden" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
@@ -277,71 +271,105 @@ htmlwidgets::saveWidget(acs_map,
 #### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
-acs_data_tract <- acs_data_tract %>%
-  rename_at ('wt_life_expec', ~ 'estimate')
-
 data <- acs_data_tract %>%
   st_drop_geometry()
 
-# calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#  dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#  dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
-
-x<-rep(data$estimate,times=data$total_pop20)
-df1<-data.frame(x)
-summary(df1$x)
-median(df1$x, na.rm=TRUE)
-hist(df1$x)
-# regional median percentage of rent burdened population: 6.8% 
-# highest rent burden households in a tract: 12%, tract 322.02; king county north of route 90 in Issaquah
-
-# getting data by region from PUMS
-#pums_data <- get_psrc_pums(span = 5,
- #                          dyear = 2021,
-  #                         level = "h",
-   #                        vars = "OWN_RENT")
-#reg_median <- psrc_pums_count(pums_data, stat_var = "OWN_RENT")
-# regional median income: 96453.13
-
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+# 53033031709 (King)
+# 53033032102 (King), 
+# 53033032328 (King), 
+# 53061050403 (Snohomish), 
+# 53061050600 (Snohomish),
+# 53061053605 (Snohomish), 
 
 sort <- data %>% 
   dplyr::arrange(estimate)
 # 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
 # 53033030501 (Auburn, around 167)
 
-# this calculation doesn't work for median income because median is unique - need to retrieve from census 
-by_county <- data %>% 
-   dplyr::group_by(county_name) %>% 
-   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-   dplyr::arrange(desc(income.wgt))
+filter <- data %>% 
+  dplyr::filter(reliability=="estimate is 0, cannot compute")
 
-# getting data by county from acs 
-county_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B25070', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
+filter <- data %>% 
+  dplyr::filter(estimate>50) #379/919:
+table(filter$county_name)
+# King: 188/379: 50%
+# Kitsap: 30/379: 8% 
+# Pierce: 84/379: 22%
+# Snohomish: 77/379: 20%
+table(data$county_name)
+# King: 494/919: 54%
+# Kitsap: 59/919: 6%
+# Pierce: 193/919: 21%
+# Snohomish: 173/919: 19%
 
-county_acs_data <- acs_data_tract %>% 
-  dplyr::arrange(desc(estimate))
+filter_tracts_ok <- data %>% 
+  dplyr::filter(reliability=="good" |
+                  reliability=="fair" |
+                  reliability=="use with caution")
+
+filter <- data %>% 
+  dplyr::filter(estimate==50)
+
+# calculate population density
+# get population for 2021
+tract_acs_data <- get_acs_recs(geography ='tract', 
+                               table.names = 'B01003', 
+                               years = c(2021), 
+                               acs.type = 'acs5')
+tract_pop <- tract_acs_data %>% 
+  dplyr::select(GEOID, estimate) %>% 
+  dplyr::rename(pop_estimate=estimate)
+
+# join population data to 
+data_2021pop <- merge(data,
+                      tract_pop,
+                      by.x="geoid20",
+                      by.y="GEOID",
+                      all.x=TRUE)
+
+# calculation
+calc <- data_2021pop %>% 
+  mutate(pop_acres=pop_estimate/land_acres) %>% 
+  mutate(area_sqmi=aland20*3.861E-07) %>% 
+  mutate(pop_sqmi=pop_estimate/area_sqmi)
+
+# 50+ 
+calc_50plus <- calc %>% 
+  dplyr::filter(estimate>=50) %>% 
+  dplyr::arrange(estimate)
+
+calc_50minus <- calc %>% 
+  dplyr::filter(estimate<50)
+
+median(calc_50plus$pop_acres) #7.010612
+median(calc_50minus$pop_acres) #6.406462
+median(calc_50plus$pop_sqmi) #4558.947
+median(calc_50minus$pop_sqmi) #4103.732
+
+# quintiles
+quartile_burden <- calc %>% 
+  dplyr::mutate(quartile = ntile(estimate, 4)) %>% 
+  dplyr::group_by(quartile) %>% 
+  dplyr::summarise(median_dens_acres=median(pop_acres),
+                   median_dens_sqmi=median(pop_sqmi),
+                   mean_dens_acres=mean(pop_acres),
+                   mean_dens_sqmi=mean(pop_sqmi))
 ```
 
-1. 46%: Average percentage of cost-burdened households by census tract
-2. 6: Six census tracts have the highest percentage of rent-burdened households at 100%
-3. 48%: Pierce County has the highest percentage of rent-burdened households (48%)
+1. 48%: Regional share of rent-burdened households
+2. 5%: The difference in the share of the counties with the most and least rent-burdened households is 5%
+3. 51%: Pierce and Snohomish Counties tie for the highest percentage of rent-burdened households
 
 \
 
 #### Insights & Analysis
 
-* Pierce County has the highest percentage of rent-burdened households (48%), followed by Snohomish (47%), Kitsap (46%), and King (45%)
-* The six census tracts tied with the highest representation of cost-burdened households are in the Issaquah Highlands and by Cottage Lake and Covington (close to the outer edges of the county) in King County, and  southwestern Woodway near Shoreline and the northeastern corner of Snohomish County
-* Questions about 0% and 100% cost burden representation **
+* Pierce and Snohomish Counties have the highest percentage of rent-burdened households (51%), followed by Kitsap (50%) and King (46%)
+* Over half the households in a census tract are rent-burdened in 41% of the region's tracts: half of which are in King County (50%), followed by Pierce (22%), Snohomish (20%), and Kitsap (8%) - these values generally reflect the distribution of tracts across the region: King (54%), Pierce (21%), Snohomish (19%), and Kitsap (6%)
+* The median population density of the tracts where more than half of the households are rent-burdened is higher (7 people/acre) than that of the tracts where fewer than half of households are rent-burdened (6 people/acre)
+* OR: Tracts with a greater share of rent-burdened households have higher median population densities than those with a lower share (1st quartile: 5 people/acre; 4th quartile: 7 people/acre) 
 \
 \
 
@@ -368,7 +396,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 
 ```{r column facet - pums}
 # Create Facet Column Chart
-data_clean_column <- data_clean %>% 
+data_clean_column <- data_clean %>%
   dplyr::filter(data_year=="2021") #filter on most recent year
 
 # set variables 
@@ -385,8 +413,8 @@ esttype = "percent"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
-title = "Rent Burdened Housholds"
-subtitle = "Percentage"
+title = "Renter Cost Burden"
+subtitle = "Renters who are paying more than 30% of their income on rent"
 source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -519,15 +547,15 @@ filter <- data_clean_column %>%
 
 ```
 
-1. 2.5: Households in the region who are living below 200% of the poverty level are 2.7 times more likely to be cost-burdened than households who are living above
-2. 60%: Sixty percent of limited English proficient households are at risk of being rent burdened
-3. 57%: The highest percentage of people with disabilities that are rent burdened
+1. 2.5: Households in the region who are living below 200% of federal poverty level are 2.5 times more likely to be rent-burdened than households who are living above
+2. 3/5: Close to three-fifths of limited English proficient households and households with older adults are rent-burdened
+3. 13%: A higher share of people with disabilities are rent-burdened than those without, a 13% difference
 
 #### Insights & Analysis
 
-* Households that are living below 200% federal poverty level are the households at highest risk of experiencing rent burden, and are equally represented across all counties.
+* People of color are more likely to be rent-burdened than their white non-Hispanic counterparts, with the largest gap in Snohomish County (7%), followed by King (3%), Pierce (2%), and Kitsap (1%)
 * Limited English proficient households are at highest risk of rent burden in Kitsap County (64%), with the lowest risk limited English households in Pierce (56%)
-* Snohomish County is the only county where households with children (18 years or younger) are paying the same as households without children
+* Snohomish County is the only county where the share of households with children (18 years or younger) that are rent-burdened is the same as the share of households without children
 \
 \
 
@@ -662,12 +690,22 @@ filter <- data_clean %>%
 # ((41208.19-31718.06)/(31718.06))*100: 29.92027% change
 
 filter <- data_clean %>%
-  filter(county != "Region",
+  filter(county == "Region",
          focus_type=="Disability_cat",
-         indicator_attribute != "Less than 30 percent")
-# 2016 king disability-no disability: 102202.57-62990.64=39211.93
-# 2021 king disability-no disability: 134637.12-81508.16=53128.96
-# 53128.96-39211.93=13917.03
+         data_year==2016 |
+           data_year==2021)
+# 2016 disability-no disability: 0.60-0.43=0.17
+# 2021 disability-no disability: 0.56-0.43=0.13
+# ((0.17-0.13)/(0.13))*100: 30.76923% change
+
+filter <- data_clean %>%
+  filter(county == "Region",
+         focus_type=="LEP_cat",
+         data_year==2016 |
+           data_year==2021)
+# 2016 lep-no lep: 0.55-0.46=0.09
+# 2021 lep-no lep: 0.57-0.45=0.12
+# ((0.09-0.12)/(0.12))*100: 25% change
 
 filter <- data_clean %>%
   filter(county=="Snohomish",
@@ -698,17 +736,18 @@ filter <- data_clean %>%
 # Snohomish non-low income:130900.06-97445.42=33454.64
 ```
 
-1. 1.5: In 2021, the percentage points between households in the region who were living below 200% federal poverty line and households living above
-2. 48%: In the region, people of color are as more likely to be rent burdened than white non-Hispanic households, a proportion that is 3 percentage points higher than white non-Hispanic households
-3. 43%: Rent burdened households with and without disabilities have remained constant from 2016 to 2021
+1. 48%: Share of people of color who are rent burdened in 2021, a decrease of 3 percentage points from 2011
+2. 31%: The gap in the regional share of rent-burden between people with and without disabilities decreased by 31% between 2016 and 2021
+3. 25%: The gap in the regional share of rent-burdened households with and without limited English proficiency increased by 25% between 2016 and 2021  
 
 \
 
 #### Insights & Analysis
 
-* In 2021, the difference between households in the region living below 200% federal poverty line and households above was 1.5%, which has remained consistent, but the proportion of rent burdened households based on income has increased by 166% from 2011
-* Since 2011, King County is the only county where the gap between households with youth (18 years or younger) has grown (from 50% to 60%)
-* Households with older adults (65 years or older) that are rent-burdened have increased in King and Snohomish County over the last decade, while they have decreased the gap between households in Kitsap and Pierce counties.
+* The regional share of rent-burdened households above 200% of federal poverty line has remained consistent between 2011 and 2021, while the share of households below has increased by 5 percentage points
+* Kitsap County is the only county where the difference in the share of rent-burdened households decreased over time between households with limited English and English proficient households 
+* King County is the only county where the difference between households with youth (18 years or younger) and without youth has remained consistent between 2011 and 2021, while the difference has decreased in Kitsap (7 percentage points), Pierce (6 percentage points), and Snohomish (4 percentage points) 
+* The share of rent-burdened households with older adults (65 years or older) has remained the same in King County between 2011 and 2021, while it has decreased in Kitsap (11 percentage points) and Pierce (4 percentage points), and increased in Snohomish (15 percentage points)
 
 
 \

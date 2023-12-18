@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+    word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+#output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -317,17 +317,17 @@ by_county <- data %>%
 
 ```
 
-1. 29.99%: The region's average tree canopy coverage per census tract in 2021
-2. 72.6%: census tract with the highest average percentage of tree canopy in 2021
-3. 0.8%: census tract with the lowest average percentage of tree canopy in 2021
+1. 30%: The region's average tree canopy coverage per census tract in 2021
+2. 73%: census tract with the highest average percentage of tree canopy in 2021
+3. 1%: census tract with the lowest average percentage of tree canopy in 2021
 
 \
 
 #### Insights & Analysis
 
-* The census tracts with the highest average tree canopy cover includes three census tracts in King County that include the tract east of Enumclaw heading into the foothills of the Cascades (72.6%), the tract with the Cedar River Watershed (71.9%), the tract with Tiger Mountain (69.7%), and in Snohomish County the tract with Mt. Pilchuck (68.0%)
-* The census tracts with the lowest average tree canopy cover are in King County and include South Lake Union (0.8%), the two tracts that make up downtown Seattle (0.9% and 1.2%), and the tract with Boeing Field (1.6%)
-* Kitsap County has the highest average tree canopy cover (43.50%), followed by Snohomish (31.87%), King (29.80%), and Pierce (27.04%)
+* The census tracts with the highest average tree canopy cover includes three census tracts in King County that include the tract east of Enumclaw heading into the foothills of the Cascades (73%), the tract with the Cedar River Watershed (72%), the tract with Tiger Mountain (70%), and in Snohomish County the tract with Mt. Pilchuck (68%)
+* The census tracts with the lowest average tree canopy cover are in King County and include South Lake Union (1%), the two tracts that make up downtown Seattle (both 1%), and the tract with Boeing Field (2%)
+* Kitsap County has the highest average tree canopy cover (44%), followed by Snohomish (32%), King (30%), and Pierce (27%)
 
 \
 \
@@ -513,12 +513,20 @@ filter <- data_clean_column %>%
 ```
 \
 
+#### Data call outs
+
+1. 2x: As a region, communities with low concentrations of households with lower income have almost twice the canopy cover as communities with high concentrations
+2. 1.5x: As a region, communities with low concentrations of people of color have about 1.5 times the canopy cover as communities with high concentrations
+3. Tree canopy coverage is comparable across communities with differing concentrations of people with a disability
+
+\
+
 #### Insights & Analysis
 
 *	Communities with the highest concentration of people of color, households with lower income, or households with limited English proficiency are most disproportionately impacted by lower average tree canopy cover
-*	The counties with the largest gap in the highest and lowest quintiles for people of color are Kitsap and Pierce counties
-*	The counties with the largest gap in the highest and lowest quintiles for households with lower income are Kitsap and King counties
-*	The counties with the largest gap in the highest/medium high and lowest quintiles for households with limited English proficiency are Kitsap and Snohomish counties
+*	The counties with the largest gap between low and high concentrations of people of color are Kitsap and Pierce counties
+*	The counties with the largest gap between low and high concentrations of households with lower income are Kitsap and King counties
+*	The counties with the largest gap between low and high/medium high concentrations of households with limited English proficiency are Kitsap and Snohomish counties
 
 
 \
@@ -731,13 +739,14 @@ filter <- data_clean %>%
 ```
 
 
+
 #### Insights & Analysis
 
-*	The gap between the highest and lowest quintiles for people of color due has stayed consistent at the regional level
-*	Kitsap County has seen the largest increase in the gap between the highest and lowest quintiles for people of color between 2011 and 2021
-*	King County has reduced the gap between the highest and lowest quintiles for communities with lower income between 2011 and 2021 due to decreased average tree canopy for the communities in the lowest quintile
-*	Snohomish County has reduced the gap between the highest and lowest quintiles for communities with lower income between 2011 and 2021 due to an increase in average tree canopy for the communities in the highest quintile and a decrease for the communities in the lowest quintile
-*	The highest quintile for households with adults 65+ experienced an increase in tree canopy percentage across every county in the region
+*	The gap in average tree canopy coverage for communities with the highest and lowest concentrations of people of color has stayed consistent at the regional level
+*	Kitsap County has seen the largest increase in the gap between the highest and lowest concentrations for people of color between 2011 and 2021
+*	King County has reduced the gap between the highest and lowest concentrations for communities with lower income between 2011 and 2021 due to decreased average tree canopy for the communities with the lowest concentration
+*	Snohomish County has reduced the gap between the highest and lowest concentrations of communities with lower income between 2011 and 2021 due to an increase in average tree canopy for the communities with high concentrations and a decrease for the communities in the low concentrations
+*	Communities with high concentrations of households with adults 65+ experienced an increase in tree canopy percentage across every county in the region
  
  
 \
