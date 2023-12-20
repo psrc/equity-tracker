@@ -1,5 +1,5 @@
 ---
-title: "Median Income" 
+title: "Voter Participation" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -61,15 +61,33 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 ```
 
-**Median Income**
+**Voter Participation**
 
 # Download data 
 ## Primary data 
-The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
+The data set referenced in this script is generated from the [Washington Secretary of State elections](https://www.sos.wa.gov/elections#data_research) voter turnout data [(PUMS)]. These data sets provide data at the precinct-level, which is then translated to census geographies and related to the distribution/concentraion of the six equity demographic groups of interest. 
 ```{r, include=FALSE}
 # PUMS/OSPI data set
-pums_ospi_elmer <- get_table(schema="equity",
-                             tbl_name="v_tracker_indicators")
+# pums_ospi_elmer <- get_table(schema="equity",
+#                              tbl_name="v_tracker_indicators")
+
+### Get 2020 presidential election votes by precinct ---------------------
+# From: https://www.sos.wa.gov/elections/research/data-and-statistics.aspx
+election = read_excel("Y:/Equity Indicators/tracker-webpage-content/h-public-services/h02-voter-participation/raw-data/2020_precinct_results.xlsx",
+                      sheet = "Sheet1")
+
+voters <- election %>% 
+  dplyr::filter(RaceName == "Turnout",
+                Candidate %in% c("Registered Voters", "Ballots Cast"),
+                County %in% c("King","Kitsap","Snohomish","Pierce")) %>% 
+  dplyr::select(Candidate,PrecinctCode,County,Votes) %>% 
+  pivot_wider(names_from = Candidate, values_from = Votes) %>% 
+  rename(registered_voters = 'Registered Voters', ballots_cast = 'Ballots Cast')
+
+voters_20 <- voters %>%
+  mutate(Precinct = factor(PrecinctCode), 
+         County = factor(County),
+         CPrecinct = str_c(County, Precinct, sep = "_"))
 ```
 \
 This data set was compiled from PUMS data.
