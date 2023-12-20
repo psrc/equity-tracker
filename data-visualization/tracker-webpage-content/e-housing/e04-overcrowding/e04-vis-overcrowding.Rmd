@@ -4,14 +4,14 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
-  always_allow_html: true
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  always_allow_html: true
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -58,7 +58,7 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Overcrowding measures the amount of people sharing bedrooms, stating that if there are more than 1.5 person(s) per bedroom in a home, then they are experiencing "overcrowding." This oftentimes is an indicator that people are sharing bedrooms and living in homes that may be too small for their household needs or family size. This is important to note as we look for more affordable multi-family housing, and move away from single family zoning practices.
+Overcrowding is an indicator that people are living in homes that may be too small for their household needs or family size. For this measure, we are focusing on renter households and dividing the number of people in the household by the number of rooms in their home. We are defining overcrowding as households with more than 1.5 person(s) per room. Although overcrowding can occur in owner-occupied homes, renters are often at a disadvantage in terms of housing stability [this explanation needs more work about why we are focusing on renters].
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -187,27 +187,34 @@ map.lat<- 47.615
 map.lon<- -122.257
 map.zoom<- 8.5
 
+# check maximum value of data
+# summary(acs_data$estimate) # max is 95.39, so rounding to 100 makes sense
+max_value <- 3.5 # this value will be the max value in the legend
+
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
-pums_data_plus_zero<-append(pums_data_county$estimate,0)
+acs_data_plus_zero<-append(acs_data$estimate,0)
 
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-                                      domain = pums_data_plus_zero) # this is the value field
+                                      domain = acs_data_plus_zero) # this is the value field
 # psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
 #                                       domain = acs_data_tract$estimate) # this is the value field
 
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
+
 # setting the legend/label variables
-var_name <- "Overcrowding: <br> % of Renter Households <br> with >1.5 persons <br> per Bedroom" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Overcrowding: <br> % of Renter Households <br> with >1.5 persons <br> per Room" # the <br> could be adjusted depending on the length/spacing of the name
 
 labels <- sprintf(
   "County: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body>",
-  paste(pums_data_county$county_name, " County"), # the code in <> makes the geoid value bold/italic
+  paste(acs_data$county_name, " County"), # the code in <> makes the geoid value bold/italic
   paste("County value: ",
-        prettyNum(round(pums_data_county$estimate, digits=1)), 
+        prettyNum(round(acs_data$estimate, digits=1)), 
         '%'),
-  paste("County data reliability: ", pums_data_county$reliability),
+  paste("County data reliability: ", acs_data$reliability),
   paste("Region value: ",
-        prettyNum(round(pums_data_county$reg_estimate, digits=1)),
+        prettyNum(round(acs_data$reg_estimate, digits=1)),
         '%')) %>%
   lapply(htmltools::HTML)
 
@@ -220,8 +227,8 @@ acs_map <- leaflet() %>%
   leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
-  addPolygons(data=pums_data_county,
-              fillColor = psrc_palette(pums_data_county$estimate),
+  addPolygons(data=acs_data,
+              fillColor = psrc_palette(acs_data$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -230,7 +237,7 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = pums_data_plus_zero,
+                       values = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA),
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -271,24 +278,24 @@ htmlwidgets::saveWidget(acs_map,
 #### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
-data <- pums_data_county %>%
+data <- acs_data %>%
   st_drop_geometry()
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
 ```
 
-1. 21.5%: The regional average of overcrowded renting households
-2. 23.3%: King County has the highest rate of overcrowding renting households
-3. 14.5%: Average percentage of households in Kitsap County, the county with the lowest overcrowding rates
+1. 2.9%: The regional average of overcrowded renting households
+2. 3.5%: King County has the highest rate of overcrowding renting households
+3. 1.2%: Average percentage of households in Kitsap County, the county with the lowest overcrowding rates
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest rates of overcrowding among renters (23%), followed by Snohomish (20%), Pierce (19%), and Kitsap (15%)
+* King County has the highest rates of overcrowding among renters (3.5%), followed by Snohomish (2.3%), Pierce (2.1%), and Kitsap (1.2%)
 * King County's higher rates of overcrowding for renters is likely related to having the lowest homeownership rates within the region
-* Compared to King County, Kitsap County's overcrowding rate among renters is about two-thirds19 as high, while Pierce is about four-fifths as high
+* Compared to King County, Kitsap County's overcrowding rate among renters is about one-third as high, while Pierce is about three-fifths as high and Snohomish is two-thirds as high
 
 \
 \
@@ -317,8 +324,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2021")%>% #filter on most recent year
-  dplyr::filter(indicator_attribute=="More than 1.5 persons per bedroom")
+  dplyr::filter(data_year=="2021") #filter on most recent year
 
 # set variables 
 df = data_clean_column
@@ -328,14 +334,14 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 0.5
+y_max = 0.10
 dec = 0
 esttype = "percent"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
 title = "Overcrowding (renters)"
-subtitle = "More than 1.5 person(s) per bedroom"
+subtitle = "More than 1.5 person(s) per room"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -429,18 +435,18 @@ filter <- data_clean_column %>%
 # snohomish low income-other: 0.25-0.18=0.07, ((0.25-0.18)/(0.18))*100: 39% difference
 ```
 
-1. 12: Among renting households in the region, the overcrowding rate for people of color is 12 percentage points higher than white non-Hispanic households
-2. 26%: Over one-quarter of the region's households below 200% of federal poverty line that are experiencing overcrowding
-3. 36%: Percentage of limited English proficient households experiencing overcrowding, 16 percentage points higher than than English proficient households
+1. 2x: Among renting households in the region, the overcrowding rate for people of color is 2 percentage points higher than white non-Hispanic households, or twice as high
+2. 4%: The region's households below 200% of federal poverty line that are experiencing overcrowding
+3. 6%: Percentage of limited English proficient households experiencing overcrowding, 3 percentage points higher than than English proficient households, or twice as high
 
 
 \
 
 #### Insights & Analysis
 
-* The largest difference in overcrowding rates between people of color and white non-Hispanic is in King County (14 percentage points), while the smallest difference is in Kitsap and Pierce (8 percentage points)
-* King County has the highest rate of overcrowding among renting households below 200% of federal poverty (28%), followed by Snohomish (25%), Pierce (24%), and Kitsap (18%) 
-* Households with children (below 18 years old) and households with limited English proficient speakers have the highest rates of overcrowding across all of the demographic groups, regardless of county (between one-quarter and one-third).
+* The largest difference in overcrowding rates between people of color and white non-Hispanic is in King County (3 percentage points), while the other counties have a 1 percentage point difference between people of color and white non-Hispanic
+* King County has the highest rate of overcrowding among renting households below 200% of federal poverty (5%), followed by Snohomish and Pierce (3%), and Kitsap (2%) 
+* Renting households with limited English proficiency have the highest rates of overcrowding across all of the demographic groups, regardless of county
 
 
 \
@@ -458,10 +464,6 @@ filter <- data_clean_column %>%
 
 ```{r line facet - pums, include=FALSE}
 # Create Facet Line Chart
-
-data_clean <- data_clean %>% 
-  dplyr::filter(indicator_attribute=="More than 1.5 persons per bedroom")
-
 # set variables
 df = data_clean
 x = "data_year" # different from variables for facet column
@@ -549,45 +551,64 @@ if (output_type == "html") {
 # calculate call out information
 filter <- data_clean %>%
   filter(county=="Region",
-         focus_type=="POC_cat")
-# 2021 poc-nonpoc: 29-17=12
-# 2011 poc-nonpoc: 30-14=16
-# ((12-16)/(16))*100: -25% change
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2021 poc-nonpoc: 0.04-0.02=0.02
+# 2011 poc-nonpoc: 0.02-0.00=0.02
 
 filter <- data_clean %>%
   filter(county=="Region",
-         focus_type=="Income_cat")
-# 2021 low income: 26
-# 2021 non-low income: 20
-# 26-20=6
-# 2011 low income: 26
-# 2011 non-low income: 14
-# 26-14=12
-# ((6-12)/(12))*100: -50% change
+         focus_type=="Income_cat",
+         vulnerability=="high vulnerability")
+# 2021 low income: 0.04
+# 2011 low income: 0.02
+# (0.04-0.02)/0.02 = 1
 
 filter <- data_clean %>%
   filter(county=="Region",
-         focus_type=="Youth_cat")
-# 2021 youth-other: 39-14=25
-# 2011 youth-other: 35-10=25
+         focus_type=="LEP_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2021 lep: 0.06
+# 2011 lep: 0.04
+# (0.06-0.04)/0.06=0.333
 
 filter <- data_clean %>%
   filter(county=="Snohomish",
          focus_type=="POC_cat",
          data_year=="2011" |
            data_year=="2021")
-# 2011 king:24-14=10
-# 2021 king:31-17=14
-# ((14-10)/(10))*100: 40% change
-# 2011 kitsap:33-15=18
-# 2021 kitsap:20-12=8
-# ((8-18)/(18))*100: -56% change
-# 2011 pierce:29-13=16
-# 2021 pierce:24-16=8
-# ((8-16)/(16))*100: -50% change
-# 2011 snohomish:22-11=11
-# 2021 snohomish:28-17=11
-# ((11-11)/(11))*100: 0% change
+# 2011 king:0.01-0.00=0.01
+# 2021 king:0.05-0.02=0.03
+# ((0.03-0.01)/(0.01))*100: 200% change
+# 2011 kitsap:0.03-0.01=0.02
+# 2021 kitsap:0.02-0.01=0.01
+# ((0.01-0.02)/(0.02))*100: -50% change
+# 2011 pierce:0.02-0.00=0.02
+# 2021 pierce:0.03-0.02=0.01
+# ((0.01)/(0.02))*100: 50% change
+# 2011 snohomish:0.02-0.00=0.02
+# 2021 snohomish:0.03-0.02=0.01
+# ((0.01)/(0.02))*100: 50% change
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="LEP_cat",
+         data_year=="2016" |
+           data_year=="2021")
+# 2011 king:0.02-0.01=0.01
+# 2021 king:0.07-0.03=0.04
+# ((0.04-0.01)/(0.01))*100: 300% change
+# 2011 kitsap:0.05-0.01=0.04
+# 2021 kitsap:0.04-0.01=0.03
+# ((0.03-0.04)/(0.04))*100: -25% change
+# 2011 pierce:0.03-0.01=0.02
+# 2021 pierce:0.04-0.02=0.02
+# ((0.02-0.02)/(0.02))*100: 0% change
+# 2016 snohomish:0.05-0.01=0.04
+# 2021 snohomish:0.05-0.02=0.03
+# ((0.03-0.04)/(0.04))*100: -25% change
 
 filter <- data_clean %>%
   filter(focus_type=="Youth_cat",
@@ -608,19 +629,19 @@ filter <- data_clean %>%
 # snoho: ((27-21)/(21))*100: 29% change
 ```
 
-1. 150%: The regional gap in overcrowding between people of color and white, non-Hispanic decreased 25% between 2011 and 2021
-2. 50%: Overcrowding among renting households in the region who were below 200% of federal poverty line decreased 50% between 2011 and 2021
-3. 25: The regional difference in overcrowding rates between households with youth and other households has remained consistent at 25 percentage points between 2011 and 2021
+1. 2: The regional gap in overcrowding between people of color and white, non-Hispanic remained 2 percentage points between 2011 and 2021
+2. 200%: Overcrowding among renting households in the region who were below 200% of federal poverty line increased 100% between 2011 and 2021 (2% to 4%)
+3. 33%: The regional share of overcrowding households with limited English proficiency increased 33% between 2011 and 2021
 
 \
 
 #### Insights & Analysis
 
-* The difference in overcrowding for households with people of color and white non-Hispanic has varied across the region over time: increasing in King County (40% increase), remaining the same in Snohomish County, and decreasing in Kitsap County (56% decrease) and Pierce County (50% decrease)
-* In King and Snohomish Counties the prevalence of overcrowded households below 200% of federal poverty line leveled off around one-quarter between 2016 and 2021, after an increase between 2011 to 2016. Pierce County experienced a slight decline (2 percentage points) between 2016 and 2021, while Kitsap experienced a slight incline (2 percentage points).
-* The difference in overcrowding experienced by people with a disability compared to those without has increased in all counties, except Pierce, between 2016 and 2021
-* The difference in overcrowding experienced by households with limited English proficiency compared to English proficient households has decreased in all counties, except Kitsap, between 2016 and 2021
-* The largest difference in overcrowding between households with youth (below 18 years old) and those without over the past ten years has occurred in King County (53% increase) followed by Kitsap (44% decrease), Snohomish (29% increase), and Pierce (9% increase)
+* The difference in overcrowding for households with people of color and white non-Hispanic has varied across the region over time: increasing in King (200% increase), Pierce and Snohomish (50% increase), and decreasing in Kitsap County (50% decrease) and Pierce County (50% decrease)
+* In King County, the share of overcrowded households below 200% of federal poverty line increased steadily between 2011 and 2021 (4 percentage points), while Snohomish and Pierce Counties experienced a slight increase (1 percentage point), and Kitsap experienced a slight decrease (1 percentage point).
+* Overcrowding experienced by people with a disability stayed the same in King (3%) and Pierce (2%) counties, while it increased 1 percentage point in Kitsap and Snohomish counties (1% to 2%) between 2016 and 2021
+* The difference in overcrowding experienced by households with limited English proficiency compared to English proficient households has increased in King (300% increase), remained consistent in Pierce, and decreased in Kitsap (25% decrease) between 2011 and 2021. There is no data for households with limited English proficiency in Snohomish County in 2011, but between 2016 and 2021 the difference decreased 25%.
+* The share of overcrowding in households with youth (below 18 years old) increased in all of the counties between 2011 and 2016, except for Kitsap, where the share remained at 3%
 
 \
 \
