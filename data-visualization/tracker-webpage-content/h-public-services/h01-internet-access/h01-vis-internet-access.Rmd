@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -57,7 +57,9 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-[Please include the following for a general, layperson audience: 1-2 sentences explaining what your indicator is/measures, what it says about people's life outcomes; 1 sentence describing why it is useful/relevant in the indicator's theme]
+Access to internet provides a way for people to connect to and access important services and information. Being able to access the internet can help improve quality of life by supporting educational and career development opportunities, improving economic connectivity, and expanding more equitable access to healthcare public services.  
+
+For this measure, we are defining internet access as households who report having an internet subscription. 
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -280,63 +282,31 @@ htmlwidgets::saveWidget(acs_map,
 data <- acs_data_tract %>%
   st_drop_geometry()
 
-# calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
-
-# x<-rep(data$estimate,times=data$total_pop20)
-# df1<-data.frame(x)
-# summary(df1$x)
-# median(df1$x, na.rm=TRUE)
-# hist(df1$x)
-# regional median life expectancy: 80.86 
-
-# getting data by region from PUMS
-pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
-                           level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
-# regional median income: 96453.13
-
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
-# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
-# 53033030501 (Auburn, around 167)
+# 53033005303 (UW/U-District, 33.33333), 53033005304 (UW/U-District, 40.54054), 53033005307 (UW/U-District, 68.14404)
 
-# this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
+sort <- data %>% 
+  dplyr::filter(estimate==100) #27 census tracts 
 
-# getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B19013', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
-  dplyr::arrange(desc(estimate))
+table(data$county_name)
+table(sort$county_name)
 ```
 
-1. $96,500: The region's median household income
-2. $250,000: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
-3. $21,000: The lowest median income census tract in the region
+1. 93%: The region's average share of households without internet access
+2. 27: Number of census tracts where all households have internet access
+3. 74%: The lowest internet access census tract in the region, outside of the UW campus and U-District
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest median income (\$106,300), followed by Snohomish (\$95,600), Kitsap (\$84,600), and Pierce (\$82,600)
-* The five census tracts tied with the highest median income (\$250,000) are in King County: Laurelhurst neighborhood in Seattle, Clyde Hill/Yarrow Point/Hunts Point, Bellevue, and two tracts on Mercer Island
-* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000), downtown Tacoma (\$26,400), and Auburn around Route 167 (\$28,400)
+* King and Kitsap counties have the highest share of households with internet access (94%), followed by Snohomish (93%), and Pierce (92%)
+* Kitsap County has the highest share of census tracts where all households have internet access (7%), compared to 3% of the census tracts in King and Pierce, and 2% in Snohomish 
+* The three census tracts with the lowest share of households with internet access are around Seattle's University of Washington campus and U-District
 
 \
 \
@@ -462,79 +432,51 @@ if (output_type == "html") {
 ```{r column facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
-  filter(county=="Region",
+  filter(county!="Region",
+         focus_type=="POC_cat")
+
+filter <- data_clean_column %>% 
+  filter(county!="Region",
          focus_type=="Income_cat")
 
-# region low income households: 25409.57	
-# region non-low income households: 135561.35
-# 135561.35-25409.57=110151.8
+# King: 0.973-0.867=0.106
+# Kitsap: 0.970-0.890=0.08
+# Pierce: 0.959-0.858=0.101
+# Snohomish: 0.968-0.857=0.111
 
-filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         county=="Region")
-# region lep households: 58284.83	
-# region non-lep households: 116673.43
-# 116673.43-58284.83=58388.6
+filter <- data_clean_column %>%
+  filter(county!="Region",
+         focus_type=="Disability_cat")
 
-filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         vulnerability=="high vulnerability")
+# King: 0.971-0.887=0.084
+# Kitsap: 0.967-0.924=0.043
+# Pierce: 0.951-0.905=0.046
+# Snohomish: 0.965-0.896=0.069
 
-# region lep households: 58284.83	
-# snohomish lep households: 67832.94
-# 71.45515-63.50990=7.94525
-
-filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Youth_cat")
-
-# region youth households: 141389.8	
-# region non-youth households: 102097.0
-# 141389.8-102097.0=39292.8
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="POC_cat")
-# snohomish poc: 108886.4
-# snohomish non-poc: 112974.4
-# 112974.4-108886.4=4088
-
-# king poc: 111529.77
-# king non-poc: 130977.15
-# 130977.15-111529.77=19447.38
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="Disability_cat")
-# kitsap dis: 84171.34
-# kitsap non-dis: 104284.10
-# 104284.10-84171.34=20112.76
-
-# king dis: 81508.16
-# king non-dis: 134637.12
-# 134637.12-81508.16=53128.96
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="Income_cat",
-         vulnerability=="high vulnerability") %>% 
-  dplyr::arrange(desc(fact_value))
+filter <- data_clean_column %>%
+  filter(county!="Region",
+         focus_type=="Older_cat")
 
 ```
 
-1. \$25,400: The regional household median income of those who are below 200% of the poverty level
-2. \$58,400: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
-3. \$39,300: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
+1. 87%: The regional share of households with internet access for those who are below 200% of the poverty level
+2. 7%: Non-English proficient households have access to internet 7% lower than English proficient households
+3. 99%: Internet access for households with children (below 18 years old) is 99%, compared to 93% for households without children
 
 \
 
 #### Insights & Analysis
 
-* The smallest difference in median income between people of color and white non-Hispanic is in Snohomish County (\$4,100), while the largest difference is in King County (\$19,400)
-* For households who are below 200% of the poverty level, the median income is lowest in King County (\$24,100), followed by Snohomish and Kitsap (\$26,100), and Pierce (\$27,700)
-* The largest difference in median income between people with and without a disability is in King County (\$53,100), while the smallest difference is in County (\$20,100)
-* Snohomish County is the only county where Non-English proficient households have higher median incomes (\$67,800) than the region's Non-English proficient households (\$58,300)
+* Snohomish County is the only county in the region where households with people of color have higher access to internet when compared to white non-Hispanic households. The difference is still very small (1%)
+* For households who are below 200% of the poverty level, the share of households with internet access is lowest in Snohomish and Pierce counties (86%), followed by King (87%), and Kitsap (89%). The largest difference between low income and other households is in Snohomish and King (11%), Pierce (10%), and Kitsap (8%)
+* The largest difference in internet access between people with and without a disability is in King County (8%), Snohomish (7%), Pierce (5%), and Kitsap (4%)
+* Households with older adults (65+) consistently have less access to internet compared to other households across the region, with differences ranging between 5-10%
 
 \
 \
 
+# **ignore all info below**
+Although the chart contains accurate information, data is only available for the most recent year. Therefore, the chart does not show any additional information from the chart above. The data call outs and insights/analysis have not been updated, so they can be disregarded.
 
 ## 3. Facet of trend data
 ### Create Visual
