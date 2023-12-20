@@ -143,22 +143,26 @@ def census_geog_weighted(
     Returns:
         pd.DataFrame: aggregated weighted measures.
     """
-
+    if int(year) < 2020:
+        census_id = 'geoid10'
+    else:
+        census_id = 'geoid20'
     df = gpd.sjoin(parcels, polys, how="left")
     df.fillna(0, inplace=True)
     # add pop sum for each tract:
     df[f"{census_geog}_total_pop"] = (
-        df["total_pop"].groupby(df[f"{census_geog}_geoid20"]).transform("sum")
+        df["total_pop"].groupby(df[f"{census_geog}_{census_id}"]).transform("sum")
     )
 
     agg_dict = {}
 
     for col_name in columns:
-        new_col = f"{year}_{col_name}_weighted"
+        new_col = f"exposure"
         df[new_col] = (df["total_pop"] * df[col_name]) / df[f"{census_geog}_total_pop"]
         agg_dict[new_col] = "sum"
-    df = df.groupby(f"{census_geog}_geoid20", as_index=False).agg(agg_dict)
-    df.set_index(f"{census_geog}_geoid20", inplace=True)
+    df = df.groupby(f"{census_geog}_{census_id}", as_index=False).agg(agg_dict)
+    df['year'] = int(year)
+    df.set_index(f"{census_geog}_{census_id}", inplace=True)
 
     return df
 

@@ -20,7 +20,7 @@ pvars <- c("AGEP",                   # used as condition >25yo
 
 # PUMS variables desired at household level
 hvars <- c("ACCESSINET",             # Internet access
-           "BDSP",                   # Number of bedrooms
+           "RMSP",                   # Number of rooms
            "FS",                     # Supplemental Nutrition Assistance Program
            "GRPIP",                  # Gross rent as percentage of income
            "GRNTP",                  # Gross rent
@@ -158,6 +158,7 @@ pums_efa_singleyear <- function(dyear, span=5){
                                     grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
 
   if(dyear<2020){hvars %<>% replace(hvars=="ACCESSINET","ACCESS")}                                 # Variable changed names w/ 2020 data
+  if(dyear<2020){hvars %<>% replace(hvars=="ACCESSINET","ACCESS")}                                 # Variable changed names w/ 2020 data
   hh_df <- get_psrc_pums(span, dyear, "h", hvars) %>% real_dollars(refyear)                        # Retrieve household data
   if("ACCESS" %in% colnames(hh_df)){hh_df %<>% rename("ACCESSINET"="ACCESS")}                      # Variable changed names w/ 2020 data
   hh_df %<>% add_efa_vars() %>% mutate(
@@ -176,20 +177,20 @@ pums_efa_singleyear <- function(dyear, span=5){
                                     levels=c("Greater than 50 percent",
                                              "Between 30 and 50 percent",
                                              "Less than 30 percent")),
-               crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_,          # Define the crowding subject variable
-                                           NP/BDSP <= 1                  ~ "One person per bedroom or less",
-                                           NP/BDSP <= 1.5                ~ "Between 1 and 1.5 person(s) per bedroom",
-                                           NP/BDSP  > 1.5                ~ "More than 1.5 persons per bedroom"),
-                                 levels=c("More than 1.5 persons per bedroom",
-                                          "Between 1 and 1.5 person(s) per bedroom",
-                                          "One person per bedroom or less")),
-               rent_crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_,          # Define the crowding subject variable
-                                           NP/BDSP <= 1   & OWN_RENT=="Rented" ~ "One person per bedroom or less",
-                                           NP/BDSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per bedroom",
-                                           NP/BDSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per bedroom"),
-                                 levels=c("More than 1.5 persons per bedroom",
-                                          "Between 1 and 1.5 person(s) per bedroom",
-                                          "One person per bedroom or less")),
+               renter_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,          # Define the crowding subject variable
+                                           NP/RMSP <= 1   & OWN_RENT=="Rented" ~ "One person per room or less",
+                                           NP/RMSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per room",
+                                           NP/RMSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per room"),
+                                 levels=c("More than 1.5 persons per room",
+                                          "Between 1 and 1.5 person(s) per room",
+                                          "One person per room or less")),
+             owner_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,          # Define the crowding subject variable
+                                           NP/RMSP <= 1   & OWN_RENT=="Owned" ~ "One person per room or less",
+                                           NP/RMSP <= 1.5 & OWN_RENT=="Owned" ~ "Between 1 and 1.5 person(s) per room",
+                                           NP/RMSP  > 1.5 & OWN_RENT=="Owned" ~ "More than 1.5 persons per room"),
+                                 levels=c("More than 1.5 persons per room",
+                                          "Between 1 and 1.5 person(s) per room",
+                                          "One person per room or less")),
                internet = factor(case_when(grepl("^Yes", ACCESSINET)     ~ "With internet access", # Define the internet access subject variable; began in 2013
                                          grepl("^No", ACCESSINET)        ~ "Without internet access")))
 
@@ -202,8 +203,8 @@ pums_efa_singleyear <- function(dyear, span=5){
   deep_pocket$"tenure"                  <- bulk_count_efa(hh_df, "OWN_RENT")
   deep_pocket$"rent_burden"             <- bulk_count_efa(hh_df, "rent_burden")
   deep_pocket$"median_gross_rent"       <- bulk_stat_efa(hh_df, "median", "GRNTP2020")
-  deep_pocket$"crowding"                <- bulk_count_efa(hh_df, "crowding")                       # i.e. persons per bedroom
-  deep_pocket$"rent_crowding"           <- bulk_count_efa(hh_df, "rent_crowding")                       # i.e. persons per bedroom
+  deep_pocket$"renter_crowding"         <- bulk_count_efa(hh_df, "renter_crowding")                # i.e. persons per room for renters
+  deep_pocket$"owner_crowding"          <- bulk_count_efa(hh_df, "owner_crowding")                 # i.e. persons per room for owners
   deep_pocket$"SNAP"                    <- bulk_count_efa(hh_df, "FS")                             # food stamp/SNAP
   deep_pocket$"internet_access"         <- bulk_count_efa(hh_df, "internet")
 

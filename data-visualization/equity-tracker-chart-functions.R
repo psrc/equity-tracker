@@ -90,7 +90,7 @@ echart_column_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, 
       echarts4r::e_tooltip(formatter =  htmlwidgets::JS("
       function(params, ticket, callback) {
       var fmt = new Intl.NumberFormat('en',
-      {\"style\":\"percent\",\"minimumFractionDigits\":1,\"maximumFractionDigits\":1,\"currency\":\"USD\"});\n
+      {\"style\":\"percent\",\"minimumFractionDigits\":0,\"maximumFractionDigits\":0,\"currency\":\"USD\"});\n
       var idx = 0;\n
       if (params.name == params.value[0]) {\n
       idx = 1;\n        }\n
@@ -233,7 +233,7 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
       echarts4r::e_tooltip(formatter =  htmlwidgets::JS("
     function(params, ticket, callback) {
     var fmt = new Intl.NumberFormat('en',
-    {\"style\":\"percent\",\"minimumFractionDigits\":1,\"maximumFractionDigits\":1,\"currency\":\"USD\"});\n
+    {\"style\":\"percent\",\"minimumFractionDigits\":0,\"maximumFractionDigits\":0,\"currency\":\"USD\"});\n
     var idx = 0;\n
     if (params.name == params.value[0]) {\n
     idx = 1;\n        }\n
