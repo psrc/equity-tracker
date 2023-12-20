@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -286,27 +286,6 @@ data <- acs_data_tract %>%
   st_drop_geometry()
 
 # calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
-
-# x<-rep(data$estimate,times=data$total_pop20)
-# df1<-data.frame(x)
-# summary(df1$x)
-# median(df1$x, na.rm=TRUE)
-# hist(df1$x)
-# regional median life expectancy: 80.86 
-
-# getting data by region from PUMS
-pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
-                           level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
-# regional median income: 96453.13
-
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
 # 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
@@ -315,20 +294,6 @@ sort <- data %>%
   dplyr::arrange(estimate)
 # 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
 # 53033030501 (Auburn, around 167)
-
-# this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
-
-# getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B19013', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
-  dplyr::arrange(desc(estimate))
 ```
 
 1. $96,500: The region's median household income
