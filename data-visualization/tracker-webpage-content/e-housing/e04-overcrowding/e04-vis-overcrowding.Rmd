@@ -1,17 +1,17 @@
 ---
-title: "Overcrowding (renters)"
+title: "Renter Overcrowding"
 subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
+  always_allow_html: true
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  always_allow_html: true
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -204,7 +204,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Overcrowding: <br> % of Renter Households <br> with >1.5 persons <br> per Room" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Renter Overcrowding: <br> % of Households <br> with >1.5 person(s) <br> per Room" # the <br> could be adjusted depending on the length/spacing of the name
 
 labels <- sprintf(
   "County: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body>",
@@ -285,16 +285,16 @@ sort <- data %>%
   dplyr::arrange(desc(estimate))
 ```
 
-1. 2.9%: The regional average of overcrowded renting households
-2. 3.5%: King County has the highest rate of overcrowding renting households
-3. 1.2%: Average percentage of households in Kitsap County, the county with the lowest overcrowding rates
+1. 2.9%: The regional average of overcrowded renter households
+2. 3.5%: King County has the highest rate of renters overcrowding
+3. 1.2%: Average percentage of overcrowded renter households in Kitsap County, the lowest in the region
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest rates of overcrowding among renters (3.5%), followed by Snohomish (2.3%), Pierce (2.1%), and Kitsap (1.2%)
-* King County's higher rates of overcrowding for renters is likely related to having the lowest homeownership rates within the region
+* King County has the highest rate of overcrowding among renters (3.5%), followed by Snohomish (2.3%), Pierce (2.1%), and Kitsap (1.2%)
+* King County's higher rate of overcrowding for renters is likely related to having the lowest homeownership rates within the region
 * Compared to King County, Kitsap County's overcrowding rate among renters is about one-third as high, while Pierce is about three-fifths as high and Snohomish is two-thirds as high
 
 \
@@ -340,7 +340,7 @@ esttype = "percent"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
-title = "Overcrowding (renters)"
+title = "Renter Overcrowding"
 subtitle = "More than 1.5 person(s) per room"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
@@ -435,7 +435,7 @@ filter <- data_clean_column %>%
 # snohomish low income-other: 0.25-0.18=0.07, ((0.25-0.18)/(0.18))*100: 39% difference
 ```
 
-1. 2x: Among renting households in the region, the overcrowding rate for people of color is 2 percentage points higher than white non-Hispanic households, or twice as high
+1. 2x: Among renter households in the region, the overcrowding rate for people of color is 2 percentage points higher than white non-Hispanic households, or twice as high
 2. 4%: The region's households below 200% of federal poverty line that are experiencing overcrowding
 3. 6%: Percentage of limited English proficient households experiencing overcrowding, 3 percentage points higher than than English proficient households, or twice as high
 
@@ -445,8 +445,8 @@ filter <- data_clean_column %>%
 #### Insights & Analysis
 
 * The largest difference in overcrowding rates between people of color and white non-Hispanic is in King County (3 percentage points), while the other counties have a 1 percentage point difference between people of color and white non-Hispanic
-* King County has the highest rate of overcrowding among renting households below 200% of federal poverty (5%), followed by Snohomish and Pierce (3%), and Kitsap (2%) 
-* Renting households with limited English proficiency have the highest rates of overcrowding across all of the demographic groups, regardless of county
+* King County has the highest rate of overcrowding among renter households below 200% of federal poverty (5%), followed by Snohomish and Pierce (3%), and Kitsap (2%) 
+* Renter households with limited English proficiency have the highest rates of overcrowding across all of the demographic groups, regardless of county
 
 
 \
@@ -630,7 +630,7 @@ filter <- data_clean %>%
 ```
 
 1. 2: The regional gap in overcrowding between people of color and white, non-Hispanic remained 2 percentage points between 2011 and 2021
-2. 200%: Overcrowding among renting households in the region who were below 200% of federal poverty line increased 100% between 2011 and 2021 (2% to 4%)
+2. 200%: Overcrowding among renter households in the region who were below 200% of federal poverty line increased 100% between 2011 and 2021 (2% to 4%)
 3. 33%: The regional share of overcrowding households with limited English proficiency increased 33% between 2011 and 2021
 
 \
