@@ -331,7 +331,7 @@ just_region_16 <- data_clean %>%
   filter(county=="Region",
          data_year==2011)%>% 
   arrange(focus_attribute_ord)
-just_region_21 <- data_clean2 %>% 
+just_region_21 <- data_clean %>% 
   filter(county=="Region",
          data_year==2011)%>% 
   arrange(focus_attribute_ord)
@@ -696,7 +696,7 @@ acs_data <- acs_data_reliability %>% #just interested in renters for now
   dplyr::select(GEOID,estimate,reliability)
 ```
 
-```{r acs data - county level, include=FALSE, eval=FALSE}
+```{r acs data - county level}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
 
 # getting data by tract
@@ -771,6 +771,16 @@ acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
   mutate(estimate=estimate_dec*100) %>% 
   dplyr::select(GEOID,county_name,estimate,reliability)
 
+acs_data_cnty <- acs_data %>% 
+  dplyr::filter(county_name!="Region")
+
+acs_data_reg <- acs_data %>% 
+  dplyr::filter(county_name=="Region")
+
+# add region median to county data
+county_reg_data <- acs_data_cnty %>%
+  mutate(reg_estimate=acs_data_reg$estimate)
+
 # ----------------
 # # for combined owners and renters
 # # use the moe_sum function from tidycensus
@@ -809,29 +819,32 @@ acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
 #   dplyr::select(GEOID,county_name, estimate,reliability)
 ```
 
-```{r pums data - county level}
+```{r pums data - county level, include=FALSE, eval=FALSE}
 # access pums data - 2021
 crowd_2021 <- get_psrc_pums(span = 5,
                             dyear = 2021,
                             level = "h", # Unit of analysis == household
-                            vars = c("NP","BDSP", "OWN_RENT")) # Number of persons in household, Number of bedrooms, Own/rent tenure status
+                            vars = c("NP", # Number of persons in household
+                                     "RMSP", # Number of rooms
+                                     # "BDSP", # Number of bedrooms
+                                     "OWN_RENT")) # Own/rent tenure status
 
 # calculate NP/BDSP
 crowding <- crowd_2021 %>% 
-  dplyr::mutate(crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_, 
-                                            NP/BDSP <= 1 ~ "One person per bedroom or less",
-                                            NP/BDSP <= 1.5 ~ "Between 1 and 1.5 person(s) per bedroom",
-                                            NP/BDSP  > 1.5 ~ "More than 1.5 persons per bedroom"),
+  dplyr::mutate(crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_, 
+                                            NP/RMSP <= 1 ~ "One person per room or less",
+                                            NP/RMSP <= 1.5 ~ "Between 1 and 1.5 person(s) per room",
+                                            NP/RMSP  > 1.5 ~ "More than 1.5 persons per room"),
                                   levels=c("More than 1.5 persons per bedroom",
                                            "Between 1 and 1.5 person(s) per bedroom",
                                            "One person per bedroom or less")),
-                rent_crowding = factor(case_when(is.na(NP)|is.na(BDSP)|BDSP==0 ~ NA_character_, 
-                                                 NP/BDSP <= 1   & OWN_RENT=="Rented" ~ "One person per bedroom or less",
-                                                 NP/BDSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per bedroom",
-                                                 NP/BDSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per bedroom"),
-                                       levels=c("More than 1.5 persons per bedroom",
-                                                "Between 1 and 1.5 person(s) per bedroom",
-                                                "One person per bedroom or less")))
+                rent_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_, 
+                                                 NP/RMSP <= 1   & OWN_RENT=="Rented" ~ "One person per room or less",
+                                                 NP/RMSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per room",
+                                                 NP/RMSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per room"),
+                                       levels=c("More than 1.5 persons per room",
+                                                "Between 1 and 1.5 person(s) per room",
+                                                "One person per room or less")))
 
 # calculate count statistics based on adjusted variables
 # for all households
@@ -849,7 +862,7 @@ totals <- dt_21 %>%
   dplyr::group_by(COUNTY) %>% 
   dplyr::mutate(geo_total_rent=sum(count),
                 share_rent=count/geo_total_rent) %>% 
-  dplyr::filter(rent_crowding=="More than 1.5 persons per bedroom") %>% 
+  dplyr::filter(rent_crowding=="More than 1.5 persons per room") %>% 
   dplyr::select(-reliability, - share, -share_moe)
 
 
@@ -1085,11 +1098,17 @@ acs_data <- acs_data_reliability %>% #just interested in renters for now
 #                         by.y="GEOID",
 #                         all.x=TRUE)
 
-# merge to 2020 county spatial file
-pums_data_county <- merge(county.lyr, pums_data,
-                          by.x="county_name",
-                          by.y="COUNTY",
-                          all.x=FALSE)
+# merge to 2020 census tract spatial file
+acs_data <- merge(county.lyr, county_reg_data,
+                  by.x="county_name",
+                  by.y="county_name",
+                  all.y=TRUE)
+
+# # merge to 2020 county spatial file
+# pums_data_county <- merge(county.lyr, pums_data,
+#                           by.x="county_name",
+#                           by.y="COUNTY",
+#                           all.x=FALSE)
 
 # # getting data by county and region from acs
 # county_reg_acs_data <- get_acs_recs(geography ='county',
@@ -1411,7 +1430,7 @@ Save final data set (.rda) for map
 file_name <- 'e04-overcrowding-map-data'
 
 # save final data set as .rda
-save(pums_data_county, file = file.path(base_dir,
+save(acs_data, file = file.path(base_dir,
                                       theme_dir,
                                       ind_dir, "rda-data",
                                       paste0(file_name,'.rda')))

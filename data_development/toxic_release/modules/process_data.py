@@ -162,8 +162,8 @@ def census_geog_weighted(
         agg_dict[new_col] = "sum"
     df = df.groupby(f"{census_geog}_{census_id}", as_index=False).agg(agg_dict)
     df['year'] = int(year)
-    df.set_index(f"{census_geog}_{census_id}", inplace=True)
-
+    df = df.rename(columns={f"{census_geog}_{census_id}" : 'geoid'})
+    
     return df
 
 
