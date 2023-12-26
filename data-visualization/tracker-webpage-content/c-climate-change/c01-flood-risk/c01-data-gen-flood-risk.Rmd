@@ -719,7 +719,7 @@ population_test <- data_equity_pivot21 %>%
   distinct(GEOID, .keep_all = TRUE) %>%
   dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443
 
-sum(tracts20.lyr$total_pop21) #4,294,373
+# sum(tracts20.lyr$total_pop21) 
 
 # calculations to get weighted average for flood risk score per equity group/quintile
 data_equity_wt21 <- data_equity_pivot21 %>%
@@ -732,9 +732,9 @@ data_equity_wt21 <- data_equity_pivot21 %>%
   dplyr::mutate(wt_average=tot_rate/tot_prop) 
 
 # check population
-data_equity_wt21_test <- data_equity_wt21 %>%
-  dplyr::filter(equity_group=="income_quintile")
-  sum(data_equity_wt21_test$tot_pop) #4,197,443
+# data_equity_wt21_test <- data_equity_wt21 %>%
+#   dplyr::filter(equity_group=="income_quintile")
+#   sum(data_equity_wt21_test$tot_prop) #4,197,443
 
 # check data set
 nrow(data_equity_wt21)
