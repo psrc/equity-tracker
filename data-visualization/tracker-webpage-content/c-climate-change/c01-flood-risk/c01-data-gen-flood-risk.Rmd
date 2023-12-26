@@ -109,7 +109,7 @@ tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/servi
 tracts20.lyr<-st_read(tracts20.url)
 tracts10.lyr<-st_read(tracts10.url)
 
-tracts20.lyr<-tracts20.lyr[,-20]
+tracts20.lyr<-tracts20.lyr[,-20] #removing the 2020 pop column
   
 nrow(tracts20.lyr) #919
 nrow(tracts10.lyr) #773
@@ -715,9 +715,9 @@ The scores are available at the census tract level but we want to calculate the 
 ```{r}
 
 # calculate 2021 region population
-population_test <- data_equity_pivot21 %>%
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443
+# population_test <- data_equity_pivot21 %>%
+#   distinct(GEOID, .keep_all = TRUE) %>%
+#   dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443
 
 # sum(tracts20.lyr$total_pop21) 
 
