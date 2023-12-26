@@ -522,7 +522,7 @@ test_merge <- merge(data_clean_affordability_2021, test_sum_region,
 # table(simple_acs_data_2021_county_test$poc_afford) #0:29, 1:456
 
 # set number of tracts per county
-simple_acs_data_2021_county_test <- simple_acs_data_2021 %>%
+acs_data_2021_county_test <- simple_acs_data_2021 %>%
   dplyr::filter(county=="King")
 
 # county numbers - function
@@ -541,10 +541,10 @@ county_function <- function(equity_df, geo_df, geography, equity_group){
 }
 
 # generate equity group data
-poc_king <- county_function(data_clean_affordability_2021, simple_acs_data_2021, "King", "POC")
-non_poc_king <- county_function(data_clean_affordability_2021, simple_acs_data_2021, "King", "Non-POC")
-low_income_king <- county_function(data_clean_affordability_2021, simple_acs_data_2021, "King", "Low Income")
-non_low_income_king <- county_function(data_clean_affordability_2021, simple_acs_data_2021, "King", "Non-Low Income")
+poc_king <- county_function(data_clean_affordability_2021, acs_data_2021, "King", "POC")
+non_poc_king <- county_function(data_clean_affordability_2021, acs_data_2021, "King", "Non-POC")
+low_income_king <- county_function(data_clean_affordability_2021, acs_data_2021, "King", "Low Income")
+non_low_income_king <- county_function(data_clean_affordability_2021, acs_data_2021, "King", "Non-Low Income")
 
 # combine all equity group data
 test_bind <- mutate(poc_king, non_poc_king, low_income_king, non_low_income_king)
