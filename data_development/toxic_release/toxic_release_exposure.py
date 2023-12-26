@@ -62,6 +62,6 @@ for file_path in file_paths:
 
     print(f"finished processing {str(year)}")
 df = pd.concat(data_list, axis=0)
-df.reset_index(inplace = True)
-df.to_csv(config.output_file)
+#df.reset_index(inplace = True)
+df.to_csv(config.output_file, index=False)
 print("done")
