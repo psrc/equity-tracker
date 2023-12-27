@@ -72,3 +72,27 @@ data_clean$data_year <- as.character(data_clean$data_year)
 # Sort the data to ensure the charts work
 data_clean <- data_clean %>%
   arrange(county, focus_type_ord, focus_attribute_ord, data_year)
+
+## 3. Calculate affordability with median gross rent
+### Monthly, 30% of income (equity group)
+data_clean_affordability <- data_clean %>% 
+  dplyr::mutate(income_per_month = fact_value/12,
+                income_30perc = income_per_month * 0.3)
+
+### Median gross rent (tract level) ----
+# set variable for same years as in PUMS dataset
+years_of_interest <- c(as.numeric(unique(data_clean$data_year_yr)))
+
+# getting median gross rent data by tract - ACS
+base_acs_data <- get_acs_recs(geography ='tract', 
+                              table.names = 'B25064',
+                              years = years_of_interest,
+                              acs.type = 'acs5')
+
+acs_data <- base_acs_data %>% 
+  dplyr::mutate(county_code=substr(GEOID, 3, 5), # add county to tract level data
+                county = case_when(county_code=="033" ~"King",
+                                   county_code=="035" ~"Kitsap",
+                                   county_code=="053" ~"Pierce",
+                                   county_code=="061" ~"Snohomish")) %>% 
+  dplyr::select(GEOID, estimate, year, county)
