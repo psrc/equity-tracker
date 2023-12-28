@@ -112,6 +112,9 @@ tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/servi
 tracts20.lyr<-st_read(tracts20.url)
 tracts10.lyr<-st_read(tracts10.url)
 
+tracts20.lyr<-tracts20.lyr[,-20] #removing population column
+tracts10.lyr<-tracts10.lyr[,-20] #removing population column
+
 nrow(tracts20.lyr) #919
 nrow(tracts10.lyr) #773
 ```
@@ -143,6 +146,34 @@ canopy_21 <- canopy_21 %>%
            County.Name=="Kitsap" |
            County.Name=="Pierce" |
            County.Name=="Snohomish")
+
+tract.21 <- tract.21 %>%
+  dplyr::mutate(geoid20=GEOID) %>%
+  dplyr::mutate(total_pop21=estimate)
+
+tract.11 <- tract.11 %>%
+  dplyr::mutate(geoid10=GEOID) %>%
+  dplyr::mutate(total_pop11=estimate)
+
+canopy_21 <- merge(x = canopy_21, y = tract.21[ , c("geoid20", "total_pop21")], by = "geoid20", all.x=TRUE) #pull in population
+
+canopy_11 <- merge(x = canopy_11, y = tract.11[ , c("geoid10", "total_pop11")], by = "geoid10", all.x=TRUE)
+
+canopy_21 <- merge(x = canopy_21, y = tracts20.lyr[ , c("geoid20", "land_acres")], by = "geoid20", all.x=TRUE) #pull in land_acres
+
+canopy_11 <- merge(x = canopy_11, y = tracts10.lyr[ , c("geoid10", "land_acres")], by = "geoid10", all.x=TRUE)
+
+canopy_21 <- canopy_21[,-8] #remove geometry
+canopy_11 <- canopy_11[,-8]
+
+tract.21 <- tract.21 %>%
+   dplyr::mutate(GEOID=geoid20) 
+
+tract.11 <- tract.11 %>%
+   dplyr::mutate(GEOID=geoid10) 
+
+# data_tract <- data_tract %>%
+#    dplyr::mutate(estimate=as.numeric(average)) # rename value variable for consistency
 ```
 
 ## Most Recent Data
@@ -604,14 +635,14 @@ county_tract_data <- data_tract %>%
   st_drop_geometry() %>%  #to remove spatial component
   # dplyr::select(county_name, estimate, total_pop21) %>% #to simplify table to necessary fields
   dplyr::group_by(county_name) %>% 
-  dplyr::mutate(cnty_estimate=(sum(estimate*total_pop21, na.rm =TRUE))/(sum(total_pop21, na.rm=TRUE))) %>% #calculate weighted value by county
+  dplyr::mutate(cnty_estimate=(sum(estimate*land_acres.x, na.rm =TRUE))/(sum(land_acres.x, na.rm=TRUE))) %>% #calculate weighted value by county using land_acres
   dplyr::distinct(county_name, cnty_estimate)
 
 # calculating data by region
 reg_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
-  dplyr::select(estimate, total_pop21) %>% #to simplify table to necessary fields
-  dplyr::mutate(reg_estimate=(sum(estimate*total_pop21, na.rm =TRUE))/(sum(total_pop21, na.rm=TRUE))) %>% #calculate weighted value for region
+  dplyr::select(estimate, land_acres.x) %>% #to simplify table to necessary fields
+  dplyr::mutate(reg_estimate=(sum(estimate*land_acres.x, na.rm =TRUE))/(sum(land_acres.x, na.rm=TRUE))) %>% #calculate weighted value for region
   dplyr::distinct(reg_estimate)
 
 # add region data to county data
@@ -729,7 +760,7 @@ The tree canopy data are available at the census tract level, but we want to cal
 data_equity_pivot21_calc <- data_equity_pivot21 %>% 
   filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
-  summarise(wt_Avg_Per=(sum(Avg_Per_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
+  summarise(wt_Avg_Per=(sum(Avg_Per_num*land_acres, na.rm =TRUE))/(sum(land_acres, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>% 
   as_tibble() %>%
   mutate(data_year=2021) 
@@ -737,7 +768,7 @@ data_equity_pivot21_calc <- data_equity_pivot21 %>%
 data_equity_pivot11_calc <- data_equity_pivot11 %>% 
   filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
-  summarise(wt_Avg_Per=(sum(Avg_Per_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>%
+  summarise(wt_Avg_Per=(sum(Avg_Per_num*land_acres, na.rm =TRUE))/(sum(land_acres, na.rm=TRUE))) %>%
   mutate(County.Name="Region") %>% 
   as_tibble() %>%
   mutate(data_year=2011) 
@@ -764,20 +795,20 @@ The rates are available at the census tract level but we want to calculate the w
 ```{r}
 
 # calculate 2020 region population
-population_test <- data_equity_pivot21 %>%
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443
+# population_test <- data_equity_pivot21 %>%
+#   distinct(GEOID, .keep_all = TRUE) %>%
+#   dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443
 
-sum(tracts20.lyr$total_pop21) #4,294,373
+# sum(tracts20.lyr$total_pop21) #4,294,373
 
-# calculations to get weighted average for tree canopy percentage per equity group/quintile
+# calculations to get weighted average for tree canopy by land acres percentage per equity group/quintile
 data_equity_wt21 <- data_equity_pivot21 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Avg_Per_num) %>%
+  dplyr::mutate(tot_risk_tract=land_acres*Avg_Per_num) %>%
   dplyr::group_by(county, data_year, equity_group, quintile) %>%
   dplyr::summarise(tracts=length(GEOID),
                    tot_Avg_Per=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>%
+                   tot_pop=(sum(land_acres, na.rm = TRUE))) %>% #kept tot_pop to minimize updating more code
   dplyr::mutate(wt_Avg_Per=tot_Avg_Per/tot_pop) 
 
 # check population
@@ -788,11 +819,11 @@ data_equity_wt21_test <- data_equity_wt21 %>%
 # calculations to get weighted average for tree canopy percentage per equity group/quintile
 data_equity_wt11 <- data_equity_pivot11 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Avg_Per_num) %>%
+  dplyr::mutate(tot_risk_tract=land_acres*Avg_Per_num) %>%
   dplyr::group_by(county, data_year, equity_group, quintile) %>%
   dplyr::summarise(tracts=length(GEOID),
                    tot_Avg_Per=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>%
+                   tot_pop=(sum(land_acres, na.rm = TRUE))) %>%
   dplyr::mutate(wt_Avg_Per=tot_Avg_Per/tot_pop) 
 
 # check population
@@ -803,17 +834,6 @@ data_equity_wt11_test <- data_equity_wt11 %>%
 # check data set
 nrow(data_equity_wt11)
 nrow(data_equity_wt21)
-
-# region_rate <- data_equity_pivot20 %>%
-#   dplyr::select(-"county", -"equity_group", -"quintile") %>%
-#   distinct() %>%
-#   mutate(rate_pop=(estimate*Log_rate)) %>%
-#   mutate(rate_pop=(replace_na(rate_pop, 0))) %>%
-#   group_by(year.x) %>%
-#   summarise(region_rate=(sum(rate_pop)/sum(estimate))) %>%
-#   as_tibble() %>%
-#   dplyr::select("region_rate") %>%
-#   pull()
 
 ```
 The regional population in 2021: `r population_test`
