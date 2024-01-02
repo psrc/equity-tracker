@@ -69,7 +69,20 @@ counties_df <- data.table::rbindlist(all_dfs[co_dfs_names])
 # regional tally
 r_cols <- colnames(regional_df)[!(colnames(regional_df) %in% c('GEOID', 'estimate', 'year', 'county'))]
 
-region_tally <- regional_df %>% 
+# count number of NAs in regional_df
+reg_df_na <- regional_df %>% 
+  group_by(year) %>% 
+  summarise(across(r_cols, ~sum(is.na(.x)))) %>% 
+  pivot_longer(cols = r_cols,
+               names_to = "equity_group",
+               values_to = "tracts") %>% 
+  left_join(num_tracts_region, by = "year") 
+
+reg_df_na_upd <- reg_df_na %>% 
+  filter(tracts == tot_tracts) %>% 
+  select(-tot_tracts)
+
+region_tally_a <- regional_df %>% 
   group_by(year) %>% 
   summarise(across(all_of(r_cols), ~sum(.x, na.rm = TRUE))) %>% 
   pivot_longer(cols = all_of(r_cols),
@@ -79,8 +92,30 @@ region_tally <- regional_df %>%
   mutate(share_aff_tracts = aff_tracts/tot_tracts,
          county = 'Region')
 
+# if NA count equals total number of tracts, update region tally to NA instead of 0
+region_tally <- region_tally_a %>% 
+  left_join(reg_df_na_upd, by = c('year', 'equity_group')) %>% 
+  mutate(aff_tracts = ifelse(!is.na(tracts), NA, aff_tracts),
+         share_aff_tracts = ifelse(!is.na(tracts), NA, share_aff_tracts)) %>% 
+  select(-tracts)
+
+# county tally ----
+
+# count number of NAs in counties_df
+co_df_na <- counties_df %>% 
+  group_by(year, county) %>% 
+  summarise(across(r_cols, ~sum(is.na(.x)))) %>% 
+  pivot_longer(cols = r_cols,
+               names_to = "equity_group",
+               values_to = "tracts") %>% 
+  left_join(num_tracts_counties, by = c("year", "county")) 
+
+co_df_na_upd <- co_df_na %>% 
+  filter(tracts == tot_tracts) %>% 
+  select(-tot_tracts)
+
 # counties tally
-counties_tally <- counties_df %>% 
+counties_tally_a <- counties_df %>% 
   group_by(year, county) %>% 
   summarise(across(all_of(r_cols), ~sum(.x, na.rm = TRUE))) %>% 
   pivot_longer(cols = all_of(r_cols),
@@ -88,6 +123,13 @@ counties_tally <- counties_df %>%
                values_to = "aff_tracts") %>% 
   left_join(num_tracts_counties, by = c("year", "county")) %>% 
   mutate(share_aff_tracts = aff_tracts/tot_tracts)
+
+# if NA count equals total number of tracts, update co tally to NA instead of 0
+counties_tally <- counties_tally_a %>% 
+  left_join(co_df_na_upd, by = c('year', 'equity_group', "county")) %>% 
+  mutate(aff_tracts = ifelse(!is.na(tracts), NA, aff_tracts),
+         share_aff_tracts = ifelse(!is.na(tracts), NA, share_aff_tracts)) %>% 
+  select(-tracts)
 
 # bind tallies & merge with main table
 tally <- bind_rows(region_tally, counties_tally) %>% 
