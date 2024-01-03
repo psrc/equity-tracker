@@ -86,13 +86,13 @@ def aggregate_non_overlaps(
 
 
 def get_ofm_parcelized(
-    year: int, max_year: int, census_geog: str, connection_string: str, crs: int
+    year: int, vintage: int, census_geog: str, connection_string: str, crs: int
 ) -> gpd.GeoDataFrame:
     """Returns a Pandas DataFrame with parcels and OFM data. See sql query in the function for more details
 
     Args:
         year (int): year to get OFM data
-        max_year (int): used to determine data vintage
+        vintage (int): used to determine data vintage
         census_geog (str): cenus_geog: tract, block_group or block
         connection_string (str): Valid connection string to Elmer Database
         crs (int): cordinate system for parcels
@@ -100,10 +100,8 @@ def get_ofm_parcelized(
     Returns:
         gpd.GeoDataFrame: Parcelized OFM data from Elmer.
     """
-    if year < 2021:
+    if year < 2020:
         vintage = 2020
-    else:
-        vintage = max_year
 
     sql_str = f"""
         select psf.total_pop, pd.parcel_id, pd.{census_geog}_geoid10, pd.{census_geog}_geoid20, 
@@ -167,14 +165,14 @@ def census_geog_weighted(
     return df
 
 
-def process(config, gdf, year, max_year):
+def process(config, gdf, year):
     """process to buffer points, then aggregate population weighted measures to a census geography.
 
     Args:
         config (Config): config file
         gdf (gdf.GeoDataFrame): points to buffer
         year (int): year to process data
-        max_year (int): used for Parcel/OFM vintage
+        vintage (int): used for Parcel/OFM vintage
 
     Returns:
         pd.DataFrame: weighted measures aggregated to census geog.
@@ -184,7 +182,7 @@ def process(config, gdf, year, max_year):
     )
 
     ofm_parcels = get_ofm_parcelized(
-        year, max_year, config.census_geog, config.elmer_conn_string, config.crs
+        year, config.vintage, config.census_geog, config.elmer_conn_string, config.crs
     )
 
     weighted = census_geog_weighted(
