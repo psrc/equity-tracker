@@ -83,7 +83,7 @@ reg_df_na <- regional_df %>%
 
 reg_df_na_upd <- reg_df_na %>% 
   filter(tracts == tot_tracts) %>% 
-  select(-tot_tracts)
+  dplyr::select(-tot_tracts)
 
 region_tally_a <- regional_df %>% 
   group_by(year) %>% 
@@ -100,7 +100,7 @@ region_tally <- region_tally_a %>%
   left_join(reg_df_na_upd, by = c('year', 'equity_group')) %>% 
   mutate(aff_tracts = ifelse(!is.na(tracts), NA, aff_tracts),
          share_aff_tracts = ifelse(!is.na(tracts), NA, share_aff_tracts)) %>% 
-  select(-tracts)
+  dplyr::select(-tracts)
 
 # county tally ----
 
@@ -115,7 +115,7 @@ co_df_na <- counties_df %>%
 
 co_df_na_upd <- co_df_na %>% 
   filter(tracts == tot_tracts) %>% 
-  select(-tot_tracts)
+  dplyr::select(-tot_tracts)
 
 # counties tally
 counties_tally_a <- counties_df %>% 
@@ -132,13 +132,13 @@ counties_tally <- counties_tally_a %>%
   left_join(co_df_na_upd, by = c('year', 'equity_group', "county")) %>% 
   mutate(aff_tracts = ifelse(!is.na(tracts), NA, aff_tracts),
          share_aff_tracts = ifelse(!is.na(tracts), NA, share_aff_tracts)) %>% 
-  select(-tracts)
+  dplyr::select(-tracts)
 
 # bind tallies & merge with main table
 tally <- bind_rows(region_tally, counties_tally) %>% 
   mutate(data_year = as.character(year),
          focus_attribute = str_extract(equity_group, "^.*(?=_)")) %>% 
-  select(-year, -equity_group)
+  dplyr::select(-year, -equity_group)
 
 final_df <- data_clean_affordability %>% 
   left_join(tally, by = c('data_year', 'county', 'focus_attribute'))
