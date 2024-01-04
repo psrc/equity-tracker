@@ -57,7 +57,9 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Median gross rent measures the average rent for the location, in this case being census tract, and "median" indicates that the middle value in between the census tracts highest gross rent and lowest gross rent is what represents the median gross rent value. Oftentimes, a higher median gross rent can indicate that some families and households are priced out of an area, limiting options of living close to transit, in neighborhoods with good schools, and limiting opportunity and access. 
+Access to affordable rent helps to ensure that people can choose to live in safe and stable housing that is located in neighborhoods with the services and amenities they require. Increasing access to housing provides greater opportunity for households to choose where they can live. 
+
+For this measure, we are focused on renting households and define access to affordable rent as the share of census tracts where households can afford to live by spending 30% or less of their income on rent. This indicator is determined based on the median gross rent of the location and the median household income for the region or a specific group of people. At its most basic, we are visualizing where and what proportion of tracts can a typical renter afford the typical rent?
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -279,7 +281,7 @@ acs_map
 
 Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 \
-* Regional affordability threshold is defined as 30% of the region's monthly median household income
+* The regional affordability threshold is defined as 30% of the regional monthly median household income
 
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
@@ -300,25 +302,32 @@ htmlwidgets::saveWidget(acs_map,
 data <- acs_data_tract %>%
   st_drop_geometry()
 
+table(data$affordability)
+# 347/(347+550) = 0.386845
+
+table(data$county_name, data$affordability)
+# King: 123/(123+362)= 0.2536082
+# Kitsap: 41/(41+18)= 0.6949153
+# Pierce: 114/(114+76)= 0.6
+# Snohomish: 69/(69+94)= 0.4233129
+
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
 
-sort <- data %>% 
-  dplyr::arrange(estimate)
 ```
 
-1. \$1,680: Regional median gross rent
-2. \$3,500: Highest median gross rent (seven tracts in King County)
-3. \$620: Lowest median gross rent (in Pierce County)*
+1. \$1,640: Regional affordability threshold
+2. 39%: Share of tracts where rent is affordable based on the regional median household income
+3. 1/4: King County has the lowest proportion of tracts with affordable rent 
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest median gross rent (\$1,800), followed by Snohomish (\$1,640), and Kitsap and Pierce (both \$1,440)
-* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three in southern Mercer Island, two in Clyde Hill/Hunts Point/Medina/Yarrow Point, two in Bellevue, two in Sammamish, and one in southwestern Bainbridge Island
-* The highest median gross rent in Pierce, Kitsap, and Snohomish County are: in the far eastern portion of Pierce county near Issaquah (\$3,110), in the southwestern portion of Bainbridge (\$3,500), and southern Mulkiteo (\$3,400)
-* *The two census tracts with the lowest median gross rent are in Pierce County, where Tacoma Housing Authority properties are located: Arlington Drive Youth Campus and Salishan Family Investment Center (\$620); Hillside Terrace 1500 Block and The Rise at 19th (\$740) 
+* Access to affordable rent is highest in Kitsap (69%), followe by Pierce County (60%), Snohomish (42%), and King (25%)
+* Ten census tracts tied with the highest median gross rent (\$3,500) are all in King County: three in southern Mercer Island, two in Clyde Hill/Hunts Point/Medina/Yarrow Point, three in Bellevue, two in Sammamish
+* The highest median gross rent in Pierce, Kitsap, and Snohomish County are: in Tehaleh community south of Bonney Lake (\$2,800), in the southwestern portion of Bainbridge (\$3,500), and southern Mukilteo (\$3,400)
+* More affordable rents are seen in south Seattle, south King County, Tacoma/central Pierce County, along the I-5 corridor in Snohomish County, and in communities farther out from the region’s urban core
 
 \
 \
@@ -445,73 +454,60 @@ if (output_type == "html") {
 # calculate call out information
 filter <- data_clean_column %>% 
   filter(county=="Region",
-         focus_type=="Income_cat")
+         focus_type=="Disability_cat")
 
-# region low income households: 25409.57	
-# region non-low income households: 135561.35
-# 135561.35-25409.57=110151.8
+# region disability: 0.7562297	(698/923)
+# region non-disability: 0.9469122
+# 0.9469122-0.7562297=0.1906825
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
          county=="Region")
-# region lep households: 58284.83	
-# region non-lep households: 116673.43
-# 116673.43-58284.83=58388.6
+# region lep households: 0.2340195	
+# region non-lep households: 0.9404117
+# 0.9404117-0.2340195=0.7063922
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="Older_cat",
+         county=="Region")
+# region older households: 0.7573131	
+# region non-older households: 0.9501625
+# 0.9501625-0.7573131=0.1928494
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
-         vulnerability=="high vulnerability")
+         county=="Snohomish")
+# King non-lep-lep households: 0.9494949-0.1151515=	0.8343434
+# Kitsap non-lep-lep households: 0.9500000-0.1166667= 0.8333333
+# Pierce non-lep-lep households: 0.9689119-0.2279793=	0.7409326
+# Snohomish non-lep-lep households: 0.9142857-0.4400000=0.4742857
 
-# region lep households: 58284.83	
-# snohomish lep households: 67832.94
-# 71.45515-63.50990=7.94525
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="Youth_cat", 
+  filter(focus_type=="Income_cat", 
          vulnerability == "high vulnerability")
 
-# region youth households: 141389.8	
-# region non-youth households: 102097.0
-# 141389.8-102097.0=39292.8
-
 filter <- data_clean_column %>% 
-  filter(focus_type=="POC_cat")
-# snohomish poc: 108886.4
-# snohomish non-poc: 112974.4
-# 112974.4-108886.4=4088
-
-# king poc: 111529.77
-# king non-poc: 130977.15
-# 130977.15-111529.77=19447.38
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="Disability_cat")
-# kitsap dis: 84171.34
-# kitsap non-dis: 104284.10
-# 104284.10-84171.34=20112.76
-
-# king dis: 81508.16
-# king non-dis: 134637.12
-# 134637.12-81508.16=53128.96
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="Income_cat") %>% 
-  dplyr::arrange(desc(fact_value))
-
+  filter(focus_type=="Older_cat",
+         county=="Snohomish")
+# King non-older-older households: 0.9575758-0.7474747=	0.2101011
+# Kitsap non-older-older households: 0.95-0.90=	0.05
+# Pierce non-older-older households: 0.9740933-0.8963731=	0.0777202
+# Snohomish non-older-older households: 0.9200000-0.7028571=	0.2171429
 ```
 
-1. \$500: Median gross rent for households in the region living below 200% of federal poverty level is \$500 less those living above
-2. \$300: English proficient households in the region pay \$300 more than limited English proficient households
-3. \$200: Regional median gross rent for those with children is \$300 higher than those without
+1. 3/4: Three out of every four census tracts in the region are affordable for people with a disability
+2. 23%: Share of affordable tracts for households with limited English proficiency, a 71 percentage point difference compared to English-proficient households
+3. 19%: Difference in the share of affordable tracts between households with older adults and other households
 
 \
 
 #### Insights & Analysis
 
-* People of color in Snohomish, Pierce, and Kitsap counties are paying the same median gross rent as white non-Hispanic households, while in King County, white non-Hispanic households are paying $100 more in rent than people of color
-* For households living below 200% of poverty level, King County households are paying the most at (\$1,700), followed by Snohomish (\$1,600), Pierce (\$1,500), and Kitsap (\$1,400)
-* Households with children (youth under 18 years) are paying the most in King County (\$2,300), followed by Snohomish (\$2,100), then Kitsap and Pierce counties (\$1,900)
-* These insights may indicate that while people and households are paying more in median gross rent than their counterparts, it may mean that those within the select demographic groups cannot afford higher-rent homes
+* People of color have slightly lower access to affordable rent in all counties compared to white non-Hispanic, except in Snohomish County where both groups are able to afford rent in 91% of the census tracts
+* This small difference between the people of color and white non-Hispanic groups is in part driven by high median household incomes for certain Asian households. More information about the way in which the Asian subgroup differs in housing opportunities from other racial subgroups is available in the [Regional Housing Strategy: 2023 Monitoring Report](https://www.psrc.org/media/8253). Within the Asian racial group, there is also great diversity and disparities experienced by different Asian subgroups, as described in a [PSRC blog post](https://www.psrc.org/about-us/media-hub/diversity-asian-and-pacific-islander-experiences) from 2022
+* For households living below 200% of poverty level, Pierce County is the only county where there is one affordable tract (out of 193, or 1%)
+* The disparity in access to affordable rent between households with older adults and other households is greatest in Snohomish County (22%) and King (21%), and much smaller in Pierce (8%) and Kitsap (5%)
 
 \
 \
