@@ -32,5 +32,6 @@ hct_submode_list = [0,2,4]
 'KC_102576' = 'C Line'
 'KC_102581' = 'D Line'
 'KC_102615' = 'E Line'
-'CT_701'= 'Swift Blue'
+'CT_701' = 'Swift Blue'
+'CT_702' = 'Swift Green'
 
