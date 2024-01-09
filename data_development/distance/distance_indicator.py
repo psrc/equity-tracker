@@ -9,27 +9,11 @@ from shapely.geometry import Point
 from sqlalchemy.engine import URL
 from pymssql import connect
 import warnings
+import transit_service_analyst as tsa
 warnings.filterwarnings('ignore')
+import toml
 
-# Define which year to use for equity quintile definitions (from Elmer)
-# As of Sept 2022, options are 2019, 2020
-equity_quintiles_year = 2020
-
-def load_elmer_geo_table(feature_class_name, con, crs):
-    """ Load ElmerGeo table as geoDataFrame, applying a specified coordinate reference system (CRS)
-    """
-    geo_col_stmt = "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME=" + "\'" + feature_class_name + "\'" + " AND DATA_TYPE='geometry'"
-    geo_col = str(pd.read_sql(geo_col_stmt, con).iloc[0,0])
-    query_string = 'SELECT *,' + geo_col + '.STGeometryN(1).ToString()' + ' FROM ' + feature_class_name
-
-    df = pd.read_sql(query_string, con)
-    df.rename(columns={'':'geometry'}, inplace = True)
-    df['geometry'] = df['geometry'].apply(wkt.loads)
-
-    gdf = gpd.GeoDataFrame(df, geometry='geometry')
-    gdf.crs = crs
-
-    return gdf
+config = toml.load("configuration.toml")
 
 def find_nearest(gdA, gdB):
     """ Find nearest value between two geodataframes.
@@ -69,106 +53,138 @@ def weighted_avg(df, val_col, wt_col, agg_col):
     
     return df_agg[['wt_avg']]
 
-def aggregate_results(results_dict, geog_level):
+def aggregate_results(results_dict, geog_level, analysis_year, 
+                      gtfs_year, ofm_estimate, ofm_vintage):
 
-    # Iterate over measures and submodes
+    # Iterate over submodes
     full_output_df = pd.DataFrame()
-    block_group_avg_df = pd.DataFrame()
-    for agg_col in ['poc', 'income', 'disability','youth', 'older', 'lep']:
-        for submode in ['all_hct','light_rail','commuter_rail','ferry','passenger_ferry','brt']:
-            # Calculate weighted average across all households by equity geographies
-            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', agg_col + '_quintile')
-            df = df.reset_index()
-            df.rename(columns={agg_col + '_quintile': 'quintile'}, inplace=True)
-            df['access_to'] = submode
-            df['aggregation'] = agg_col
-            full_output_df = pd.concat([full_output_df,df.reset_index()])
+    for submode in results_dict.keys():
+        # Calculate a weighted average for each tract, weighting by number of people in geog_level
+        df = weighted_avg(results_dict[submode], 'miles', 'household_pop', geog_level)
+        df = df.reset_index()
+        df['access_to'] = submode
+        df['gtfs_year'] = gtfs_year
+        df['ofm_estimate_year'] = ofm_estimate
+        df['ofm_vintage'] = ofm_vintage
+        df['geoid_value'] = geog_level
+        df['analysis_year'] = analysis_year
+        full_output_df = pd.concat([full_output_df,df.reset_index()])
 
-            # Calculate a weighted average for each block group, weighting by number of people in the equity definition
-            df = weighted_avg(results_dict[submode], 'miles', 'hh_p', geog_level)
-            df = df.reset_index()
-            df['access_to'] = submode
-            df['aggregation'] = agg_col
-            block_group_avg_df = pd.concat([block_group_avg_df,df.reset_index()])
+    return full_output_df
 
-    return full_output_df, block_group_avg_df
+def fetch_gtfs(hct_submode_list, analysis_year):
+    """Load transit stop and route data from GTFS and return selected high-capacity submodes stops."""
+
+    gtfs_dir = os.path.join(config["gtfs_path"], str(analysis_year))
+    # GTFS only available back to 2015; if earlier, use older available year
+    available_gtfs_years = []
+    for entry_name in os.listdir(config["gtfs_path"]):
+        entry_path = os.path.join(config["gtfs_path"], entry_name)
+        if os.path.isdir(entry_path):
+            available_gtfs_years.append(int(entry_name))
+
+    # Get closest available GTFS data 
+    gtfs_year = return_max_min(analysis_year, available_gtfs_years)
+
+    # Set path of GTFS data to use
+    gtfs_dir = os.path.join(config["gtfs_path"], str(gtfs_year))
+
+    # Get service date from calendar.txt
+    df_calendar = pd.read_csv(os.path.join(gtfs_dir,'calendar.txt'))
+    service_date = str(df_calendar['start_date'].iloc[0]+1)   # +1 because the service dates are between start_date and end_date
+
+    transit_analyst = tsa.load_gtfs(gtfs_dir, service_date)
+    route_lines = transit_analyst.get_lines_gdf()
+    # Routes include both directions; choose the first instance
+    route_lines = route_lines.groupby('route_id').first().reset_index()
+    # Route is HCT submode OR is in list of BRT routes (and classified as generic bus route type)
+    hct_routes = route_lines[route_lines['route_type'].isin(hct_submode_list) | route_lines['route_id'].isin(config['brt_routes'].keys())]
+    route_stops = transit_analyst.get_line_stops_gdf()
+
+    gdf = route_stops[route_stops['route_id'].isin(hct_routes['route_id'])]
+    gdf = gdf.merge(hct_routes[['route_id','route_type']], on='route_id', how='left')
+    gdf = gdf.to_crs(config["crs"])
+
+    gdf['submode'] = gdf['route_type'].astype('str').map(config['route_type_map'])
+
+    gdf.geometry = gdf.centroid   # Should already be a point, but take centroid just in case
+
+    return gdf, gtfs_year
 
 #######################################################
 # Calculate average weighted distance to features
 #######################################################
 
-def main():
+def load_parcel_data(elmer_engine):
+    """Load parcel data as geodataframe. This is a large dataset and gets reused as we iterate through analysis years."""
+
+    parcel_geog_df = pd.read_sql(sql='select parcel_id, tract_geoid10, tract_geoid20, \
+                                 x_coord_state_plane, y_coord_state_plane \
+                                 from small_areas.parcel_dim where base_year='+str(config['base_year']), 
+                                 con=elmer_engine)
+    parcels_gdf = gpd.GeoDataFrame(
+        parcel_geog_df, geometry=gpd.points_from_xy(parcel_geog_df.x_coord_state_plane, 
+        parcel_geog_df.y_coord_state_plane), crs=config["crs"]
+        )
+    
+    return parcels_gdf
+
+def return_max_min(requested_value, available_value_list):
+    """Return nearest value in a list, either the max or min if the value is not in the list."""
+
+    if requested_value < min(available_value_list):
+        returned_value = min(available_value_list)
+    elif requested_value > max(available_value_list):
+        returned_value = max(available_value_list)
+    elif requested_value in available_value_list:
+        returned_value = requested_value
+    else: 
+        return None
+
+    return returned_value
+
+def calc_hct_distance(analysis_year, parcels_gdf, elmer_engine):
      
-    # Define SQL connections for ElmerGeo
-    crs = 'EPSG:2285'
-    elmergeo_conn_string = 'AWS-Prod-SQL\Sockeye'
-    elmergeo_con = connect('AWS-Prod-SQL\Sockeye', database="ElmerGeo")
+    start_time = time.time()
 
-    # Connections to Elmer
-    elmer_conn_string = "DRIVER={ODBC Driver 17 for SQL Server}; SERVER=AWS-PROD-SQL\Sockeye; DATABASE=Elmer; trusted_connection=yes"
-    connection_url = URL.create("mssql+pyodbc", query={"odbc_connect": elmer_conn_string})
-    elmer_engine = sqlalchemy.create_engine(connection_url)
+    # Define census geographies based on analysis year
+    if int(analysis_year) >= 2020:
+        geoid = "geoid20"
+    else:
+        geoid = "geoid10"
 
-    # Load equity quintiles definitions and join to block groups/tracts
-    equity_shares_blockgroup_df = pd.read_sql(sql='select * from equity.v_blockgroup_shares', con=elmer_engine)
-    equity_shares_blockgroup_df = equity_shares_blockgroup_df[equity_shares_blockgroup_df['data_year'] == equity_quintiles_year]
-    equity_shares_tract_df = pd.read_sql(sql='select * from equity.v_tract_shares', con=elmer_engine)
-    equity_shares_tract_df = equity_shares_tract_df[equity_shares_tract_df['data_year'] == equity_quintiles_year]
+    # Load GTFS data and return HCT data
+    hct_gdf, gtfs_year = fetch_gtfs(config['hct_submode_list'], analysis_year)  
+    
+    # Use household population per parcel as a weight
+    # Load this from OFM estimates (using the same estimate year and OFM vintage year, 
+    # (e.g. 2017 OFM release for 2017 estimates, 2023 OFM release for 2023 estimates)
+    # 
+    estimate_year_list =  pd.read_sql("select DISTINCT estimate_year from ofm.parcelized_saep_facts",
+                                  con=elmer_engine)
+    ofm_vintage_list =  pd.read_sql("select DISTINCT ofm_vintage from ofm.parcelized_saep_facts",
+                                  con=elmer_engine)
+    df_ofm_years = pd.read_sql("select distinct ofm_vintage, estimate_year \
+                from ofm.parcelized_saep_facts f  \
+                order by ofm_vintage, estimate_year",
+                con=elmer_engine)
+    
+    # Select nearest available estimate year and vintage
+    # If estimate year is available use that
+    if len(df_ofm_years[df_ofm_years['estimate_year'] == analysis_year]) > 0:
+        ofm_estimate = analysis_year
+    # If estimate year is not available use the nearest available (newest or oldest depending on analysis year)
+    else:
+        ofm_estimate = min(df_ofm_years['estimate_year'], key=lambda x:abs(x-analysis_year))
+        
+    # For whatever ofm year selected, use the newest available vintage
+    ofm_vintage = df_ofm_years[df_ofm_years['estimate_year'] == ofm_estimate]['ofm_vintage'].max()
 
-    # Load parcel data
-    print('Loading parcel points...')
-    parcels_gdf = load_elmer_geo_table('parcels_urbansim_2018_pts', elmergeo_con, crs)
-    #parcels_gdf = read_from_sde(elmergeo_conn_string, 'parcels_urbansim_2018_pts', version, crs=crs)
-    parcels_gdf = parcels_gdf[['parcel_id','geometry']]
-
-    # Load HCT location data
-    print('Loading HCT geospatial data...')
-    hct_gdf = load_elmer_geo_table('hct_stops', elmergeo_con, crs)
-    hct_gdf.geometry = hct_gdf.centroid   # Should already be a point, but take centroid just in case
-
-    # Load count of people within each equity definition for all block groups and tracts
-    equity_counts_blockgroup_df = pd.read_sql(sql='select * from equity.v_blockgroup_counts WHERE data_year=2020', con=elmer_engine)
-    equity_counts_tract_df = pd.read_sql(sql='select * from equity.v_tract_counts WHERE data_year=2020', con=elmer_engine)
-
-
-    # Load 2020 Census block groups
-    # FIXME: if layers don't load, wait and try again
-    print('Loading Census data...')
-    block_grp_gdf = load_elmer_geo_table('blockgrp2020', elmergeo_con, crs)
-    block_grp_gdf = block_grp_gdf[['geoid20','tractce20','blkgrpce20','geometry']]
-
-    print('Overlaying parcels on Census data...')
-    parcels_gdf = gpd.overlay(parcels_gdf, block_grp_gdf)
-    parcels_gdf['tract_geoid'] = parcels_gdf['geoid20'].apply(lambda x: str(x)[:-1])
-
-    # Use households per parcel as a weight
-    # FIXME: use Elmer when data is available
-    print('Loading parcel household data...')
-    df_parcel_hh = pd.read_csv(r'Y:\Equity Indicators\access\parcels_urbansim.txt', 
-                               sep=' ', usecols=['parcelid','hh_p'])
-    parcels_gdf = parcels_gdf.merge(df_parcel_hh, left_on='parcel_id', right_on='parcelid')
-
-    # Merge equity share and counts to geographies
-    # parcels_gdf['geoid'] = parcels_gdf['geoid20'].astype('int64')
-    # equity_shares_blockgroup_df['geoid'] = equity_shares_blockgroup_df['geoid'].astype('int64')
-    # parcels_gdf = parcels_gdf.merge(equity_shares_blockgroup_df, on='geoid', how='left')
-    # parcels_gdf = parcels_gdf.merge(equity_counts_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
-
-    parcels_gdf['geoid20'] = parcels_gdf['geoid20'].astype('int64')
-    parcels_gdf['tract_geoid'] = parcels_gdf['tract_geoid'].astype('int64')
-    equity_shares_blockgroup_df['geoid'] = equity_shares_blockgroup_df['geoid'].astype('int64')
-    equity_shares_tract_df['geoid'] = equity_shares_tract_df['geoid'].astype('int64')
-    equity_counts_blockgroup_df['geoid'] = equity_counts_blockgroup_df['geoid'].astype('int64')
-    equity_counts_tract_df['geoid'] = equity_counts_tract_df['geoid'].astype('int64')
-    parcels_gdf_blockgroup = parcels_gdf.merge(equity_shares_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
-    parcels_gdf_blockgroup = parcels_gdf_blockgroup.merge(equity_counts_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
-    parcels_gdf_tract = parcels_gdf.merge(equity_shares_tract_df, left_on='tract_geoid', right_on='geoid', how='left')
-    parcels_gdf_tract = parcels_gdf_tract.merge(equity_counts_tract_df, left_on='tract_geoid', right_on='geoid', how='left')
-
-    # Drop any null rows
-    print("Removed %s null of %d parcels" %(len(parcels_gdf_tract[parcels_gdf_tract['older_quintile'].isnull()]),len(parcels_gdf_tract)))
-    parcels_gdf_tract = parcels_gdf_tract[~parcels_gdf_tract['older_quintile'].isnull()]
-    parcels_gdf_blockgroup = parcels_gdf_blockgroup[~parcels_gdf_blockgroup['older_quintile'].isnull()]
+    parcel_pop_df = pd.read_sql(sql="select parcel_id, household_pop from ofm.parcelized_saep("+ \
+                                str(ofm_vintage)+", "+str(ofm_estimate)+")", 
+                                con=elmer_engine)
+    parcels_gdf = parcels_gdf.merge(parcel_pop_df, on='parcel_id')
+    parcels_gdf['tract_'+geoid] = parcels_gdf['tract_'+geoid].astype('int64')
 
     #######################################################
     # Access to Transit Stations
@@ -176,56 +192,31 @@ def main():
 
     print('Calculating weighted distance...')
 
-    # Iterate through submodes
+    # Select geodataframes of stops for each submode
     submode_dict = {'all_hct': hct_gdf,
-                    'light_rail': hct_gdf[hct_gdf['light_rail'] != 0],
-                    'commuter_rail': hct_gdf[hct_gdf['commuter_r'] != 0],
-                    'ferry': hct_gdf[hct_gdf['ferry'] != 0],
-                    'passenger_ferry': hct_gdf[hct_gdf['passenger_'] != 0],
-                    'brt' : hct_gdf[hct_gdf['brt'] != 0]}
+                    'light_rail': hct_gdf[hct_gdf['submode'] == 'light_rail'],
+                    'commuter_rail': hct_gdf[hct_gdf['submode'] == 'commuter_rail'],
+                    'ferry': hct_gdf[hct_gdf['submode'] == 'ferry'],
+                    'brt' : hct_gdf[hct_gdf['submode'] == 'brt']
+    }
 
-    results_dict_blockgroup = {}
+    # Iterate through submodes and calculate nearest stop (by submode) for each parcel
     results_dict_tract = {}
     for submode, df in submode_dict.items():
-        results_dict_blockgroup[submode] = find_nearest(parcels_gdf_blockgroup, df)
-        results_dict_blockgroup[submode]['miles'] = results_dict_blockgroup[submode]['dist']/5280.0
-        results_dict_tract[submode] = find_nearest(parcels_gdf_tract, df)
-        results_dict_tract[submode]['miles'] = results_dict_tract[submode]['dist']/5280.0
+        print(submode)
+        if len(df) > 0:
+            results_dict_tract[submode] = find_nearest(parcels_gdf, df)
+            results_dict_tract[submode]['miles'] = results_dict_tract[submode]['dist']/5280.0
+        else:
+            print('no routes for submode: '+ submode)
 
-    full_output_block_group, block_group_avg_df = aggregate_results(results_dict_blockgroup, 'geoid20')
-    full_output_tract, tract_group_avg_df = aggregate_results(results_dict_tract, 'tract_geoid')
+    # Aggregate parcel-level distances to population-weighted averages at the tract level
+    tract_output_df = aggregate_results(results_dict_tract, 'tract_'+geoid, analysis_year, 
+                                        gtfs_year, ofm_estimate, ofm_vintage)
 
-    # add a label to wt_avg_miles
-    full_output_block_group.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
-    block_group_avg_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
-    full_output_tract.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
-    tract_group_avg_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
+    # Explicitly label distance as miles
+    tract_output_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
 
-    # Write to local dir
-    full_output_block_group[['aggregation','quintile','access_to','wt_avg_miles']].to_csv(r'distance_indicator_blockgroup.csv', index=False)
-    full_output_tract[['aggregation','quintile','access_to','wt_avg_miles']].to_csv(r'distance_indicator_tract.csv', index=False)
-    block_group_avg_df.to_csv(r'blockgroup_distance_indicator.csv', index=False) 
-    tract_group_avg_df.to_csv(r'tract_distance_indicator.csv', index=False)    
+    return tract_output_df
 
-    # Calculate average of an average for the region
-    results = {}
-    block_group_avg_df = block_group_avg_df.merge(equity_counts_blockgroup_df, left_on='geoid20', right_on='geoid', how='left')
-    for agg_col in ['poc', 'income', 'disability','youth', 'older', 'lep']:
-        results[agg_col] = {}
-        results['non_'+agg_col] = {}
-        for submode in ['all_hct','light_rail','commuter_rail','ferry','passenger_ferry','brt']:
-            df = block_group_avg_df[(block_group_avg_df['aggregation'] == agg_col) & (block_group_avg_df['access_to'] == submode)]
-            df['non_'+agg_col+'_count'] = df['population_total'] - df[agg_col+'_count']
-            df['wt_avg_non_'+agg_col] = df['non_'+agg_col+'_count']*df['wt_avg_miles']
-            results['non_'+agg_col][submode] = df['wt_avg_non_'+agg_col].sum()/df['non_'+agg_col+'_count'].sum()
-
-            df['wt_avg_'+agg_col] = df[agg_col+'_count']*df['wt_avg_miles']
-            results[agg_col][submode] = df['wt_avg_'+agg_col].sum()/df[agg_col+'_count'].sum()
-
-    results_df = pd.DataFrame.from_dict(results)
-    results_df.to_csv(r'average_distance_indicator.csv')
-
-if __name__ == '__main__':
-    start_time = time.time()
-    main()
     print("--- %s minutes ---" % ((time.time() - start_time)/60.0))
