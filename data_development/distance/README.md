@@ -34,6 +34,8 @@ Ensure that no new BRT routes should be included to the following. If so, check 
 - 'CT_701' = 'Swift Blue'
 - 'CT_702' = 'Swift Green'
 
+Note that this list is applicable to all years, before these were all in service. The script selects the lines from GTFS only if they're available, so the list should be as current as possible regardless of which is being processed.
+
 ## Scripts
 The main script is controlled through `generate_indicatory.py`, which can be run after verifying settings in `configuration.toml` by running:
 - `python generate.indicatory.py` (with the equity-tracker virtual environment activated)
