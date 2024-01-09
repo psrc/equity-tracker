@@ -42,15 +42,15 @@ The main script is controlled through `generate_indicatory.py`, which can be run
 
 This script will process the list of analysis years and store results at the specified output directory. A folder is generated for each analysis year with a file inside named `tract_hct_distance.csv`. 
 
-|index|tract_geoid20|wt_avg_miles       |access_to|gtfs_year|ofm_estimate_year|ofm_vintage|geoid_value  |analysis_year|
+|index|tract_geoid|wt_avg_miles       |access_to|gtfs_year|ofm_estimate_year|ofm_vintage|geoid_value  |analysis_year|
 |-----|-------------|-------------------|---------|---------|-----------------|-----------|-------------|-------------|
-|0    |53033000101  |2.373904774499783  |all_hct  |2023     |2023             |2023       |tract_geoid20|2023         |
-|1    |53033000102  |2.276320101062316  |all_hct  |2023     |2023             |2023       |tract_geoid20|2023         |
-|2    |53033000201  |1.4261937878008994 |all_hct  |2023     |2023             |2023       |tract_geoid20|2023         |
-|3    |53033000202  |1.9068508927791523 |all_hct  |2023     |2023             |2023       |tract_geoid20|2023         |
-|4    |53033000300  |0.44945824419725416|all_hct  |2023     |2023             |2023       |tract_geoid20|2023         |
+|0    |53033000101  |2.373904774499783  |all_hct  |2023     |2023             |2023       |geoid20|2023         |
+|1    |53033000102  |2.276320101062316  |all_hct  |2023     |2023             |2023       |geoid20|2023         |
+|2    |53033000201  |1.4261937878008994 |all_hct  |2023     |2023             |2023       |geoid20|2023         |
+|3    |53033000202  |1.9068508927791523 |all_hct  |2023     |2023             |2023       |geoid20|2023         |
+|4    |53033000300  |0.44945824419725416|all_hct  |2023     |2023             |2023       |geoid20|2023         |
 
-This file reports the average weighted miles to a variety of HCT stations within each tract. The script calculates distances for all HCT stops, but also includes rows for individual HCT modes (light rail, commuter rail, ferry, BRT) labeled by the `access_to` field. The remaining columns are identifiers to show which version of data was used. Ideally, these should all match the analysis_year. The `geoid_value` indicates which Census vintage the tracts comprise (tract_geoid20 for 2020 and tract_geoid10 for 2010 geographies).
+This file reports the average weighted miles to a variety of HCT stations within each tract. The script calculates distances for all HCT stops, but also includes rows for individual HCT modes (light rail, commuter rail, ferry, BRT) labeled by the `access_to` field. The remaining columns are identifiers to show which version of data was used. Ideally, these should all match the analysis_year. The `geoid_value` indicates which Census vintage the tracts comprise (geoid20 for 2020 and geoid10 for 2010 geographies).
 
 Once the individual years are produced, this script can be run to combine all years into a single file:
 - `python compile_results.py`
