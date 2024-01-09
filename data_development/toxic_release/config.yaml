@@ -14,4 +14,8 @@ toxic_release_columns: ['on_site_release_total']
 
 toxic_release_data_path: Y:/Equity Indicators/tracker-webpage-content/b-environment/b02-toxic-release/raw-data/EPA_TRI_data
 
+#toxic_release_data_path: 'T:/2023December/Stefan/toxic_release_test'
+
 output_file: T:/2023December/Stefan/toxic_release_exposure.csv
+
+vintage: 2023

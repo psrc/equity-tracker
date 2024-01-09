@@ -492,6 +492,17 @@ acs_data <- base_acs_data %>%
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher (done)
 ```
 
+```{r, testing PUMS numbers, include=FALSE, eval=FALSE}
+# access pums data - 2021
+rent_2021 <- get_psrc_pums(span = 5,
+                           dyear = 2021,
+                           level = "h", # Unit of analysis == household
+                           vars = c("GRNTP")) # Gross rent
+reg_median <- psrc_pums_median(rent_2021, stat_var = "GRNTP",
+                               group_vars= c("COUNTY"),
+                               rr=TRUE)
+```
+
 ### Joining data
 ```{r}
 # merge to 2020 census tract spatial file
@@ -502,9 +513,12 @@ acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
 
 # getting data by county from acs 
 county_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B25031', #subject table code
+                                table.names = 'B25064',#'B25031', #subject table code
                                 years = c(2021),
                                 acs.type = 'acs5')
+# county_acs_data_final <- county_acs_data %>% 
+#   dplyr::select(year, name, estimate, moe, reliability)
+
 county_data <- county_acs_data %>% 
   dplyr::filter(variable =='B25031_001') %>% 
   dplyr::select(name,estimate) %>% #to simplify table

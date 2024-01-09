@@ -57,7 +57,8 @@ for file_path in file_paths:
     # convert to specified coordinate system
     gdf = gdf.to_crs(config.crs)
 
-    df = process_data.process(config, gdf, year, max_year)
+    df = process_data.process(config, gdf, year)
+    assert len(df) > 0
     data_list.append(df)
 
     print(f"finished processing {str(year)}")
