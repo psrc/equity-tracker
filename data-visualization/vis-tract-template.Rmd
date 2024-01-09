@@ -186,7 +186,7 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # check maximum value of data
-summary(data_tract$estimate) # max is 95.39, so rounding to 100 makes sense
+# summary(data_tract$estimate) # max is 95.39, so rounding to 100 makes sense
 max_value <- 100 # this value will be the max value in the legend
 
 # set up palettes
