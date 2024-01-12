@@ -9,6 +9,7 @@ import itertools
 from shapely.ops import polygonize
 import pyodbc
 from pymssql import connect
+from pathlib import Path
 
 file = Path().joinpath(configuration.args.configs_dir, "config.yaml")
 
@@ -57,12 +58,15 @@ for file_path in file_paths:
     # convert to specified coordinate system
     gdf = gdf.to_crs(config.crs)
 
-    df = process_data.process(config, gdf, year)
+    if config.export_shapefiles and config.export_year == year:
+        df = process_data.process(config, gdf, year, True, config.output_path)
+    else:
+        df = process_data.process(config, gdf, year, False)
     assert len(df) > 0
     data_list.append(df)
 
     print(f"finished processing {str(year)}")
 df = pd.concat(data_list, axis=0)
 #df.reset_index(inplace = True)
-df.to_csv(config.output_file, index=False)
+df.to_csv(Path(config.output_path)/config.output_file_name, index=False)
 print("done")

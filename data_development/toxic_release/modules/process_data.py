@@ -2,6 +2,7 @@ import pandas as pd
 import geopandas as gpd
 from shapely.ops import polygonize
 import pyodbc
+from pathlib import Path
 
 
 def read_from_elmer_odbc(connection_string: str, query_string: str) -> pd.DataFrame:
@@ -43,6 +44,8 @@ def aggregate_non_overlaps(
     points: gpd.GeoDataFrame,
     buffer_size: int,
     sum_fields: list,
+    export_shapefiles,
+    output_path,
     buff_id="non_ov_buff_id",
 ) -> gpd.GeoDataFrame:
     """Buffers points and calls non_overlapping_buffer to create non_overlapping polygons. 
@@ -53,6 +56,7 @@ def aggregate_non_overlaps(
         points (gpd.GeoDataFrame): points representing a site.
         buffer_size (int): size of buffer in feet
         sum_fields (list): fields that will be summed for all polys including overlaps.
+
         buff_id (str, optional): An ID for each non-overlapping poly/buffer. Defaults to "non_ov_buff_id".
 
     Returns:
@@ -61,10 +65,17 @@ def aggregate_non_overlaps(
 
     # buffer points
     buffered_points = points.copy()
+    if export_shapefiles:
+        buffered_points.to_file(Path(output_path)/'points.shp')
     buffered_points["geometry"] = points.buffer(buffer_size)
+    if export_shapefiles:
+        buffered_points.to_file(Path(output_path)/'buffered_points.shp')
+
 
     # deal with overlaps. get unique polygons.
     buffers_no_overlaps = non_overlapping_buffer(buffered_points, buff_id)
+    if export_shapefiles:
+        buffers_no_overlaps.to_file(Path(output_path)/'buffers_no_overlaps.shp')
     buff_intersect = gpd.overlay(buffers_no_overlaps, buffered_points)
 
     # get rid of very small polygons:
@@ -165,20 +176,20 @@ def census_geog_weighted(
     return df
 
 
-def process(config, gdf, year):
+def process(config, gdf, year, export_shapefiles, output_path = None):
     """process to buffer points, then aggregate population weighted measures to a census geography.
 
     Args:
         config (Config): config file
         gdf (gdf.GeoDataFrame): points to buffer
         year (int): year to process data
-        vintage (int): used for Parcel/OFM vintage
+        export_shapefiles (boolean): export shapefiles for vintage year
 
     Returns:
         pd.DataFrame: weighted measures aggregated to census geog.
     """
     no_overlap_aggregation = aggregate_non_overlaps(
-        gdf, config.buffer_size, config.toxic_release_columns
+        gdf, config.buffer_size, config.toxic_release_columns, export_shapefiles, output_path
     )
 
     ofm_parcels = get_ofm_parcelized(

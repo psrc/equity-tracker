@@ -16,6 +16,12 @@ toxic_release_data_path: Y:/Equity Indicators/tracker-webpage-content/b-environm
 
 #toxic_release_data_path: 'T:/2023December/Stefan/toxic_release_test'
 
-output_file: T:/2023December/Stefan/toxic_release_exposure.csv
+output_path: T:/2024January/Stefan/toxic_release_output
+
+output_file_name: toxic_release.csv
 
 vintage: 2023
+
+export_shapefiles: True
+
+export_year: 2010
