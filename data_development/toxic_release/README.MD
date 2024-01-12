@@ -1,4 +1,4 @@
-This script uses point source toxic release data and creates average per-preson exposure rates for each tract in the region. Sites are buffered and then intersected with parcels that have yearly OFM population estimates. Overlapping buffers are summed so that population in proximity to multiple sites is handled correctly. The parcels are then grouped by tracts and a weighted per-capita exposure is calculated for tract.  
+This script uses point source toxic release data and creates average per-preson exposure rates for each tract in the region. Sites are buffered and then intersected with parcels that have yearly OFM population estimates. Overlapping buffers are summed so that population in proximity to multiple sites is handled correctly. The parcels are then grouped by tracts and a weighted per-capita exposure is calculated for each tract.  
 
 # Setup
 Clone this repository to a local directory. Open an Anaconda prompt and change directory to the location of the local repository (equity-tracker/data_development/toxic_release). 
@@ -20,3 +20,14 @@ Configuration settings for the script are controlled by **config.**. The main se
 ## Scripts
 The main script is controlled through `toxic_release_exposure.py` and specifying the location of the congif file by using the '-c' flag. For example:
 - `python toxic_release_exposure.py -c C:\temp\equity-tracker\data_development\toxic_release`  (with the toxic_releae_env virtual environment activated)
+
+This script will process the list of analysis years and store results as a .csv in the specified output dir. 
+
+|geoid    |exposure    |year|
+|-----------|------------|----|
+|53033001500 |55.11566562 |2010 |
+|53033001600 |1012.70467  |2010 |
+|53033001701 |400.938347  |2010 |
+|53033001702 |884.7992614 |2010 |
+|53033001800 |0	          |2010 |
+
