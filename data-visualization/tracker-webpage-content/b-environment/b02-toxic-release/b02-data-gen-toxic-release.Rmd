@@ -72,7 +72,7 @@ Data comes from [EPA](https://www.epa.gov/toxics-release-inventory-tri-program).
 # The gdb files live here: W:\gis\projects\Megan\TRI_stefan.gdb
 
 folder_path <- "Y:/Equity Indicators/tracker-webpage-content/b-environment/b02-toxic-release/raw-data"
-toxic_release <- read.csv(file.path(folder_path,"toxic_release_exposure.csv"))
+toxic_release <- read.csv(file.path(folder_path,"toxic_release.csv"))
 ```
 \
 Although there are innumerable possible data sets, the data sets we will be using will span 2010-2022 (most current data).

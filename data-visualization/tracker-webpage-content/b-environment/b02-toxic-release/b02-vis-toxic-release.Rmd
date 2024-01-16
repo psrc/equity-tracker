@@ -204,7 +204,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 var_name <- "Toxic Release <br> Exposure"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
-  paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=0)),
+  paste("Tract value: ", prettyNum((round(data_tract$estimate_prelog, digits=0)),
                   big.mark = ",")),
   paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=0)),
                   big.mark = ",")),
@@ -609,6 +609,8 @@ filter <- data_clean_column %>%
 df = data_clean
 x = "data_year_yr" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
+y_min = 0 
+y_max = 200000 #15
 color = "purples"
 
 line_chart <- equity_tracker_line_facet(df = df,
