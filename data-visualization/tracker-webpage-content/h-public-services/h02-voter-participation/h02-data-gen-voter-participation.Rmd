@@ -53,6 +53,7 @@ library(lubridate) #year formatting
 library(stringr) #add leading zero's
 library(reshape2) #formatting data
 library(readxl)
+library(RMySQL)
 library(gridExtra)
 
 install_psrc_fonts()
@@ -76,7 +77,7 @@ The data set referenced in this script is generated from the [Washington Secreta
 election = read_excel("Y:/Equity Indicators/tracker-webpage-content/h-public-services/h02-voter-participation/raw-data/2020_precinct_results.xlsx",
                       sheet = "Sheet1")
 
-voters <- election %>% 
+voters_base <- election %>% 
   dplyr::filter(RaceName == "Turnout",
                 Candidate %in% c("Registered Voters", "Ballots Cast"),
                 County %in% c("King","Kitsap","Snohomish","Pierce")) %>% 
@@ -84,10 +85,227 @@ voters <- election %>%
   pivot_wider(names_from = Candidate, values_from = Votes) %>% 
   rename(registered_voters = 'Registered Voters', ballots_cast = 'Ballots Cast')
 
-voters_20 <- voters %>%
+voters <- voters_base %>%
   mutate(Precinct = factor(PrecinctCode), 
          County = factor(County),
          CPrecinct = str_c(County, Precinct, sep = "_"))
+
+### Get population and number of residential units by parcel ---------------------
+mydb = dbConnect(MySQL(), 
+                 user='psrcurbansim', 
+                 password='psrc_urbansim', 
+                 dbname='2018_parcel_baseyear_rtp', 
+                 host='aws-modelmysql')
+
+# dbListTables(mydb)
+
+# Total population for each parcel - used to calculate percent of people in precinct who voted
+# Join households and buildings to get population per parcel
+building_pop = dbGetQuery(mydb, "select building_id, sum(persons) as total_ppl 
+                                from households
+                                group by building_id")
+
+parcel_data = dbGetQuery(mydb, "select * 
+                                from buildings")
+
+pop_by_parcel = parcel_data %>% 
+  dplyr::select(building_id, parcel_id) %>% 
+  left_join(building_pop,  by = "building_id") %>% 
+  group_by(parcel_id) %>% 
+  summarise(pop_sum = sum(total_ppl, na.rm = TRUE))
+
+# Total residential units per parcel - used to calculate weight of clipped precinct in tract
+resunits_by_parcel = parcel_data %>%
+  group_by(parcel_id) %>%
+  summarise(resunit_sum = sum(residential_units, na.rm = TRUE))
+
+# Get parcel centroids (X,Y coordinates)
+parcel_centroid = dbGetQuery(mydb, "select * from parcels")
+
+# Select only relevant columns and set projection to NAD83 Washington State Plane North (CRS 2285) -> WGS84 (match other spatial layers)
+parcel_centroid <- parcel_centroid %>%
+  dplyr::select(parcel_id, census_tract_id, x_coord_sp, y_coord_sp) %>% 
+  st_as_sf(coords = c("x_coord_sp", "y_coord_sp")) %>% 
+  st_set_crs(2285) %>% 
+  st_transform(2285) #WGS84: 4326
+
+# plot(parcel_centroid)
+
+# Attach parcel population/residential unit information to parcel centroids
+parcel_centroid <- parcel_centroid %>%
+  left_join(pop_by_parcel, by = "parcel_id") %>% 
+  left_join(resunits_by_parcel, by = "parcel_id") %>%
+  # remove NAs 
+  filter(!is.na(resunit_sum))
+
+# write_rds(parcel_centroid, "./components/parcel_centroid_pop_resunits.rds")
+
+# rm(mydb, building_pop, parcel_data, pop_by_parcel, resunits_by_parcel)
+
+### Get precinct shapefile for intersections ---------------------
+# From: https://www.sos.wa.gov/elections/research/precinct-shapefiles.aspx
+# precinct <- read_sf("Y:/VISION 2050/Data/Displacement/Displacement Index 2021/data/15-Voter Turnout/statewide_precincts_2020general/Statewide_Precincts_2020General.shp")
+precinct_data <- read_sf("Y:/Equity Indicators/tracker-webpage-content/h-public-services/h02-voter-participation/raw-data/statewide_precincts_2020general/Statewide_Precincts_2020General.shp")
+
+# Retain only PSRC counties, select only relevant columns, set CRS 2285 projection
+precinct <- precinct_data %>%
+  filter(CountyName %in% c("King", "Kitsap", "Pierce", "Snohomish")) %>%
+  mutate(County = factor(County),
+         Precinct = factor(PrecName),
+         PrecinctCode = factor(PrecCode),
+         CPrecinct = str_c(County, Precinct, sep = "_")) %>%
+  dplyr::select(County, PrecinctCode, Precinct, CPrecinct, St_Code, geometry) %>%
+  st_transform(2285) #2285 4326
+
+# Attach election results to precinct spatial features
+precinct_elec <- precinct %>%
+  left_join(voters %>% dplyr::select(PrecinctCode, registered_voters, ballots_cast), 
+            by = c("St_Code" = "PrecinctCode")) %>% 
+  mutate(ballots_cast = replace_na(ballots_cast, 0))
+
+# rm(precinct, voters)
+
+
+### Get tract shapefile for intersections ---------------------
+tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+# tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+
+tracts20.lyr<-st_read(tracts20.url)
+# tracts10.lyr<-st_read(tracts10.url)
+
+# tract <- read_sf("Y:/VISION 2050/Data/Displacement/Displacement_Risk_Script/gis/tract2010_nowater.shp")
+# Set correct projection
+tract <- tracts20.lyr %>%
+  mutate(GEOID = factor(geoid20)) %>%
+  st_transform(2285) # transform to match the coordinates of the precinct centroids (need to change back later)
+
+### Spatial intersections
+
+# PRECINCT/PARCEL: Intersect parcel centroids with precinct spatial feature - yields number of people and residential units in each precinct
+precinct_parcel = st_join(precinct_elec, parcel_centroid)
+# 25 precincts have no parcels or residential units, so the parcel columns are NA. Make these zero to indicate absence of population/residential units
+precinct_parcel$pop_sum <- replace_na(precinct_parcel$pop_sum, 0)
+precinct_parcel$resunit_sum <- replace_na(precinct_parcel$resunit_sum, 0)
+
+# Sum up population and total residential by precinct
+precinct_pop = precinct_parcel %>%
+  # Do not need spatial features to calculate population/total res. units by parcel, and runs faster making geometry NULL
+  st_set_geometry(NULL) %>% 
+  group_by(St_Code) %>% 
+  summarise(precinct_pop = sum(pop_sum),
+            precinct_resunit = sum(resunit_sum))
+
+# rm(precinct_parcel)
+
+# Attach population/resunit totals to precinct spatial features/election info
+# Then can calculate "turnout", or number of votes out of all people living in the precinct (not just eligible voters)
+# Note adding 1 to precinct_pop to avoid zero divide
+precinct_pop <- precinct_elec %>% 
+  left_join(precinct_pop, by = "St_Code" ) %>% 
+  mutate(turnout = ballots_cast/(precinct_pop + 1),
+         # 64 precincts have more ballots cast than population. Cap turnout at 1 (100%)
+         turnout = ifelse(turnout > 1, 1, turnout)) 
+
+# rm(precinct_elec)
+# write_rds(precinct_pop, "./components/precinct_turnout_cap100.rds")
+
+# PRECINCT/TRACT: Intersect precinct and tract spatial features to yield clipped precincts
+precinct_tract <- st_intersection(precinct_pop, tract) %>% 
+  # Add ids to clipped precincts to group on later
+  mutate(id = row_number())
+
+# rm(precinct_pop)
+
+# PARCELS/CLIPPED PRECINCTS: Intersect parcel centroids with clipped precincts - yields number of people and residential units in each clipped precinct
+precinct_tract_parcel = st_join(precinct_tract, parcel_centroid)
+
+# rm(parcel_centroid)
+
+# summary(precinct_tract_parcel$pop_sum) #5109 NAs
+# summary(precinct_tract_parcel$resunit_sum) #5109 NAs
+# 5109 clipped precincts have no parcels, so the parcel columns are NA. Change total population and residential units to 0
+precinct_tract_parcel$pop_sum <- precinct_tract_parcel$pop_sum %>% replace_na(0)
+precinct_tract_parcel$resunit_sum <- precinct_tract_parcel$resunit_sum %>% replace_na(0)
+
+# Count all residential units in clipped precinct
+precinct_tract_population = precinct_tract_parcel %>% 
+  st_set_geometry(NULL) %>% 
+  group_by(id) %>% 
+  summarise(precinct_resunit_int = sum(resunit_sum)) 
+
+# rm(precinct_tract_parcel)
+
+# Attach total residential units to clipped precinct spatial features and data
+precinct_tract_pop <- precinct_tract %>% 
+  left_join(precinct_tract_population, by = "id" )
+
+# rm(precinct_tract_population)
+
+# WEIGHTS: Calculate total residential units in each tract by grouping clipped precincts by tract
+tractresunit <- precinct_tract_pop %>% 
+  st_set_geometry(NULL) %>% 
+  group_by(GEOID) %>% 
+  summarise(tractresunit = sum(precinct_resunit_int))
+
+cntyresunit <- precinct_tract_pop %>% 
+  st_set_geometry(NULL) %>% 
+  group_by(county_name) %>% 
+  summarise(cntyresunit = sum(precinct_resunit_int))
+
+regresunit <- precinct_tract_pop %>% 
+  st_set_geometry(NULL) %>% 
+  # group_by(county_name) %>% 
+  summarise(regresunit = sum(precinct_resunit_int))
+
+# Attach total residential units by tract to clipped precincts, calculate weights as (# resunits clipped precinct)/(# resunits in tract + 1)
+# One tract has no residential units, so add 1 to tractresunit
+precinct_tract_wt <- precinct_tract_pop %>%
+  left_join(tractresunit, by = "GEOID") %>%
+  mutate(weight = precinct_resunit_int/(tractresunit + 1),
+         weighted_vote = weight * turnout)
+
+precinct_cnty_wt <- precinct_tract_pop %>%
+  left_join(cntyresunit, by = "county_name") %>%
+  mutate(weight = precinct_resunit_int/cntyresunit,
+         weighted_vote = weight * turnout)
+
+precinct_reg_wt <- precinct_tract_pop %>%
+  # left_join(regresunit, by = "county_name") %>%
+  mutate(weight = precinct_resunit_int/regresunit$regresunit,
+         weighted_vote = weight * turnout)
+
+# FINAL VALUES: Calculate turnout score by tract as weighted sum of turnout in clipped precincts
+# tabular data
+votes_tract <- precinct_tract_wt %>%
+  st_set_geometry(NULL) %>%
+  group_by(GEOID) %>%
+  summarise(votes = sum(weighted_vote, na.rm = TRUE) * 100)
+
+votes_cnty <- precinct_cnty_wt %>% 
+  st_set_geometry(NULL) %>% 
+  group_by(county_name) %>% 
+  summarise(votes_cnty = sum(weighted_vote, na.rm = TRUE) *100)
+
+votes_reg <- precinct_reg_wt %>% 
+  st_set_geometry(NULL) %>%
+  summarise(votes_reg = sum(weighted_vote, na.rm = TRUE) *100)
+
+# Join tabular data to tract (need common fields), transform to data frame
+tract_votes_df <- tract %>%
+  left_join(votes_tract, by = ("GEOID")) %>% 
+  left_join(votes_cnty, by = ("county_name")) %>% 
+  mutate(votes_reg = votes_reg$votes_reg)%>%
+  st_set_geometry(NULL) #keep in tabular form (remove geometry)
+
+# votes_tract_viz <- precinct_tract %>%
+#   st_set_geometry(NULL) %>%
+#   group_by(GEOID) %>%
+#   summarise(votes = sum(weighted_vote, na.rm = TRUE),
+#             precincts = toString(St_Code),
+#             clipped_resunits = toString(precinct_resunit_int),
+#             turnouts = (round(turnout,2)) * 100)
+
+# rm(precinct_tract, tractresunit)
 ```
 \
 This data set was compiled from PUMS data.
@@ -454,9 +672,9 @@ Save final data set (.rda) for charts
 ```{r}
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'f-economy'
-ind_dir <- 'f01-median-income'
-file_name <- 'f01-median-income-data'
+theme_dir <- 'h-public-services'
+ind_dir <- 'h02-voter-participation'
+file_name <- 'h02-voter-participation-data'
 
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,
@@ -467,76 +685,22 @@ save(data_clean, file = file.path(base_dir,
 
 
 ## Create data set for map .rda 
-### Additional data
-#### Tract spatial file
-for mapping most recent data
-```{r census tract spatial data - for tract data, include=FALSE}
-# Connecting to ElmerGeo for census geographies through Portal----
-tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
-tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+The spatial data was created above when it was first downloaded and transformed. Very little additional processing is needed in this section, other than changing the variable names to match existing 
 
-tracts20.lyr<-st_read(tracts20.url)
-tracts10.lyr<-st_read(tracts10.url)
-
-nrow(tracts20.lyr) #919
-nrow(tracts10.lyr) #773
-```
-
-#### Corresponding ACS table
-```{r acs data, include=FALSE}
-# Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
-x <- tidycensus::load_variables(2021,"acs5") %>% 
-  dplyr::filter(grepl("median household income",
-                      concept, ignore.case=TRUE) & 
-                  (geography=="tract"))
-
-# getting data by tract
-base_acs_data <- get_acs_recs(geography ='tract', 
-                              table.names = 'B19013', #subject table code
-                              years = c(2021),
-                              acs.type = 'acs5')
-
-# filter only fields of interest - census tract, value, and reliability (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
-acs_data <- base_acs_data %>% 
-  dplyr::select(GEOID, estimate, reliability)
-
-# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
-```
-
-### Joining data
+### Transform data
 ```{r}
-# merge to 2020 census tract spatial file
-acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
-                              by.x="geoid20",
-                              by.y="GEOID",
-                              all.x=TRUE)
+# Join tabular data to tract spatial data
+tract_votes <- tract %>%
+  left_join(votes_tract, by = ("GEOID")) %>% 
+  left_join(votes_cnty, by = ("county_name")) %>% 
+  mutate(votes_reg = votes_reg$votes_reg)%>%
+  st_transform(4326)
 
-# getting data by county from acs 
-county_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B19013', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
-county_data <- county_acs_data %>% 
-  dplyr::select(name,estimate) %>% #to simplify table
-  dplyr::rename(cnty_estimate=estimate) %>% #to distinguish between tract and county values
-  mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
-
-# getting data by region from PUMS
-pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
-                           level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
-
-# add region median to county data
-county_reg_data <- county_data %>% 
-  mutate(reg_estimate=reg_median$HINCP_median)
-
-# merge tract, county, and region data into one data set 
-acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
-                        by.x="county_name",
-                        by.y="county_name",
-                        all.x=TRUE)
+# consistent field names
+data_tract <- tract_votes %>% 
+  dplyr::rename(estimate=votes,
+                reg_estimate=votes_reg,
+                cnty_estimate=votes_cnty)
 ```
 
 ### Explore map/acs data
@@ -655,10 +819,10 @@ map.zoom<- 8.5
 
 # set up palettes
 psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
-                                      domain = acs_data_tract$estimate)
+                                      domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Median Income"
+var_name <- "Voter Participation"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -668,17 +832,17 @@ tract_map <- leaflet() %>%
   leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
-  addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_tract$estimate),
+  addPolygons(data=data_tract,
+              fillColor = psrc_palette(data_tract$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
               group = var_name,
-              label = round(acs_data_tract$estimate, digits=1)) %>%
+              label = round(data_tract$estimate, digits=1)) %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_tract$estimate,
+                       values = data_tract$estimate,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -708,10 +872,10 @@ Save final data set (.rda) for map
 # This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
 
 # set folder structure
-file_name <- 'f01-median-income-map-data'
+file_name <- 'h02-voter-participation-map-data'
 
 # save final data set as .rda
-save(acs_data_tract, file = file.path(base_dir,
+save(data_tract, file = file.path(base_dir,
                                       theme_dir,
                                       ind_dir, "rda-data",
                                       paste0(file_name,'.rda')))
