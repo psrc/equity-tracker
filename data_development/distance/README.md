@@ -12,7 +12,8 @@ After install is complete enter:
 You should see (equity_tracker) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
 
 ## Elmer Connections
-Python connections to Elmer and ElmerGeo databases require an ODBC driver to connect with SQL. To set this up, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults.
+FIXME!!
+Most Data staff already have the software required installed. Python connections to Elmer and ElmerGeo databases require an ODBC driver to connect with SQL. To set this up, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults.
 
 # Usage
 Configuration settings for the script are controlled by **configuration.toml**. The main setting to update here is `analysis_year_list`, which controls the years the tool should update. When running this for newly available data, it should be sufficient to create a list of this year only (e.g., [2024]). The `output_dir` specifies where results will be available and is set by default to `Y:/Equity Indicators/access`. In general, no other settings should need to be changed. 
@@ -38,7 +39,7 @@ Note that this list is applicable to all years, before these were all in service
 
 ## Scripts
 The main script is controlled through `generate_indicatory.py`, which can be run after verifying settings in `configuration.toml` by running:
-- `python generate.indicatory.py` (with the equity-tracker virtual environment activated)
+- `python generate_indicatory.py` (with the equity-tracker virtual environment activated)
 
 This script will process the list of analysis years and store results at the specified output directory. A folder is generated for each analysis year with a file inside named `tract_hct_distance.csv`. 
 
