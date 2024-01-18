@@ -68,7 +68,8 @@ Data comes from GTFS (General Transit Feed Specification). More information abou
 ```{r, include=FALSE}
 folder_path <- "Y:/Equity Indicators/tracker-webpage-content/g-transportation/g02-hct-access/raw-data"
 
-hct <- read.csv(file.path(folder_path,"tract_hct_distance_compiled.csv"))
+hct <- read.csv(file.path(folder_path,"tract_hct_distance_compiled.csv"),
+                header = TRUE)
 ```
 \
 Because data is available at each year we will be able to use the data at 1y increments. 
@@ -542,45 +543,21 @@ Save final data set (.rda) for map
 ```{r, include=FALSE}
 # This is the data set used to create the map of the most recent data. For this data set, there is one additional transformation that is needed before saving it for final visualization in the 'vis' script. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk. 
 
-# Because the measure (life expectancy) does not account for the population of the tract, it hasn't been normalized and needs to be weighted in order to aggregate to the region level. The map is going to visualize 2020 data, but in 2010 geographies. The original WTN data set was merged to the 2010 spatial file which has 2010 population numbers. To get 2020 population numbers, we need to aggregate population numbers in the 2020 tracts that were split from 2010 tracts. 
-
- 
-head(tract.20) # to determine field names of population data frame
-tract.20.edit <- tract.20 %>% 
-  dplyr::mutate(pop20=estimate) # the life expectancy value is already 'estimate'
-
-# merge 2020 acs population data to crosswalk file
-pop20_crosswalk <- merge(tract.20.edit, crosswalk_10_20, 
-                         by.x="GEOID",
-                         by.y="geoid20", 
-                         all.x=TRUE)
-
-# calculate population by adding 2020 tracts that were split from 2010 tracts
-pop20 <- pop20_crosswalk %>% 
-  dplyr::group_by(geoid10) %>% 
-  dplyr::summarise(total_pop20=sum(pop20))
-
-# merge 2020 population by 2010 tracts to life expectancy data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_tract <- merge(data_tract, pop20, 
-                         by.x="geoid10",
-                         by.y="geoid10", 
-                         all.x=TRUE)
+str(data_tract) # most recent data: 2023 joined to 2020 spatial file (generated above)
 ```
 
 ```{r, region and county numbers for map labels}
 # calculating data by county 
 county_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
-  # dplyr::select(county_name, estimate, total_pop20) %>% #to simplify table to necessary fields
   dplyr::group_by(county_name) %>% 
-  dplyr::mutate(cnty_estimate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% #calculate weighted value by county
+  dplyr::mutate(cnty_estimate=mean(estimate, na.rm =TRUE)) %>% #calculate mean value by county
   dplyr::distinct(county_name, cnty_estimate)
 
 # calculating data by region
 reg_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
-  dplyr::select(estimate, total_pop20) %>% #to simplify table to necessary fields
-  dplyr::mutate(reg_estimate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% #calculate weighted value for region
+  dplyr::mutate(reg_estimate=mean(estimate, na.rm =TRUE)) %>% #calculate mean value for region
   dplyr::distinct(reg_estimate)
 
 # add region data to county data
@@ -609,293 +586,177 @@ save(data_tract, file = file.path(base_dir,
 ```
 
 # Explore data by equity quintile
-## Join primary data to equity quintiles and acs population
+## Join primary data to equity quintiles
 ```{r}
-# 2010 data -----
-equity_tracts_10 <- equity_tracts %>% 
-  dplyr::filter(data_year==2010)
+# this will require joining each of the years of hct access data (1-year increments) to each of the PUMS equity quintile/tract data
+# determine which years each dataset includes
+# because GTFS data is available starting in 2015, we are filtering hct data to 2015 and after (removing 2011-2014)
+hct_2015 <- hct %>% 
+  filter(analysis_year>2014) 
 
-# join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(life_expec_06_10, equity_tracts_10,
-                            by.x="Census.Tract",
-                            by.y="geoid", 
-                            all.x=TRUE)
+yrs_hct <- unique(hct_2015$analysis_year) #2015-2023
+yrs_equity_tracts <- unique(equity_tracts$data_year) #2009-2021
 
-# join 2010 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract10 <- merge(tract.10, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="Census.Tract", 
-                             all.x=TRUE)
+# because of the mismatch between years we will take the common years
+years_of_interest <- intersect(yrs_hct,yrs_equity_tracts) #2015-2021
 
-# check data set
-nrow(data_equity_tract10) #1548
+# filter data sets so that they have overlapping/common years
+hct_for_join <- hct %>% 
+  filter(analysis_year %in% years_of_interest,
+         access_to=="all_hct") # focus on all_hct, not individuals modes
+# unique(hct_for_join$analysis_year) #2015-2021
+# nrow(hct_for_join) #5717: ~ (5*772) + (2*919)
+equity_tracts_for_join <- equity_tracts %>% 
+  filter(data_year %in% years_of_interest) 
+# unique(equity_tracts_for_join$data_year) #2015-2021
+# nrow(equity_tracts_for_join) #11396: ~[(5*772) + (2*919)]*2 <- 2 because each census tract is listed for region and for whichever county it belongs to
+
+# join data sets - join on year and census tract - should have same number of rows as equity_tracts_for_join, with the same number of unique values
+# n_distinct(hct_for_join$wt_avg_miles) #5690
+
+data_equity <- merge(equity_tracts_for_join, hct_for_join,
+                     by.x=c("data_year","geoid"),
+                     by.y=c("analysis_year","tract_geoid"), 
+                     all.x=TRUE)
+
+# n_distinct(data_equity$wt_avg_miles) #5682
 ```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
-
-```{r}
-# 2015 data ----- 
-equity_tracts_15 <- equity_tracts %>% 
-  dplyr::filter(data_year==2015)
-
-# join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(life_expec_11_15, equity_tracts_15,
-                            by.x="Census.Tract",
-                            by.y="geoid", 
-                            all.x=TRUE)
-
-# join 2015 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract15 <- merge(tract.15, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="Census.Tract", 
-                             all.x=TRUE)
-
-# check data set
-nrow(data_equity_tract15)
-```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
-
-```{r}
-# 2020 data -----
-equity_tracts_20 <- equity_tracts %>% 
-  dplyr::filter(data_year==2020)
-
-# join WTN data (in 2010 census tracts) to cross walk
-data_crosswalk <- merge(crosswalk_10_20, life_expec_16_20,
-                        by.x="geoid10",
-                        by.y="Census.Tract",
-                        all.x=TRUE)
-
-# join WTN data to equity quintiles (on 2020 census tracts)
-data_equity_tracts <- merge(data_crosswalk, equity_tracts_20,
-                            by.x="geoid20",
-                            by.y="geoid", 
-                            all.x=TRUE)
-
-# join 2020 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract20 <- merge(tract.20, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="geoid20", 
-                             all.x=TRUE)
-
-# check data set
-nrow(data_equity_tract20)
-```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
 
 ## Transform/pivot
 The data sets need to be cleaned and pivoted to a longer table so that there is only one field for the 6 different equity categories, instead of one field for each.
 ```{r, include=FALSE}
-# clean/simplify data sets
-data_equity_quintiles10 <- data_equity_tract10 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
-
-data_equity_quintiles15 <- data_equity_tract15 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
-
-data_equity_quintiles20 <- data_equity_tract20 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
-
 # pivot data set so that there is one column with quintile designation
-data_equity_pivot10 <- data_equity_quintiles10 %>% 
+data_equity_tracts <- data_equity %>% 
   pivot_longer(cols = poc_quintile:lep_quintile,
                names_to = "equity_group",
-               values_to = "quintile")
+               values_to = "quintile") %>% 
+  dplyr::mutate(data_year=format(data_year,format="%Y")) %>% 
+  dplyr::select(-c(X, index)) # remove unnecessary columns
 
-data_equity_pivot15 <- data_equity_quintiles15 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
-               names_to = "equity_group",
-               values_to = "quintile")
-
-data_equity_pivot20 <- data_equity_quintiles20 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
-               names_to = "equity_group",
-               values_to = "quintile")
+# check data set
+nrow(data_equity) #11396
+nrow(data_equity_tracts) #68376 = ~11396*6 (6 equity groups)
+n_distinct(data_equity_tracts$wt_avg_miles) #5682
 ```
-
-```{r}
-# check data sets
-nrow(data_equity_pivot10)
-nrow(data_equity_pivot15)
-nrow(data_equity_pivot20)
-```
-
 These data sets should include records for:
 
-* 2 geographies (region and whichever county the tract belongs to) x # census tracts (~773 for 2010/15, ~919 for 2020)
+* 2 geographies (region and whichever county the tract belongs to) x # census tracts (~773 for 2015-2019, ~919 for 2020-2021)
 * 6 equity focus groups (disability and lep are not available in for 2010, lep not available in 2015 - but still show up as NA)
 
 
 ## Calculations
 ### Calculate by region
-The life expectancy values are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2010, 2015, 2020).
+The hct access distance values are available at the census tract level, but we want to calculate the regional average. Because the values are already weighted we don't need to take into account the tracts' population counts.
 ```{r}
-data_equity_pivot10_calc <- data_equity_pivot10 %>% 
+data_equity_tracts_reg <- data_equity_tracts %>%
   filter(!is.na(quintile)) %>% #missing lep and disability data
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2010)
+  filter(county=="Region") %>% #only want census tracts to appear once, not twice
+  dplyr::group_by(data_year, equity_group, quintile) %>% 
+  summarise(wt_avg_miles=mean(wt_avg_miles, na.rm=TRUE),.groups='drop') %>% 
+  mutate(county="Region")
 
-data_equity_pivot15_calc <- data_equity_pivot15 %>% 
-  filter(!is.na(quintile)) %>% #missing lep data
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2015)
-
-data_equity_pivot20_calc <- data_equity_pivot20 %>% 
-  filter(!is.na(quintile)) %>%
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2020)
-```
-
-```{r}
-# check data sets
-nrow(data_equity_pivot10_calc)
-nrow(data_equity_pivot15_calc)
-nrow(data_equity_pivot20_calc)
+# check data
+table(data_equity_tracts_reg$data_year, data_equity_tracts_reg$equity_group) #5 quintiles
+table(data_equity_tracts_reg$quintile, data_equity_tracts_reg$equity_group) #7 years
 ```
 These data sets should include records for:
 
 * 1 geography: region
-* 6 equity focus groups (disability and lep are not available in for 2010, lep not available in 2015)
-     * 2010: only 4 equity focus groups
-     * 2015: only 5 equity focus groups
+* 7 data years
+* 6 equity focus groups (lep missing data in 2015)
 * 5 equity quintiles 
 
 
 ### Calculate by equity quintile
-The life expectancy values are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2010, 2015, 2020). 
+The hct access distance values are available at the census tract level, but we want to calculate the regional average. Because the values are already weighted we don't need to take into account the tracts' population counts. 
 ```{r}
-# calculate 2010 region population
-population_test <- data_equity_pivot10 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,603,425
+data_equity_tracts_county <- data_equity_tracts %>%
+  filter(!is.na(quintile)) %>% #missing lep and disability data
+  filter(county!="Region") %>% #only want census tracts to appear once, not twice
+  dplyr::group_by(county, data_year, equity_group, quintile) %>% 
+  summarise(wt_avg_miles=mean(wt_avg_miles, na.rm=TRUE),.groups='drop')
 
-sum(tract.10$estimate) #3,603,425
-
-# calculations to get weighted average life expectancy
-data_equity_wt10 <- data_equity_pivot10 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt10_test <- data_equity_wt10 %>% 
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt10_test$tot_pop) #3,603,425
-
-# check data set
-nrow(data_equity_wt10)
+# check data
+table(data_equity_tracts_county$data_year, data_equity_tracts_county$equity_group) #20 - 5 quintiles, 4 counties
+table(data_equity_tracts_county$quintile, data_equity_tracts_county$equity_group) #28 - 7 years, 4 counties
 ```
-The regional population in 2010: `r population_test`
 \
 \
 This data sets should include records for:
 
 * 4 geographies: 4 PSRC counties
-* 4 equity focus groups (disability and lep are not available in for 2010)
+* 7 years
+* 6 equity focus groups (lep missing data in for 2015)
 * 5 equity quintiles 
 
+## Combine regional and county level data 
 ```{r}
-# calculate 2015 region population
-population_test <- data_equity_pivot15 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,869,802
-
-# calculations to get weighted average life expectancy
-data_equity_wt15 <- data_equity_pivot15 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt15_test <- data_equity_wt15 %>%
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt15_test$tot_pop) #3,869,802
-
-# check data set
-nrow(data_equity_wt15)
-```
-The regional population in 2015: `r population_test`
-\
-\
-This data sets should include records for:
-
-* 4 geographies: 4 PSRC counties
-* 5 equity focus groups (lep not available in 2015)
-* 5 equity quintiles 
-
-```{r}
-# calculate 2020 region population
-population_test <- data_equity_pivot20 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443	
-
-sum(tracts20.lyr$total_pop20) #4,294,373
-
-# calculations to get weighted average life expectancy per equity group/quintile
-data_equity_wt20 <- data_equity_pivot20 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt20_test <- data_equity_wt20 %>%
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt20_test$tot_pop) #4,197,443
-
-# check data set
-nrow(data_equity_wt20)
-```
-The regional population in 2020: `r population_test`
-\
-\
-This data sets should include records for:
-
-* 4 geographies: 4 PSRC counties
-* 6 equity focus groups
-* 5 equity quintiles 
-
-## Combine years into one data set
-```{r}
-data_tract <- as.data.frame(rbind(data_equity_wt10,
-                                  data_equity_wt15,
-                                  data_equity_wt20)) %>% 
-  dplyr::select(-tot_age, -tot_pop, -tracts) %>% 
-  rbind(data_equity_pivot10_calc,
-        data_equity_pivot15_calc,
-        data_equity_pivot20_calc) %>% 
+data_tract <- as.data.frame(rbind(data_equity_tracts_reg,
+                                  data_equity_tracts_county)) %>% 
   filter(!is.na(quintile))
 
 # check data set
 str(data_tract)
+unique(data_tract$county)
+table(data_tract$data_year, data_tract$county)
 ```
 This data set should include records for: 
 
 * 5 geographies: 4 PSRC counties + region
-* 3 years
+* 7 years
 * 6 equity focus groups
-    * 2010: (subtracting) 2 missing focus groups(disability, lep) * 5 equity quintiles * 5 geographies
-    * 2015: (subtracting) 1 missing focus group (lep) * 5 equity quintiles * 5 geographies
 * 5 equity quintiles
+
+### Address "Low - Low Medium" quintile group
+This code was added because of Kitsap/LEP data - there were too many tracts with 0, so we combined the bottom two quintiles into low - low medium. This change requires some additional processing so that all of the tracts (bottom 40%) in this combined quintile category are averaged and this average value is assigned to separate 'low' and 'low medium' quintile categories. 
+```{r}
+# nrow(data_tract) #378
+# unique(data_tract$quintile) #6 quintiles because of additional "Low - Low Medium"
+
+low_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile="Low") %>% 
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+lowmed_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>%
+  rename(quintile_original=quintile) %>%
+  mutate(quintile="Low Medium") %>% 
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+
+low_lowmed <- rbind(low_quintile,
+                    lowmed_quintile)
+# nrow(low_lowmed) #4
+
+# gather counties that have low - medium categorization
+low_lowmed_counties <- unique(low_lowmed$County.Name) #Kitsap, Pierce
+low_lowmed_years <- unique(low_lowmed$data_year) #2020
+low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
+
+other_data <- data_tract %>% 
+  filter(quintile!="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile=quintile_original)
+# nrow(other_data) #375
+
+data_tract <- rbind(low_lowmed, #4
+                    other_data) #375
+
+nrow(data_tract) #379 - should be fewer because of duplicates (375)- low and low medium present in data set because of aggregation/calculations in previous steps - need to be removed and replaced with averaged values
+# table(data_tract$quintile, data_tract$County.Name) #should not have extra in low and low medium quintile categories
+# unique(data_tract$quintile) #5 quintiles
+
+# remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
+data_tract <- data_tract %>% 
+  filter(!(county %in% low_lowmed_counties & 
+           data_year %in% low_lowmed_years &
+           equity_group %in% low_lowmed_equity &
+           (quintile_original=="Low" | 
+             quintile_original=="Low Medium")))
+
+# nrow(data_tract) #375
+# table(data_tract$quintile, data_tract$County.Name) #should not have extra in low and low medium quintile categories
+```
 
 ## Rename and factor
 ```{r}
@@ -917,7 +778,6 @@ equity_group_order <- c("People of Color",
 
 # transforming data labels ----
 data_clean <- data_tract %>% 
-  mutate(county=County.Name) %>%  #rename value variable for consistency
   mutate(county_ord = factor(county, levels=county_order)) %>%
   mutate(equity_group_ord = case_when(
     equity_group=="poc_quintile"~"People of Color",
@@ -932,7 +792,7 @@ data_clean <- data_tract %>%
 
 # Minor edits to the data
 data_clean <- data_clean %>%
-  dplyr::mutate(estimate=as.numeric(wt_life_expec)) #rename value variable for consistency
+  dplyr::mutate(estimate=as.numeric(wt_avg_miles)) #rename value variable for consistency
 
 # Sort the data to ensure the charts work
 data_clean <- data_clean %>%
