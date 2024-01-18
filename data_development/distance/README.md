@@ -42,8 +42,8 @@ Ensure that no new BRT routes should be included to the following. If so, check 
 Note that this list is applicable to all years, before these were all in service. The script selects the lines from GTFS only if they're available, so the list should be as current as possible regardless of which is being processed.
 
 ## Scripts
-The main script is controlled through `generate_indicatory.py`, which can be run after verifying settings in `configuration.toml` by running:
-- `python generate_indicatory.py` (with the equity-tracker virtual environment activated)
+The main script is controlled through `generate_indicators.py`, which can be run after verifying settings in `configuration.toml` by running:
+- `python generate_indicators.py` (with the equity-tracker virtual environment activated)
 
 This script will process the list of analysis years and store results at the specified output directory. A folder is generated for each analysis year with a file inside named `tract_hct_distance.csv`. 
 
