@@ -1,7 +1,12 @@
 This method calculates average weighted distance to high capacity transit (HCT) stations for each tract in the region, using parcel-level household population as weights. The setup, usage, and calculation methods are described below. 
 
 # Setup
-Clone this repository to a local directory. Open an Anaconda prompt and change directory to the location of the local repository (equity-tracker/data_development/distance). 
+Clone this repository to a local directory.* Open an Anaconda prompt and change directory to the location of the local repository (equity-tracker/data_development/distance). 
+
+*If you have been working on this project, you will have likely already cloned this repository to a local directory. 
+
+_As an example:_
+![image](https://github.com/psrc/equity-tracker/assets/72169299/c1609ec5-b914-4697-8d34-88b10dd9dc69)
 
 ## Virtual Environment
 From the Anaconda prompt in this project directory root, enter the following to install a virtual environment that includes all required versions of Python libraries:
@@ -12,7 +17,7 @@ After install is complete enter:
 You should see (equity_tracker) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
 
 ## Elmer Connections
-Python connections to Elmer and ElmerGeo databases require an ODBC driver to connect with SQL. To set this up, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults.
+Most Data staff should already have access to work with Elmer databases. Check that the ODBC driver is installed on your workspace by searching for it in Windows - it should show up as ODBC Data Sources (64-bit). If not, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults. If there are problems connecting with Elmer, contact Brice or Chris Peak. 
 
 # Usage
 Configuration settings for the script are controlled by **configuration.toml**. The main setting to update here is `analysis_year_list`, which controls the years the tool should update. When running this for newly available data, it should be sufficient to create a list of this year only (e.g., [2024]). The `output_dir` specifies where results will be available and is set by default to `Y:/Equity Indicators/access`. In general, no other settings should need to be changed. 
@@ -37,8 +42,8 @@ Ensure that no new BRT routes should be included to the following. If so, check 
 Note that this list is applicable to all years, before these were all in service. The script selects the lines from GTFS only if they're available, so the list should be as current as possible regardless of which is being processed.
 
 ## Scripts
-The main script is controlled through `generate_indicatory.py`, which can be run after verifying settings in `configuration.toml` by running:
-- `python generate.indicatory.py` (with the equity-tracker virtual environment activated)
+The main script is controlled through `generate_indicators.py`, which can be run after verifying settings in `configuration.toml` by running:
+- `python generate_indicators.py` (with the equity-tracker virtual environment activated)
 
 This script will process the list of analysis years and store results at the specified output directory. A folder is generated for each analysis year with a file inside named `tract_hct_distance.csv`. 
 
@@ -50,7 +55,11 @@ This script will process the list of analysis years and store results at the spe
 |3    |53033000202  |1.9068508927791523 |all_hct  |2023     |2023             |2023       |geoid20|2023         |
 |4    |53033000300  |0.44945824419725416|all_hct  |2023     |2023             |2023       |geoid20|2023         |
 
-This file reports the average weighted miles to a variety of HCT stations within each tract. The script calculates distances for all HCT stops, but also includes rows for individual HCT modes (light rail, commuter rail, ferry, BRT) labeled by the `access_to` field. The remaining columns are identifiers to show which version of data was used. Ideally, these should all match the analysis_year. The `geoid_value` indicates which Census vintage the tracts comprise (geoid20 for 2020 and geoid10 for 2010 geographies).
+This file reports the average weighted miles to a variety of HCT stations within each tract. The script calculates distances for all HCT stops, but also includes rows for individual HCT modes (light rail, commuter rail, ferry, BRT) labeled by the `access_to` field. The remaining columns are identifiers to show which version of data was used.* Ideally, these should all match the analysis_year.** The `geoid_value` indicates which Census vintage the tracts comprise (geoid20 for 2020 and geoid10 for 2010 geographies).
+
+*Although the full data set generated in the following step includes years back to 2011, GTFS data is only available back to 2015.  
+
+**The various year fields can be confusing because they may not match the `analysis_year`. The `ofm_estimate_year` (year data is from) should match the `analysis_year` (whichever year you're trying to get the data from). The only time that those two would be different is if an ofm estimate isn't available for that analysis year. `ofm_estimate_year` is different from `ofm_vintage` (which represents the year from which the `ofm_estimate_year` was produced). There are multiple OFM vintages of when the data was published, but this script searches for the when the newest available vintage was released, so the year is sometimes more recent than the `ofm_estimate_year`.
 
 Once the individual years are produced, this script can be run to combine all years into a single file:
 - `python compile_results.py`
