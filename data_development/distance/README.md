@@ -5,7 +5,7 @@ Clone this repository to a local directory.* Open an Anaconda prompt and change 
 
 *If you have been working on this project, you will have likely already cloned this repository to a local directory. 
 
-As an example:
+_As an example:_
 ![image](https://github.com/psrc/equity-tracker/assets/72169299/c1609ec5-b914-4697-8d34-88b10dd9dc69)
 
 ## Virtual Environment
