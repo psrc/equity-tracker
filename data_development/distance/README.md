@@ -51,7 +51,10 @@ This script will process the list of analysis years and store results at the spe
 |3    |53033000202  |1.9068508927791523 |all_hct  |2023     |2023             |2023       |geoid20|2023         |
 |4    |53033000300  |0.44945824419725416|all_hct  |2023     |2023             |2023       |geoid20|2023         |
 
-This file reports the average weighted miles to a variety of HCT stations within each tract. The script calculates distances for all HCT stops, but also includes rows for individual HCT modes (light rail, commuter rail, ferry, BRT) labeled by the `access_to` field. The remaining columns are identifiers to show which version of data was used. Ideally, these should all match the analysis_year. The `geoid_value` indicates which Census vintage the tracts comprise (geoid20 for 2020 and geoid10 for 2010 geographies).
+This file reports the average weighted miles to a variety of HCT stations within each tract. The script calculates distances for all HCT stops, but also includes rows for individual HCT modes (light rail, commuter rail, ferry, BRT) labeled by the `access_to` field. The remaining columns are identifiers to show which version of data was used.* Ideally, these should all match the analysis_year.** The `geoid_value` indicates which Census vintage the tracts comprise (geoid20 for 2020 and geoid10 for 2010 geographies).
+
+*Although the full data set generated in the following step includes years back to 2011, GTFS data is only available back to 2015. We could assume that the HCT network is the same as in 2015 and there weren't many major changes between 2011 and 2015 (Capitol Hill and Husky Stadium Link stations opened in 2016). 
+**The various year fields can be confusing because they may not match the `analysis_year`. The `ofm_estimate_year` should match the `analysis_year`, but it is different from `ofm_vintage` (which represents the year from which the `ofm_estimate_year` was produced). There are multiple OFM vintages of when the data was published, but this script searches for the when the newest available vintage was released, so the year is sometimes more recent than the `ofm_estimate_year`.
 
 Once the individual years are produced, this script can be run to combine all years into a single file:
 - `python compile_results.py`
