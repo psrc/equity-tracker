@@ -186,7 +186,7 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # check maximum value of data
-# summary(data_tract$estimate) # max is 31.98, so rounding to 100 makes sense
+# summary(data_tract$estimate) # max is 95.39, so rounding to 100 makes sense
 max_value <- 35 # this value will be the max value in the legend
 
 # set up palettes
@@ -197,17 +197,15 @@ tract_data_plus_zero<-append(data_tract$estimate,0)
 # psrc_palette <- leaflet::colorNumeric(palette=psrc_purple_plus,
 #                                       domain = data_tract$estimate) # this is the value field
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-                                      domain = c(min(data_tract$estimate,na.rm = TRUE),max_value, NA)) # this is the value field
-psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-                                      domain = c(min(tract_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
+                                      domain = c(min(tract_data_plus_zero, na.rm = TRUE),max_value, NA)) # this is the value field
 
 # set the variable
-var_name <- "Access to High <br> Capacity Transit (mi)"
+var_name <- "Access to High <br> Capacity Transit (miles)"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
-  paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=2))), " miles"),
-  paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=2))), " miles"),
-  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=2))), 
+  paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " miles"),
+  paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=1))), " miles"),
+  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=1))), 
         paste0("(",data_tract$county_name," County)"))) %>% 
   lapply(htmltools::HTML)
 
@@ -230,7 +228,7 @@ tract_map <- leaflet() %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
-                       values = c(min(tract_data_plus_zero,na.rm = TRUE),max_value, NA),
+                       values = c(min(tract_data_plus_zero,na.rm = TRUE),max_value, NA), #data_tract$estimate
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -320,7 +318,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - tract}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2021") #filter on most recent year
+  dplyr::filter(data_year=="2020") #filter on most recent year
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
@@ -337,8 +335,8 @@ color = "purples"
 num_colors = 5
 color_rev = FALSE
 title = "Access to High Capacity Transit"
-subtitle = "Number of years a newborn can be expected to live based on current conditions"
-source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+subtitle = "The weighted distance in miles to high capacity transit (HCT) stations"
+source = paste("GTFS (General Transit Feed Specification),", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
