@@ -314,6 +314,7 @@ sort <- data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
 source('equity-tracker-chart-functions.R')
 
 # set folder structure
@@ -511,11 +512,45 @@ filter <- data_clean_column %>%
 }
 </style>
 
+```{r insert nulls for line chart, include=FALSE}
+# insert null records ----
+standard_base_year <- 2010
+
+## main table
+df_base <- data_clean %>% 
+  mutate(data_year_num = as.numeric(data_year))
+
+## set-up columns to identify missing years by the unique categories/geography
+d <- df_base %>% 
+  group_by(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord) %>% 
+  summarise(num_unique_years = length(unique(data_year)),
+            start_year = as.numeric(min(unique(data_year))),
+            end_year = as.numeric(max(unique(data_year)))) %>% 
+  mutate(base_year = standard_base_year)
+
+## create list-column, a vector of missing years in a cell
+d_calc <- d %>% 
+  rowwise() %>% 
+  mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
+
+## unpack so each missing year is a row of its own
+d_unnest <- d_calc %>% 
+  unnest(missing_years) 
+
+## create table with null records for chart
+df_nulls <- d_unnest %>% 
+  dplyr::select(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord, data_year_num = missing_years) %>% 
+  mutate(wt_combo_rate = NA, estimate = NA, data_year = as.character(data_year_num))
+
+## assemble main table  
+df <- bind_rows(df_base, df_nulls) %>% 
+  arrange(county_ord, equity_group_ord, quintile_ord, data_year_num)
+```
+
 ```{r line facet - tract, include=FALSE}
 # Create Facet Line Chart
-
 # set variables
-df = data_clean
+df = df #data_clean
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0

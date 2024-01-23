@@ -8,7 +8,7 @@ From the Anaconda prompt in this project directory root, enter the following to 
  - `conda env create -f environment.yaml`
 
 After install is complete enter: 
-- `conda activate toxi_release_env`. 
+- `conda activate toxic_release_env`. 
 You should see (toxic_release_env) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
 
 ## Elmer Connections
