@@ -10,7 +10,7 @@ source('C:\\Users\\CLam\\github\\equity-tracker\\data-visualization\\equity-trac
 # set folder structure
 rda <- 'a02-cardiovascular-disease-mortality-data.rda'
 
-load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+load(file = file.path(base_dir, theme_dir, ind_dir, "rda-data", rda))
 
 # insert null records ----
 standard_base_year <- 2010
@@ -22,7 +22,8 @@ df_base <- data_clean %>%
 ## set-up columns to identify missing years by the unique categories/geography
 d <- df_base %>% 
   group_by(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord) %>% 
-  summarise(num_unique_years = length(unique(data_year)),
+  summarise(avail_years = list(unique(as.numeric(data_year))),
+            num_unique_years = length(unique(data_year)),
             start_year = as.numeric(min(unique(data_year))),
             end_year = as.numeric(max(unique(data_year)))) %>% 
   mutate(base_year = standard_base_year)
@@ -30,7 +31,7 @@ d <- df_base %>%
 ## create list-column, a vector of missing years in a cell
 d_calc <- d %>% 
   rowwise() %>% 
-  mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
+  mutate(missing_years = list(setdiff(seq(base_year, end_year), avail_years)))
 
 ## unpack so each missing year is a row of its own
 d_unnest <- d_calc %>% 
@@ -44,6 +45,19 @@ df_nulls <- d_unnest %>%
 ## assemble main table  
 df <- bind_rows(df_base, df_nulls) %>% 
   arrange(county_ord, equity_group_ord, quintile_ord, data_year_num)
+
+# ## Test individual chart
+# df_filter <- df %>%
+#   filter(equity_group_ord == "People of Color" & county_ord == "Region")
+# 
+# library(echarts4r)
+# chart <- df_filter |>
+#   group_by(quintile_ord) |>
+#   e_charts(data_year) |>
+#   e_line(estimate) |>
+#   e_tooltip(trigger = "axis")
+# 
+# chart
 
 # Create Facet Line Chart
 # set variables
