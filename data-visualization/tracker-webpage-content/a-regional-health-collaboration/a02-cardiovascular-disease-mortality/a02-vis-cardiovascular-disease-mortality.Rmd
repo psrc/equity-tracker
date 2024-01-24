@@ -523,7 +523,8 @@ df_base <- data_clean %>%
 ## set-up columns to identify missing years by the unique categories/geography
 d <- df_base %>% 
   group_by(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord) %>% 
-  summarise(num_unique_years = length(unique(data_year)),
+  summarise(avail_years = list(unique(as.numeric(data_year))),
+            num_unique_years = length(unique(data_year)),
             start_year = as.numeric(min(unique(data_year))),
             end_year = as.numeric(max(unique(data_year)))) %>% 
   mutate(base_year = standard_base_year)
@@ -531,7 +532,7 @@ d <- df_base %>%
 ## create list-column, a vector of missing years in a cell
 d_calc <- d %>% 
   rowwise() %>% 
-  mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
+  mutate(missing_years = list(setdiff(seq(base_year, end_year), avail_years))) 
 
 ## unpack so each missing year is a row of its own
 d_unnest <- d_calc %>% 

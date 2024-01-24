@@ -182,7 +182,8 @@ echart_line_chart <- function(df, x, y, facet, geo, title, y_min, y_max, dec, es
   for(fill_items in chart_fill) {
     c <- c %>%
       echarts4r::e_line_(fill_items, smooth = FALSE, lineStyle = list(width = 5),
-                         symbolSize=9, symbol='emptyCircle')
+                         symbolSize=9, symbol='emptyCircle',
+                         connectNulls = TRUE)
   }
   
   c <- c %>% 
