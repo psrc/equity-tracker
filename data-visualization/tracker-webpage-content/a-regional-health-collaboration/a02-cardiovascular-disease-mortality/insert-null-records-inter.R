@@ -46,19 +46,6 @@ df_nulls <- d_unnest %>%
 df <- bind_rows(df_base, df_nulls) %>% 
   arrange(county_ord, equity_group_ord, quintile_ord, data_year_num)
 
-# ## Test individual chart
-# df_filter <- df %>%
-#   filter(equity_group_ord == "People of Color" & county_ord == "Region")
-# 
-# library(echarts4r)
-# chart <- df_filter |>
-#   group_by(quintile_ord) |>
-#   e_charts(data_year) |>
-#   e_line(estimate) |>
-#   e_tooltip(trigger = "axis")
-# 
-# chart
-
 # Create Facet Line Chart
 # set variables
 df = df #data_clean
