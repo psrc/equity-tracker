@@ -46,9 +46,13 @@ df_nulls <- d_unnest %>%
 df <- bind_rows(df_base, df_nulls) %>% 
   arrange(county_ord, equity_group_ord, quintile_ord, data_year_num)
 
+# filter for relevant years
+df2 <- df %>% 
+  filter(data_year_num %in% c(2010, 2015, 2020))
+
 # Create Facet Line Chart
 # set variables
-df = df #data_clean
+df = df2 #data_clean
 geo = "county_ord"
 y = "estimate"
 x = "data_year" # different from variables for facet column
