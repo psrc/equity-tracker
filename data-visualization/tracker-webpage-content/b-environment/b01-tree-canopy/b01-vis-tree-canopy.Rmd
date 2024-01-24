@@ -1,16 +1,17 @@
 ---
-title: "Average Percentage of Tree Canopy Cover by Census Tract, 2011 and 2021"
+title: "Average Percentage of Tree Canopy Cover by Census Tract, 2011, 2016, and 2021"
 subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  html_document:
+    word_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-    word_document:
+    html_document:
+
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -57,7 +58,9 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Average percentage of tree canopy by census tract. Understanding tree canopy coverage can help us understand which communities are disproportionately impacted by less tree canopy. Reduced tree canopy can impact quality of life in various ways including leading to warmer temperatures and decreased access to open space/parks. 
+Average percentage of tree canopy by census tract. Understanding tree canopy coverage can help us understand which communities are disproportionately impacted by less tree canopy. Reduced tree canopy can impact quality of life in various ways including leading to warmer temperatures and decreased access to open space/parks.
+
+Calculations were made using original data from [MRLC](https://www.mrlc.gov/data?f%5B0%5D=category%3ATree%20Canopy) and applying ArcGIS Zonal Statistics as Table tool to calculate the average percentage of canopy cover per census tract.
 
 ## 1. Map of most recent data
 To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution. 
@@ -310,7 +313,7 @@ sort <- data %>%
 sort <- data %>% 
   dplyr::arrange(estimate)
 
-# 3 lowest: there are 99 census tracts with a rate of zero
+# 3 lowest: The census tracts with the lowest average tree canopy cover are in King County and include South Lake Union (1%), the two tracts that make up downtown Seattle (both 1%), and the tract with Boeing Field (2%)
 
 by_county <- data %>% 
   dplyr::group_by(County.Name) %>% 
@@ -330,7 +333,7 @@ by_county <- data %>%
 
 * The census tracts with the highest average tree canopy cover includes three census tracts in King County that include the tract east of Enumclaw heading into the foothills of the Cascades (73%), the tract with the Cedar River Watershed (72%), the tract with Tiger Mountain (70%), and in Snohomish County the tract with Mt. Pilchuck (68%)
 * The census tracts with the lowest average tree canopy cover are in King County and include South Lake Union (1%), the two tracts that make up downtown Seattle (both 1%), and the tract with Boeing Field (2%)
-* King County has the highest average tree canopy cover (55.9%), followed by Snohomish (55.8%), Pierce (50.6%), and Kitsap (54.1%)
+* King County has the highest average tree canopy cover (55.9%), followed by Snohomish (55.8%), Kitsap (54.1%), and Pierce (50.6%)
 
 \
 \
@@ -376,7 +379,7 @@ num_colors = 5
 color_rev = FALSE
 title = "Average % of Tree Canopy"
 subtitle = "Census Tract Level"
-source = paste("MRLC", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+source = paste("MRLC U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -520,7 +523,7 @@ filter <- data_clean_column %>%
 
 1. 2x: As a region, communities with low concentrations of households with lower income have over twice the canopy cover as communities with high concentrations
 2. 2x: As a region, communities with low concentrations of people of color have over twice the canopy cover as communities with high concentrations
-3. 2: As a region, communities with low concentrations of people of households with limited English proficiency have over twice the canopy cover as communities with high concentrations
+3. 2x: As a region, communities with low concentrations of people of households with limited English proficiency have over twice the canopy cover as communities with high concentrations
 
 \
 
@@ -529,7 +532,6 @@ filter <- data_clean_column %>%
 *	Communities with the highest concentration of people of color, households with lower income, households with limited English proficiency, and youth under 18 are most disproportionately impacted by lower average tree canopy cover
 *	The counties with the largest gap between low and high concentrations of people of color are King and Snohomish counties
 *	The counties with the largest gap between low and high concentrations of households with lower income are King and Pierce counties
-*	The counties with the largest gap between low and high/medium high concentrations of households with limited English proficiency are King, Pierce, and Snohomish counties
 
 
 \
@@ -547,40 +549,38 @@ filter <- data_clean_column %>%
 
 ```{r insert nulls for line chart, include=FALSE}
 
-# # insert null records ----
-# Commented out as it does not seem to add to this scenario where only one year is available vs. multiple years
+# insert null records ----
+standard_base_year <- 2011
 
-# standard_base_year <- 2011
-# 
-# ## main table
-# df_base <- data_clean %>% 
-#   mutate(data_year_num = as.numeric(data_year))
-# 
-# ## set-up columns to identify missing years by the unique categories/geography
-# d <- df_base %>% 
-#   group_by(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord) %>% 
-#   summarise(num_unique_years = length(unique(data_year)),
-#             start_year = as.numeric(min(unique(data_year))),
-#             end_year = as.numeric(max(unique(data_year)))) %>% 
-#   mutate(base_year = standard_base_year)
-# 
-# ## create list-column, a vector of missing years in a cell
-# d_calc <- d %>% 
-#   rowwise() %>% 
-#   mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
-# 
-# ## unpack so each missing year is a row of its own
-# d_unnest <- d_calc %>% 
-#   unnest(missing_years) 
-# 
-# ## create table with null records for chart
-# df_nulls <- d_unnest %>% 
-#   select(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord, data_year_num = missing_years) %>% 
-#   mutate(wt_combo_rate = NA, estimate = NA, data_year = as.character(data_year_num))
-# 
-# ## assemble main table  
-# df <- bind_rows(df_base, df_nulls) %>% 
-#   arrange(county_ord, equity_group_ord, data_year_num)
+## main table
+df_base <- data_clean %>% 
+  mutate(data_year_num = as.numeric(data_year))
+
+## set-up columns to identify missing years by the unique categories/geography
+d <- df_base %>% 
+  group_by(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord) %>% 
+  summarise(num_unique_years = length(unique(data_year)),
+            start_year = as.numeric(min(unique(data_year))),
+            end_year = as.numeric(max(unique(data_year)))) %>% 
+  mutate(base_year = standard_base_year)
+
+## create list-column, a vector of missing years in a cell
+d_calc <- d %>% 
+  rowwise() %>% 
+  mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
+
+## unpack so each missing year is a row of its own
+d_unnest <- d_calc %>% 
+  unnest(missing_years) 
+
+## create table with null records for chart
+df_nulls <- d_unnest %>% 
+  select(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord, data_year_num = missing_years) %>% 
+  mutate(wt_Avg_Per = NA, estimate = NA, data_year = as.character(data_year_num))
+
+## assemble main table  
+df <- bind_rows(df_base, df_nulls) %>% 
+  arrange(county_ord, equity_group_ord, quintile_ord, data_year_num)
 
 ```
 
@@ -741,12 +741,16 @@ filter <- data_clean %>%
 
 ```
 
+#### Data call outs
 
+1. 50% decrease: As a region since 2016, communities with high concentrations of households with lower income have seen over a 50% decrease in average tree canopy coverage
+2. 10%: As a region, communities with high concentrations of households with youth under 18 have seen a 10% decrease in average tree canopy coverage since 2011
+3. 20%: Kitsap County has seen a 20% increase in tree canopy coverage for households with limited English proficiency since 2011
 
 #### Insights & Analysis
 
-*	The gap in average tree canopy coverage for communities with the highest and lowest concentrations of people of color has stayed consistent at the regional level
-* Average tree canopy coverage has decreased for communities with the highest concentrations of households with youth under 18
+*	As a region, communities with the highest and lowest concentrations of people of color have seen consistent average tree canopy coverage from 2011 to 2021
+* As a region, communities with high concentrations of households with limited English proficiency have seen consistent average tree canopy coverage from 2011 to 2021
 *	Pierce County has seen the largest increase in the gap between the highest and lowest concentrations for households with lower income between 2011 and 2021
 
  
@@ -785,14 +789,14 @@ do.call(unlink, files.to.remove)
 ## Copy files from Y drive > website folder
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
-# current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
-# 
-# web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-# new.folder <- file.path(web.base.folder,theme_dir)
-# 
-# list.of.files <- list.files(current_folder, 
-#                             full.names = T)
-# list.of.files
+current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+ 
+web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+new.folder <- file.path(web.base.folder,theme_dir)
+ 
+list.of.files <- list.files(current_folder, 
+                             full.names = T)
+#list.of.files
 
 # copy the files to the new folder
 file.copy(list.of.files,

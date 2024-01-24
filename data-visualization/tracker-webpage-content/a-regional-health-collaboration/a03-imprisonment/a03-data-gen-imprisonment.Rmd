@@ -776,6 +776,61 @@ This data set should include records for:
     * 2015: (subtracting) 1 missing focus group (lep) * 5 equity quintiles * 5 geographies
 * 5 equity quintiles
 
+
+
+### Address "Low - Low Medium" quintile group
+This code was added because of Kitsap/LEP data - there were too many tracts with 0, so we combined the bottom two quintiles into low - low medium. This change requires some additional processing so that all of the tracts (bottom 40%) in this combined quintile category are averaged and this average value is assigned to separate 'low' and 'low medium' quintile categories. 
+
+```{r}
+#nrow(data_tract) #148
+# unique(data_tract$quintile) #6 quintiles because of additional "Low - Low Medium"
+
+low_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile="Low") %>% 
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+lowmed_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>%
+  rename(quintile_original=quintile) %>%
+  mutate(quintile="Low Medium") %>% 
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+
+low_lowmed <- rbind(low_quintile,
+                    lowmed_quintile)
+#nrow(low_lowmed) #4
+
+# gather counties that have low - medium categorization
+low_lowmed_counties <- unique(low_lowmed$county) #Kitsap, Pierce
+low_lowmed_years <- unique(low_lowmed$data_year) #2020
+low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
+
+other_data <- data_tract %>% 
+  filter(quintile!="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile=quintile_original)
+
+#nrow(other_data) #146
+
+data_tract <- rbind(low_lowmed, #4
+                    other_data) #146
+
+nrow(data_tract) #150 - should be fewer because of duplicates (146)- low and low medium present in data set because of aggregation/calculations in previous steps - need to be removed and replaced with averaged values
+#table(data_tract$quintile, data_tract$county) #should not have extra in low and low medium quintile categories
+#unique(data_tract$quintile) #5 quintiles
+
+# remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
+data_tract <- data_tract %>% 
+  filter(!(county %in% low_lowmed_counties & 
+           data_year %in% low_lowmed_years &
+           equity_group %in% low_lowmed_equity &
+           (quintile_original=="Low" | 
+             quintile_original=="Low Medium")))
+
+# nrow(data_tract) #150
+#table(data_tract$quintile, data_tract$county) #should not have extra in low and low medium quintile categories
+```
+
 ## Rename and factor
 ```{r}
 # wrap/order labels ----
