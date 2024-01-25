@@ -588,7 +588,7 @@ save(data_tract, file = file.path(base_dir,
 # Explore data by equity quintile
 ## Join primary data to equity quintiles
 ```{r}
-# this will require joining each of the years of hct access data (1-year increments) to each of the PUMS equity quintile/tract data
+# this will require joining each of the years of hct access data (1-year increments) to each of the PUMS equity quintile/tract data (also available for each year, but based on 5-year time periods)
 # determine which years each dataset includes
 # because GTFS data is available starting in 2015, we are filtering hct data to 2015 and after (removing 2011-2014)
 hct_2015 <- hct %>% 
@@ -597,17 +597,20 @@ hct_2015 <- hct %>%
 yrs_hct <- unique(hct_2015$analysis_year) #2015-2023
 yrs_equity_tracts <- unique(equity_tracts$data_year) #2009-2021
 
-# because of the mismatch between years we will take the common years
+# because of the mismatch in years between the two data sets we will take the common years
 years_of_interest <- intersect(yrs_hct,yrs_equity_tracts) #2015-2021
 
 # filter data sets so that they have overlapping/common years
 hct_for_join <- hct %>% 
   filter(analysis_year %in% years_of_interest,
          access_to=="all_hct") # focus on all_hct, not individuals modes
+
 # unique(hct_for_join$analysis_year) #2015-2021
 # nrow(hct_for_join) #5717: ~ (5*772) + (2*919)
+
 equity_tracts_for_join <- equity_tracts %>% 
   filter(data_year %in% years_of_interest) 
+
 # unique(equity_tracts_for_join$data_year) #2015-2021
 # nrow(equity_tracts_for_join) #11396: ~[(5*772) + (2*919)]*2 <- 2 because each census tract is listed for region and for whichever county it belongs to
 
