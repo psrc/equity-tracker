@@ -176,7 +176,7 @@ all_precinct_data_16 <- read_sf(file.path(data_folder,"Statewide_Prec_2016_NoWat
 precinct_16 <- all_precinct_data_16 %>%
   filter(COUNTY %in% c("King", "Kitsap", "Pierce", "Snohomish"))
 
-  #relabel kitsap names to match labels from the election data
+# relabel kitsap names to match labels from the election data
 kitsap_16 <- precinct_16 %>%
   filter(COUNTY == "Kitsap") %>%
   mutate(last_digits = str_sub(PRECNAME, -3, -1),
