@@ -200,7 +200,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(tract_data_plus_zero, na.rm = TRUE),max_value, NA)) # this is the value field
 
 # set the variable
-var_name <- "Access to High <br> Capacity Transit (miles)"
+var_name <- "Distance to High <br> Capacity Transit (miles)"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
   paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " miles"),
@@ -274,23 +274,37 @@ data <- data_tract %>%
 # calculate call out information
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004400 (Ravenna/U-District/Roosevelt) King (92.14), 53033032309 (Redmond) King (91.25)
+# 5 highest: Snohomish, Pierce, Snohomish, King, King
 
 sort <- data %>% 
   dplyr::arrange(estimate)
+
+filter <- data %>% 
+  dplyr::select(county_name, cnty_estimate) %>% 
+  dplyr::group_by(county_name) %>% 
+  summarise(county_avg=mean(cnty_estimate))
+
+filter <- data %>% 
+  filter(estimate<1)
+
+table(filter$county_name)
+# King: 203/283= 72%
+# Kitsap: 5/283= 2%
+# Pierce: 20/283= 7%
+# Snohomish: 55/283= 19%
 ```
 
-1. 78.8 years: The region's average life expectancy
-2. 80.9 years: The region's median life expectancy
-3. 28.1 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+1. 3.40 miles: The region's average distance to high capacity transit (HCT)
+2. 31.99 miles: The census tract with the farthest average distance to HCT is in Snohomish County
+3. 0.06 miles: The census tract with the shortest average distance to HCT is in King County
 
 \
 
 #### Insights & Analysis
 
-* Snohomish County has the highest life expectancy (80.7 years), followed by King (79.4 years), Kitsap (78.9 years), and Pierce (75.7 years)
-* The census tracts with the highest life expectancy are in Auburn, Pierce County (95.4 years); Ravenna/U-District neighborhoods (Seattle), King County (92.1 years); Redmond, King County (91.3 years)
-* The census tracts with the lowest life expectancy are in the Lincoln International District (Tacoma), Pierce County (67.3 years); Lakewood, Pierce County (69.7 years); Tulalip Reservation, Snohomish County (70.1 years)
+* King County has the lowest average distance to HCT (2.49 miles), followed by Kitsap (4.34 miles), Pierce (4.37 miles), and Snohomish (4.59 miles)
+* Of the 10 census tracts with the farthest distance to HCT (all of which are over 18 miles), 4 are located in Snohomish County, 4 are in King, and 1 is in Pierce 
+* There are 283 tracts in the region with an average distance to HCT less than one mile: 71% in King, 19% in Snohomish, 7% in Pierce, and 2% in Kitsap  
 
 \
 \
@@ -318,7 +332,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - tract}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2020") #filter on most recent year
+  dplyr::filter(data_year=="2021") #filter on most recent year
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
@@ -334,8 +348,8 @@ esttype = "number"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Access to High Capacity Transit"
-subtitle = "The weighted distance in miles to high capacity transit (HCT) stations"
+title = "Distance to High Capacity Transit"
+subtitle = "The weighted distance in miles to high capacity transit (HCT) stations in 2021"
 source = paste("GTFS (General Transit Feed Specification),", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -418,27 +432,39 @@ filter <- data_clean_column %>%
   filter(county=="Region",
          equity_group=="poc_quintile")
 
-# region low quintile poc households: 81.19030	
-# region high quintile poc households: 76.67422
-# 81.19030-76.67422=4.51608
+# region low quintile poc households: 7.883655	
+# region high quintile poc households: 3.461938
+# 7.883655-3.461938=4.421717
 
 filter <- data_clean_column %>% 
-  filter(quintile=="High",
+  filter(county=="Region",
          equity_group=="income_quintile")
 
-# region high quintile low income households: 71.45515	
-# pierce high quintile low income households: 63.50990
-# 71.45515-63.50990=7.94525
+# region low quintile low income households: 7.068868	
+# region high quintile low income households: 2.723998	
+# 7.068868-2.723998	=4.34487
+
+filter <- data_clean_column %>% 
+  filter(county=="Region",
+         equity_group=="youth_quintile")
+
+# region low quintile low income households: 2.953654	
+# region high quintile low income households: 6.811059	
+# 6.811059-2.953654	=3.857405
 
 filter <- data_clean_column %>% 
   filter(equity_group=="lep_quintile",
          quintile=="Low"|
            quintile=="High")
 
-# region dif bt high/low quintiles for lep: 79.04127-77.92853=1.11274
-# king dif bt high/low quintiles for lep: 80.32595-77.63977=2.68618
-# pierce dif bt high/low quintiles for lep: 78.46118-70.37597=8.08521
-# snohomish dif bt high/low quintiles for lep: 80.35905-80.50632=-0.14727
+# region dif bt high/low quintiles for lep: 3.492987-6.927187=-3.4342
+# king dif bt high/low quintiles for lep: 2.934721-5.841017=-2.906296
+# kitsap dif bt high/low quintiles for lep: 4.591093-5.763176=-1.172083
+# pierce dif bt high/low quintiles for lep: 2.382247-6.279300=-3.897053
+# snohomish dif bt high/low quintiles for lep: 5.244216-10.369651=-5.125435
+
+
+
 
 filter <- data_clean_column %>% 
   filter(equity_group=="income_quintile",
@@ -462,17 +488,16 @@ filter <- data_clean_column %>%
 # snohomish dif bt high/low quintiles for income: 81.56795-80.16112=1.40683
 ```
 
-1. 76.7 years: The regional life expectancy of people living in census tracts with the highest concentration of people of color, compared to 81.2 in census tracts with the lowest concentrations of people of color
-2. 7.9 years: The life expectancy of those living census tracts with the highest concentration of low income households is lowest in Pierce County - a difference of 7.9 years when compared to the regional average
-3. 7.0 years: Those living in census tracts with the highest concentration of limited English proficient households have a shorter life expectancy in Pierce County by 7.0 years, when compared to the regional average 
+1. 3.5 miles: The average regional distance to HCT for people living in census tracts with the highest concentration of people of color, compared to 7.9 miles in census tracts with the lowest concentrations of people of color
+2. 4.3 miles: Those living in census tracts with the highest concentration of low income households are 4.3 miles closer to HCT than those living in census tracts with the lowest concentration
+3. 3.8 miles: Those living in census tracts with the highest concentration of households with youth are 3.8 miles farther from HCT than those living in census tracts with the lowest concentration
 
 \
 
 #### Insights & Analysis
 
-* The smallest difference in life expectancy between census tracts with the highest and lowest concentrations of households with lower income is in Snohomish County (3.6 years), while the largest difference is in Pierce County (17.4 years)
-* The life expectancy of those living in census tracts with the highest concentration of limited English proficient households is lower in all the counties except for Snohomish County  
-* There is no noticeable relationship between life expectancy and living in census tracts with high and low concentrations of people with disabilities
+* The difference in distance to HCT between those living in census tracts with a high and low concentration of limited English proficient households is greatest in Snohomish (5.1 miles), Pierce (3.9 miles), King (2.9 miles), and Kitsap (1.2 miles)
+* There is no noticeable relationship between distance to HCT and  and living in census tracts with high and low concentrations of people with disabilities
 * When comparing the life expectancy of those living in census tracts with the highest and lowest concentrations of households with children under 18 years old, life expectancy is slightly higher in King County (2.9 years) and Snohomish County (1.4 years) and much lower in Kitsap County (-22.4 years) and Pierce County (-9.3 years) 
 
 \
