@@ -179,138 +179,7 @@ data_tract <- data_tract %>%
 ```
 
 ```{r}
-# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - to get legend high-low with correct color order
-addLegend_decreasing <-
-  function (map,
-            position = c("topright", "bottomright", "bottomleft",
-                         "topleft"),
-            pal,
-            values,
-            na.label = "NA",
-            bins = 7,
-            colors,
-            opacity = 0.5,
-            labels = NULL,
-            labFormat = labelFormat(),
-            title = NULL,
-            className = "info legend",
-            layerId = NULL,
-            group = NULL,
-            data = getMapData(map),
-            decreasing = FALSE) {
-    position <- match.arg(position)
-    type <- "unknown"
-    na.color <- NULL
-    extra <- NULL
-    if (!missing(pal)) {
-      if (!missing(colors))
-        stop("You must provide either 'pal' or 'colors' (not both)")
-      if (missing(title) && inherits(values, "formula"))
-        title <- deparse(values[[2]])
-      values <- evalFormula(values, data)
-      type <- attr(pal, "colorType", exact = TRUE)
-      args <- attr(pal, "colorArgs", exact = TRUE)
-      na.color <- args$na.color
-      if (!is.null(na.color) &&
-          col2rgb(na.color, alpha = TRUE)[[4]] ==
-          0) {
-        na.color <- NULL
-      }
-      if (type != "numeric" && !missing(bins))
-        warning("'bins' is ignored because the palette type is not numeric")
-      if (type == "numeric") {
-        cuts <- if (length(bins) == 1)
-          pretty(values, bins)
-        else
-          bins
-        
-        if (length(bins) > 2)
-          if (!all(abs(diff(bins, differences = 2)) <=
-                   sqrt(.Machine$double.eps)))
-            stop("The vector of breaks 'bins' must be equally spaced")
-        n <- length(cuts)
-        r <- range(values, na.rm = TRUE)
-        cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
-        n <- length(cuts)
-        p <- (cuts - r[1]) / (r[2] - r[1])
-        extra <- list(p_1 = p[1], p_n = p[n])
-        p <- c("", paste0(100 * p, "%"), "")
-        if (decreasing == TRUE) {
-          colors <- pal(rev(c(r[1], cuts, r[2])))
-          labels <- rev(labFormat(type = "numeric", cuts))
-        } else{
-          colors <- pal(c(r[1], cuts, r[2]))
-          labels <- rev(labFormat(type = "numeric", cuts))
-        }
-        colors <- paste(colors, p, sep = " ", collapse = ", ")
-        
-      }
-      else if (type == "bin") {
-        cuts <- args$bins
-        n <- length(cuts)
-        mids <- (cuts[-1] + cuts[-n]) / 2
-        if (decreasing == TRUE) {
-          colors <- pal(rev(mids))
-          labels <- rev(labFormat(type = "bin", cuts))
-        } else{
-          colors <- pal(mids)
-          labels <- labFormat(type = "bin", cuts)
-        }
-        
-      }
-      else if (type == "quantile") {
-        p <- args$probs
-        n <- length(p)
-        cuts <- quantile(values, probs = p, na.rm = TRUE)
-        mids <- quantile(values, probs = (p[-1] + p[-n]) / 2,
-                         na.rm = TRUE)
-        if (decreasing == TRUE) {
-          colors <- pal(rev(mids))
-          labels <- rev(labFormat(type = "quantile", cuts, p))
-        } else{
-          colors <- pal(mids)
-          labels <- labFormat(type = "quantile", cuts, p)
-        }
-      }
-      else if (type == "factor") {
-        v <- sort(unique(na.omit(values)))
-        colors <- pal(v)
-        labels <- labFormat(type = "factor", v)
-        if (decreasing == TRUE) {
-          colors <- pal(rev(v))
-          labels <- rev(labFormat(type = "factor", v))
-        } else{
-          colors <- pal(v)
-          labels <- labFormat(type = "factor", v)
-        }
-      }
-      else
-        stop("Palette function not supported")
-      if (!any(is.na(values)))
-        na.color <- NULL
-    }
-    else {
-      if (length(colors) != length(labels))
-        stop("'colors' and 'labels' must be of the same length")
-    }
-    legend <-
-      list(
-        colors = I(unname(colors)),
-        labels = I(unname(labels)),
-        na_color = na.color,
-        na_label = na.label,
-        opacity = opacity,
-        position = position,
-        type = type,
-        title = title,
-        extra = extra,
-        layerId = layerId,
-        className = className,
-        group = group
-      )
-    invokeMethod(map, data, "addLegend", legend)
-  }
-
+source('addLegend-dec.R')
 ```
 
 ```{r tract data map}
@@ -648,6 +517,9 @@ theme_dir <- 'a-regional-health-collaboration'
 ind_dir <- 'a01-life-expectancy'
 file_name <- 'a01-life-expectancy-map-data'
 
+```
+
+```{r, eval=FALSE}
 # save final data set as .rda
 save(data_tract, file = file.path(base_dir,
                                   theme_dir,
@@ -779,33 +651,30 @@ These data sets should include records for:
 ### Calculate by region
 The life expectancy values are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2010, 2015, 2020).
 ```{r}
-data_equity_pivot10_calc <- data_equity_pivot10 %>% 
-  filter(!is.na(quintile)) %>% #missing lep and disability data
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2010)
+equity_pivot_calc <- function(df, year) {
+  df %>% 
+    filter(!is.na(quintile)) %>% #missing lep and disability data
+    dplyr::group_by(equity_group, quintile) %>%
+    summarise(wt_life_expec = (sum(Life.Expectancy_num*estimate, na.rm = TRUE))/(sum(estimate, na.rm = TRUE)), .groups = 'drop') %>% 
+    mutate(County.Name = "Region") %>% 
+    mutate(data_year = year)
+}
 
-data_equity_pivot15_calc <- data_equity_pivot15 %>% 
-  filter(!is.na(quintile)) %>% #missing lep data
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2015)
+years <- seq(2010, 2020, by =5)
 
-data_equity_pivot20_calc <- data_equity_pivot20 %>% 
-  filter(!is.na(quintile)) %>%
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2020)
+# store the pivot tables in a list & iterate thru list and calculate for Regional numbers
+data_equity_pivot_dfs <- map(paste0("data_equity_pivot", str_extract(years, "\\d{2}$")), ~get(.x))
+data_equity_pivot_calc_dfs <- map2(data_equity_pivot_dfs, years, ~equity_pivot_calc(.x, .y))
+
+# name elements in lists consistently
+names(data_equity_pivot_dfs) <- names(data_equity_pivot_calc_dfs) <- paste0('yr',as.character(years))
+
 ```
 
 ```{r}
 # check data sets
-nrow(data_equity_pivot10_calc)
-nrow(data_equity_pivot15_calc)
-nrow(data_equity_pivot20_calc)
+walk2(years, data_equity_pivot_calc_dfs, ~print(paste0("Number of rows ", .x, ": ", nrow(.y))))
+
 ```
 These data sets should include records for:
 
@@ -817,34 +686,52 @@ These data sets should include records for:
 
 
 ### Calculate by equity quintile
-The life expectancy values are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2010, 2015, 2020). 
+The life expectancy values are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2010, 2015, 2020).
 ```{r}
-# calculate 2010 region population
-population_test <- data_equity_pivot10 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,603,425
+# Use data_equity_pivot_dfs
 
-sum(tract.10$estimate) #3,603,425
+population_test <- function(df) {
+  # calculate regional population
+  df %>% 
+    distinct(GEOID, .keep_all = TRUE) %>%
+    summarise(pop = formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=","),
+              .groups = 'drop') %>% 
+    pull(pop)
+}
 
-# calculations to get weighted average life expectancy
-data_equity_wt10 <- data_equity_pivot10 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
+data_equity_wt <- function(df) {
+  # calculations to get weighted average life expectancy
+  df %>% 
+    filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
+    mutate(tot_risk_tract = estimate * Life.Expectancy_num) %>% 
+    group_by(County.Name, data_year, equity_group, quintile) %>%
+    summarise(tracts = length(GEOID),
+                     tot_age = (sum(tot_risk_tract, na.rm = TRUE)),
+                     tot_pop = (sum(estimate, na.rm = TRUE)),
+              .groups = 'drop') %>% 
+    mutate(wt_life_expec = tot_age/tot_pop,
+           data_year = as.numeric(data_year))
+}
 
-# # check population
-# data_equity_wt10_test <- data_equity_wt10 %>% 
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt10_test$tot_pop) #3,603,425
+# calculate regional population
+# store in list and display
+pop_test <- map(data_equity_pivot_dfs, ~population_test(.x))
+names(pop_test) <- paste0('yr',as.character(years))
 
-# check data set
-nrow(data_equity_wt10)
+walk2(years, pop_test, ~print(paste0(.x, " Regional Population: ", .y)))
+
+# compare to estimate from tract shape layer
+sum(tract.10$estimate)
+sum(tracts20.lyr$total_pop20)
+
+# list of dfs with weighted average life expectancy
+data_equity_wt_dfs <- map(data_equity_pivot_dfs, ~data_equity_wt(.x))
+
+# check nrow of data_equity_wt_dfs
+walk2(years, data_equity_wt_dfs, ~print(paste0("Number of rows ", .x,": ", nrow(.y))))
 ```
-The regional population in 2010: `r population_test`
+
+The regional population in 2010: `r pop_test$yr2010`
 \
 \
 This data sets should include records for:
@@ -853,31 +740,7 @@ This data sets should include records for:
 * 4 equity focus groups (disability and lep are not available in for 2010)
 * 5 equity quintiles 
 
-```{r}
-# calculate 2015 region population
-population_test <- data_equity_pivot15 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,869,802
-
-# calculations to get weighted average life expectancy
-data_equity_wt15 <- data_equity_pivot15 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt15_test <- data_equity_wt15 %>%
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt15_test$tot_pop) #3,869,802
-
-# check data set
-nrow(data_equity_wt15)
-```
-The regional population in 2015: `r population_test`
+The regional population in 2015: `r pop_test$yr2015`
 \
 \
 This data sets should include records for:
@@ -886,33 +749,7 @@ This data sets should include records for:
 * 5 equity focus groups (lep not available in 2015)
 * 5 equity quintiles 
 
-```{r}
-# calculate 2020 region population
-population_test <- data_equity_pivot20 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443	
-
-sum(tracts20.lyr$total_pop20) #4,294,373
-
-# calculations to get weighted average life expectancy per equity group/quintile
-data_equity_wt20 <- data_equity_pivot20 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt20_test <- data_equity_wt20 %>%
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt20_test$tot_pop) #4,197,443
-
-# check data set
-nrow(data_equity_wt20)
-```
-The regional population in 2020: `r population_test`
+The regional population in 2020: `r pop_test$yr2020`
 \
 \
 This data sets should include records for:
@@ -923,17 +760,14 @@ This data sets should include records for:
 
 ## Combine years into one data set
 ```{r}
-data_tract <- as.data.frame(rbind(data_equity_wt10,
-                                  data_equity_wt15,
-                                  data_equity_wt20)) %>% 
+# combine county & regional weighted life expectancy tables
+data_tract <- reduce(data_equity_wt_dfs, bind_rows) %>%  
   dplyr::select(-tot_age, -tot_pop, -tracts) %>% 
-  rbind(data_equity_pivot10_calc,
-        data_equity_pivot15_calc,
-        data_equity_pivot20_calc) %>% 
+  bind_rows(reduce(data_equity_pivot_calc_dfs, bind_rows)) %>% 
   filter(!is.na(quintile))
 
 # check data set
-str(data_tract)
+# str(data_tract)
 ```
 This data set should include records for: 
 
@@ -950,30 +784,26 @@ This code was added because of Kitsap/LEP data - there were too many tracts with
 # nrow(data_tract) #378
 # unique(data_tract$quintile) #6 quintiles because of additional "Low - Low Medium"
 
-low_quintile <- data_tract %>% 
-  filter(quintile=="Low - Low Medium") %>% 
-  rename(quintile_original=quintile) %>% 
-  mutate(quintile="Low") %>% 
-  filter(County.Name!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
-lowmed_quintile <- data_tract %>% 
-  filter(quintile=="Low - Low Medium") %>%
-  rename(quintile_original=quintile) %>%
-  mutate(quintile="Low Medium") %>% 
-  filter(County.Name!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+# Break out "Low - Low Medium" records into two separate instances
+##  need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+low_lowmed <- data_tract %>%
+  filter(quintile == "Low - Low Medium" & County.Name != "Region") %>%
+  mutate(quintile_original = quintile) %>%
+  mutate(quintile = str_replace_all(quintile, "\\s-\\s", ",")) %>%
+  mutate(quintile = as.list(strsplit(quintile, split = ",", fixed = TRUE))) %>%
+  unnest(quintile)
 
-low_lowmed <- rbind(low_quintile,
-                    lowmed_quintile)
 # nrow(low_lowmed) #4
 
 # gather counties that have low - medium categorization
-low_lowmed_counties <- unique(low_lowmed$County.Name) #Kitsap, Pierce
-low_lowmed_years <- unique(low_lowmed$data_year) #2020
-low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
+llm_info <- list(county = unique(low_lowmed$County.Name), #Kitsap, Pierce
+                        years = unique(low_lowmed$data_year), #2020
+                        equity = unique(low_lowmed$equity_group)) #lep_quintile
 
 other_data <- data_tract %>% 
-  filter(quintile!="Low - Low Medium") %>% 
-  rename(quintile_original=quintile) %>% 
-  mutate(quintile=quintile_original)
+  filter(quintile != "Low - Low Medium") %>% 
+  rename(quintile_original = quintile) %>% 
+  mutate(quintile = quintile_original)
 # nrow(other_data) #375
 
 data_tract <- rbind(low_lowmed, #4
@@ -985,11 +815,11 @@ nrow(data_tract) #379 - should be fewer because of duplicates (375)- low and low
 
 # remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
 data_tract <- data_tract %>% 
-  filter(!(County.Name %in% low_lowmed_counties & 
-           data_year %in% low_lowmed_years &
-           equity_group %in% low_lowmed_equity &
-           (quintile_original=="Low" | 
-             quintile_original=="Low Medium")))
+  filter(!(County.Name %in% llm_info$county & 
+             data_year %in% llm_info$years &
+             equity_group %in% llm_info$equity &
+             (quintile_original == "Low" | 
+                quintile_original == "Low Medium")))
 
 # nrow(data_tract) #375
 # table(data_tract$quintile, data_tract$County.Name) #should not have extra in low and low medium quintile categories
@@ -1040,7 +870,7 @@ data_clean <- data_clean %>%
 
 # **CHART .rda**
 Save final data set for charts (.rda)
-```{r}
+```{r, eval=FALSE}
 # set folder structure
 file_name <- 'a01-life-expectancy-data'
 
