@@ -67,10 +67,13 @@ library(showtextdb) #required for showtext
 Data comes from [WTN](https://fortress.wa.gov/doh/wtn/WTNPortal#!q0=655). Separate CSVs at the census tract geography are available (manual download) for 5y time spans at 1y increments, starting in 2000, until 2020.
 ```{r, include=FALSE}
 folder_path <- "Y:/Equity Indicators/tracker-webpage-content/a-regional-health-collaboration/a01-life-expectancy/raw-data"
-life_expec_01_05 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
-life_expec_06_10 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
-life_expec_11_15 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_11_15.csv"))
-life_expec_16_20 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
+
+le_years <- c("01_05", "06_10", "11_15", "16_20")
+le_csvs <- paste0("Life_Expectancy_at_Birth_", le_years, ".csv")
+
+life_expec <- map(le_csvs, ~read.csv(file.path(folder_path, .x))) %>% 
+  set_names(paste0("yr", le_years))
+
 ```
 \
 Although there are 4 possible data sets (*2001-2005, 2006-2010, 2011-2015, 2016-2020*), we will be using the three more recent data sets to keep it to 2010 and onward. 
@@ -94,17 +97,18 @@ crosswalk_10_20 <- get_table(schema="census",
 ### tract-level population data
 to weight life expectancy for 2010, 2015, 2020
 ```{r, include=FALSE}
-# getting census population data by tract
-tracts_10_15_20 <- get_acs_recs(geography ='tract', 
-                                table.names = 'B01003',
-                                years = c(2010, 2015, 2020),
-                                acs.type = 'acs5')
-tract.10 <- tracts_10_15_20 %>% 
-  filter(year==2010)
-tract.15 <- tracts_10_15_20 %>% 
-  filter(year==2015)
-tract.20 <- tracts_10_15_20 %>% 
-  filter(year==2020)
+
+years <- seq(2010, 2020, by = 5)
+years_nm <- paste0("yr", years)
+
+tracts_pop_acs <- get_acs_recs(geography ='tract',
+                               table.names = 'B01003',
+                               years = years,
+                               acs.type = 'acs5')
+
+tracts_pop <- map(years, ~tracts_pop_acs %>% filter(year == .x)) %>% 
+  set_names(years_nm)
+
 ```
 
 ### tract spatial file
@@ -125,43 +129,32 @@ nrow(tracts10.lyr) #773
 The 2010 and 2015 equity tracts are in 2010 geographies and include ~770 census tracts, each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The 2010, 2015, an 2020 life expectancy data are available from WTN in 2010 geographies, so the 2020-year data will need to be translated to 2020 geographies to be able to use the 2020 population information.
 ```{r, include=FALSE}
 # check number of rows in data sets
-nrow(life_expec_01_05) #1465
-nrow(life_expec_06_10) #1465
-nrow(life_expec_11_15) #1465
-nrow(life_expec_16_20) #1465
+
+walk2(names(life_expec), life_expec, ~print(paste0("Number of rows ",  .x, ": ", nrow(.y))))
+
+# nrow(life_expec_01_05) #1465
+# nrow(life_expec_06_10) #1465
+# nrow(life_expec_11_15) #1465
+# nrow(life_expec_16_20) #1465
 ```
 The four possible WTN data sets that could be used without overlapping years include 1,465 records each. This closely matches the number of records in the 2010 census tract shapefile for WA state, published by the [US Census Bureau, Geography Division](https://www.census.gov/cgi-bin/geo/shapefiles/index.php) (1,458; in comparison to the 1,784 tracts in the 2020 shapefile).
 
 ```{r, include=FALSE}
 # to check the field names and data class
-str(life_expec_16_20)
+str(life_expec$yr16_20)
 
-# add column with the last year of the 5-year span
-# filter to PSRC counties
-life_expec_01_05 <- life_expec_01_05 %>% 
-  mutate(year=2005) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
-life_expec_06_10 <- life_expec_06_10 %>% 
-  mutate(year=2010) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
-life_expec_11_15 <- life_expec_11_15 %>% 
-  mutate(year=2015) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
-life_expec_16_20 <- life_expec_16_20 %>% 
-  mutate(year=2020) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
+le_years_filter <- paste0("20", str_extract(le_years, "\\d{2}$"))
+
+le_filter <- function(df, year) {
+  # add column with the last year of the 5-year span
+  # filter to PSRC counties
+  df %>% 
+    mutate(year = year) %>% 
+    filter(County.Name %in% c("King", "Kitsap", "Pierce", "Snohomish"))
+}
+
+life_expec <- map2(life_expec, le_years_filter, ~le_filter(.x, .y))
+
 ```
 
 ## Most Recent Data
@@ -169,9 +162,9 @@ life_expec_16_20 <- life_expec_16_20 %>%
 #### Join recent data to spatial file
 ```{r, include=FALSE}
 # join base 2010 geographic data to WTN health data - staying in 2010 geographies to not display false sense of accuracy
-data_tract <- merge(tracts10.lyr, life_expec_16_20,
+data_tract <- merge(tracts10.lyr, life_expec$yr16_20,
                     by.x="geoid10",
-                    by.y="Census.Tract", 
+                    by.y="Census.Tract",
                     all.x=TRUE)
 
 data_tract <- data_tract %>% 
@@ -461,8 +454,10 @@ Save final data set (.rda) for map
 # Because the measure (life expectancy) does not account for the population of the tract, it hasn't been normalized and needs to be weighted in order to aggregate to the region level. The map is going to visualize 2020 data, but in 2010 geographies. The original WTN data set was merged to the 2010 spatial file which has 2010 population numbers. To get 2020 population numbers, we need to aggregate population numbers in the 2020 tracts that were split from 2010 tracts. 
 
  
-head(tract.20) # to determine field names of population data frame
-tract.20.edit <- tract.20 %>% 
+# head(tract.20) # to determine field names of population data frame
+head(tracts_pop$yr2020)# to determine field names of population data frame
+
+tract.20.edit <- tracts_pop$yr2020 %>% 
   dplyr::mutate(pop20=estimate) # the life expectancy value is already 'estimate'
 
 # merge 2020 acs population data to crosswalk file
@@ -529,116 +524,72 @@ save(data_tract, file = file.path(base_dir,
 
 # Explore data by equity quintile
 ## Join primary data to equity quintiles and acs population
-```{r}
-# 2010 data -----
-equity_tracts_10 <- equity_tracts %>% 
-  dplyr::filter(data_year==2010)
-
-# join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(life_expec_06_10, equity_tracts_10,
-                            by.x="Census.Tract",
-                            by.y="geoid", 
-                            all.x=TRUE)
-
-# join 2010 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract10 <- merge(tract.10, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="Census.Tract", 
-                             all.x=TRUE)
-
-# check data set
-nrow(data_equity_tract10) #1548
-```
 This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
-
 ```{r}
-# 2015 data ----- 
-equity_tracts_15 <- equity_tracts %>% 
-  dplyr::filter(data_year==2015)
+# list of equity_tracts by year
+eq_tracts <- map(years, ~equity_tracts %>% filter(data_year == .x)) %>% 
+  set_names(years_nm)
 
-# join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(life_expec_11_15, equity_tracts_15,
-                            by.x="Census.Tract",
-                            by.y="geoid", 
-                            all.x=TRUE)
+create_data_equity_tract <- function(life_expec_df, eq_tract_df, tracts_pop_df, year) {
+  # join WTN data to equity quintiles
+  # join ACS population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
+  
+  if(year < 2020) {
+    df <- merge(life_expec_df, eq_tract_df,
+                by.x = "Census.Tract",
+                by.y = "geoid",
+                all.x = TRUE)
+    
+    data_equity_tracts <- merge(tracts_pop_df, df,
+                                by.x = "GEOID",
+                                by.y = "Census.Tract",
+                                all.x = TRUE)
+  } else {
+    crosswalk <- merge(crosswalk_10_20, life_expec_df,
+                       by.x = "geoid10",
+                       by.y = "Census.Tract",
+                       all.x = TRUE)
+    
+    df <- merge(crosswalk, eq_tract_df,
+                by.x = "geoid20",
+                by.y = "geoid", 
+                all.x = TRUE)
+    
+    data_equity_tracts <- merge(tracts_pop_df, df,
+                                by.x = "GEOID",
+                                by.y = "geoid20", 
+                                all.x = TRUE)
+  }
+  return(data_equity_tracts)
+}
 
-# join 2015 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract15 <- merge(tract.15, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="Census.Tract", 
-                             all.x=TRUE)
+data_equity_tracts_dfs <- pmap(list(life_expec[2:4], eq_tracts, tracts_pop, years), create_data_equity_tract) %>% 
+  set_names(years_nm)
 
-# check data set
-nrow(data_equity_tract15)
+# check data sets
+walk2(years, data_equity_tracts_dfs, ~print(paste0("Number of rows (data equity tract df) ", .x, ": ", nrow(.y))))
+
 ```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
-
-```{r}
-# 2020 data -----
-equity_tracts_20 <- equity_tracts %>% 
-  dplyr::filter(data_year==2020)
-
-# join WTN data (in 2010 census tracts) to cross walk
-data_crosswalk <- merge(crosswalk_10_20, life_expec_16_20,
-                        by.x="geoid10",
-                        by.y="Census.Tract",
-                        all.x=TRUE)
-
-# join WTN data to equity quintiles (on 2020 census tracts)
-data_equity_tracts <- merge(data_crosswalk, equity_tracts_20,
-                            by.x="geoid20",
-                            by.y="geoid", 
-                            all.x=TRUE)
-
-# join 2020 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract20 <- merge(tract.20, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="geoid20", 
-                             all.x=TRUE)
-
-# check data set
-nrow(data_equity_tract20)
-```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
-
 ## Transform/pivot
 The data sets need to be cleaned and pivoted to a longer table so that there is only one field for the 6 different equity categories, instead of one field for each.
 ```{r, include=FALSE}
-# clean/simplify data sets
-data_equity_quintiles10 <- data_equity_tract10 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
 
-data_equity_quintiles15 <- data_equity_tract15 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
+transform_data_equity_tracts <- function(df) {
+  # clean/simplify data sets
+  # pivot data set so that there is one column with quintile designation
+  df %>% 
+    mutate(data_year = format(year.x, format = "%Y")) %>% 
+    mutate(Life.Expectancy_num = as.numeric(Life.Expectancy)) %>% 
+    pivot_longer(cols = poc_quintile:lep_quintile,
+                 names_to = "equity_group",
+                 values_to = "quintile")
+}
 
-data_equity_quintiles20 <- data_equity_tract20 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
+data_equity_pivot_dfs <- map(data_equity_tracts_dfs, ~transform_data_equity_tracts(.x)) %>% 
+  set_names(years_nm)
 
-# pivot data set so that there is one column with quintile designation
-data_equity_pivot10 <- data_equity_quintiles10 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
-               names_to = "equity_group",
-               values_to = "quintile")
-
-data_equity_pivot15 <- data_equity_quintiles15 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
-               names_to = "equity_group",
-               values_to = "quintile")
-
-data_equity_pivot20 <- data_equity_quintiles20 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
-               names_to = "equity_group",
-               values_to = "quintile")
-```
-
-```{r}
 # check data sets
-nrow(data_equity_pivot10)
-nrow(data_equity_pivot15)
-nrow(data_equity_pivot20)
+walk2(years, data_equity_pivot_dfs, ~print(paste0("Number of rows (equity pivot df) ", .x, ": ", nrow(.y))))
 ```
 
 These data sets should include records for:
@@ -662,20 +613,15 @@ equity_pivot_calc <- function(df, year) {
 
 years <- seq(2010, 2020, by =5)
 
-# store the pivot tables in a list & iterate thru list and calculate for Regional numbers
-data_equity_pivot_dfs <- map(paste0("data_equity_pivot", str_extract(years, "\\d{2}$")), ~get(.x))
-data_equity_pivot_calc_dfs <- map2(data_equity_pivot_dfs, years, ~equity_pivot_calc(.x, .y))
+# calculate for Regional population
+data_equity_pivot_calc_dfs <- map2(data_equity_pivot_dfs, years, ~equity_pivot_calc(.x, .y)) %>% 
+  set_names(years_nm)
 
-# name elements in lists consistently
-names(data_equity_pivot_dfs) <- names(data_equity_pivot_calc_dfs) <- paste0('yr',as.character(years))
-
-```
-
-```{r}
 # check data sets
-walk2(years, data_equity_pivot_calc_dfs, ~print(paste0("Number of rows ", .x, ": ", nrow(.y))))
+walk2(years, data_equity_pivot_calc_dfs, ~print(paste0("Number of rows (equity pivot calc df) ", .x, ": ", nrow(.y))))
 
 ```
+
 These data sets should include records for:
 
 * 1 geography: region
@@ -688,8 +634,6 @@ These data sets should include records for:
 ### Calculate by equity quintile
 The life expectancy values are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2010, 2015, 2020).
 ```{r}
-# Use data_equity_pivot_dfs
-
 population_test <- function(df) {
   # calculate regional population
   df %>% 
@@ -721,14 +665,14 @@ names(pop_test) <- paste0('yr',as.character(years))
 walk2(years, pop_test, ~print(paste0(.x, " Regional Population: ", .y)))
 
 # compare to estimate from tract shape layer
-sum(tract.10$estimate)
-sum(tracts20.lyr$total_pop20)
+print(paste0("Tract 2010 Population: ", sum(tracts10.lyr$total_pop10)))
+print(paste0("Tract 2020 Population: ", sum(tracts20.lyr$total_pop20)))
 
 # list of dfs with weighted average life expectancy
 data_equity_wt_dfs <- map(data_equity_pivot_dfs, ~data_equity_wt(.x))
 
 # check nrow of data_equity_wt_dfs
-walk2(years, data_equity_wt_dfs, ~print(paste0("Number of rows ", .x,": ", nrow(.y))))
+walk2(years, data_equity_wt_dfs, ~print(paste0("Number of rows (equity wt df) ", .x,": ", nrow(.y))))
 ```
 
 The regional population in 2010: `r pop_test$yr2010`
