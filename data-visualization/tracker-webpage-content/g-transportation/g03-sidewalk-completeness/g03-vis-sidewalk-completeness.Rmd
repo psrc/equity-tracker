@@ -203,10 +203,10 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 var_name <- "Sidewalk Completeness"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
-  paste0("Tract value: ", prettyNum((round(data_tract$estimate*100, digits=0))), '%'),
-  paste0("Region value: ", prettyNum((round(data_tract$reg_estimate*100, digits=0))), '%'),
-  paste0("County value: ", prettyNum((round(data_tract$cnty_estimate*100, digits=0))), '%',
-        paste0("(",data_tract$county_name," County)"))) %>% 
+  paste0("Tract value: ", ifelse(!is.na(data_tract$estimate), paste0(prettyNum(round(data_tract$estimate*100, digits=0)), '%'), NA)),
+  paste0("Region value: ", prettyNum(round(data_tract$reg_estimate*100, digits=0)), '%'),
+  paste0("County value: ", prettyNum(round(data_tract$cnty_estimate*100, digits=0)), '%',
+         paste0(" (",data_tract$county_name," County)"))) %>% 
   lapply(htmltools::HTML)
 
 # if the label required a prefix, for example a $, the code would look like this:
@@ -267,7 +267,7 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Sources: PSRC, Regional Bicycle and Pedestrian Faciities; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate tract map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
@@ -283,30 +283,38 @@ htmlwidgets::saveWidget(tract_map,
 
 #### Data call outs
 ```{r map calculations - tract, include=FALSE, eval=FALSE}
-# simplify data set
+# Remove geometry from the dataset
 data <- data_tract %>%
   st_drop_geometry()
 
 # calculate call out information
 sort <- data %>% 
+  dplyr::select(county_name, geoid20, estimate, cnty_estimate, reg_estimate) %>% 
   dplyr::arrange(desc(estimate))
-# 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004400 (Ravenna/U-District/Roosevelt) King (92.14), 53033032309 (Redmond) King (91.25)
 
-sort <- data %>% 
-  dplyr::arrange(estimate)
+summary(sort$estimate)
+# median share is 88%
+
+table(sort$estimate)
+# 288 of 919 tracts have 100% share
+
+sort %>% 
+  dplyr::group_by(county_name) %>% 
+  summarize(cnty_estimate = first(cnty_estimate))
+# King has highest share - 73%; Kitsap has lowest share - 26%
 ```
 
-1. 78.8 years: The region's average life expectancy
-2. 80.9 years: The region's median life expectancy
-3. 28.1 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+1. 49%: The share of arterial road segments in the region with partial or complete sidewalks
+2. 31%: The share of tracts where all arterial segments have partial or complete sidewalks
+3. 
 
 \
 
 #### Insights & Analysis
 
-* Snohomish County has the highest life expectancy (80.7 years), followed by King (79.4 years), Kitsap (78.9 years), and Pierce (75.7 years)
-* The census tracts with the highest life expectancy are in Auburn, Pierce County (95.4 years); Ravenna/U-District neighborhoods (Seattle), King County (92.1 years); Redmond, King County (91.3 years)
-* The census tracts with the lowest life expectancy are in the Lincoln International District (Tacoma), Pierce County (67.3 years); Lakewood, Pierce County (69.7 years); Tulalip Reservation, Snohomish County (70.1 years)
+* King County has the highest percent of sidewalk completeness (73%), followed by Snohomish (51%), Pierce (41%), and Kitsap (26%)
+* Half of all census tracts in the region have a sidewalk completeness share of 88% or greater
+* Each county in the region has tracts with 100% sidewalk completeness and tracts with 0% sidewalk completeness
 
 \
 \
@@ -322,37 +330,34 @@ sort <- data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R')
+source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+# source('equity-tracker-chart-functions.R')
 
 # set folder structure
-rda <- 'a01-life-expectancy-data.rda'
+rda <- 'g03-sidewalk-completeness-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
 
 ```{r column facet - tract}
 # Create Facet Column Chart
-data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2020") #filter on most recent year
-
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
-df = data_clean_column
-geo = "county_ord"
+df = data_clean
+geo = "county"
 x = "quintile_ord"
 y = "estimate"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0 
-y_max = 95
-dec = 1
-esttype = "number"
+y_max = 1
+dec = 0
+esttype = "percent"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Life Expectancy"
-subtitle = "Number of years a newborn can be expected to live based on current conditions"
-source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+title = "Sidewalk Completeness"
+subtitle = "Share of arterial road segments with partial or complete sidewalks"
+source = paste("Puget Sound Regional Council,", "Regional Bicycle and Pedestrian Facilities", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -430,7 +435,7 @@ if (output_type == "html") {
 #### Data call outs
 ```{r column facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
-filter <- data_clean_column %>% 
+filter <- data_clean %>% 
   filter(county=="Region",
          equity_group=="poc_quintile")
 
@@ -438,7 +443,7 @@ filter <- data_clean_column %>%
 # region high quintile poc households: 76.67422
 # 81.19030-76.67422=4.51608
 
-filter <- data_clean_column %>% 
+filter <- data_clean %>% 
   filter(quintile=="High",
          equity_group=="income_quintile")
 
@@ -446,7 +451,7 @@ filter <- data_clean_column %>%
 # pierce high quintile low income households: 63.50990
 # 71.45515-63.50990=7.94525
 
-filter <- data_clean_column %>% 
+filter <- data_clean %>% 
   filter(equity_group=="lep_quintile",
          quintile=="Low"|
            quintile=="High")
@@ -456,7 +461,7 @@ filter <- data_clean_column %>%
 # pierce dif bt high/low quintiles for lep: 78.46118-70.37597=8.08521
 # snohomish dif bt high/low quintiles for lep: 80.35905-80.50632=-0.14727
 
-filter <- data_clean_column %>% 
+filter <- data_clean %>% 
   filter(equity_group=="income_quintile",
          quintile=="Low"|
            quintile=="High")
@@ -467,7 +472,7 @@ filter <- data_clean_column %>%
 # pierce dif bt high/low quintiles for income: 80.93128-63.50990=17.42138
 # snohomish dif bt high/low quintiles for income: 82.09946-78.50544=3.59402
 
-filter <- data_clean_column %>% 
+filter <- data_clean %>% 
   filter(county!="Region",
          equity_group=="youth_quintile",
          quintile=="Low"|
