@@ -207,11 +207,11 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 # set the variable
 var_name <- "Average % of Tree Canopy <br> 2021"
 labels <- sprintf(
-  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
-  paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " rate"),
-  paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=1))), " rate"),
-  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=1))), 
-        paste0("(",data_tract$county_name," County)"))) %>% 
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic
+  paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " %"),
+  paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=1))), " %"),
+  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=1))), " %",
+        paste0("(",data_tract$county_name," County)"))) %>%
   lapply(htmltools::HTML)
 
 # if the label required a prefix, for example a $, the code would look like this:
@@ -226,7 +226,7 @@ labels <- sprintf(
 # labels <- sprintf(
 #   "Census tract: <em>%s</em><br/><strong>%s</strong>", data_tract$Census.Tract,
 #   paste(prettyNum((round(data_tract$estimate, digits=2)), #the digits would probably be 2 for %
-#               big.mark = ","), #this wouldn't be necessary to include for %s    
+#               big.mark = ","), #this wouldn't be necessary to include for %s
 #         '%')) %>%
 #   lapply(htmltools::HTML)
 
@@ -358,6 +358,13 @@ rda <- 'b01-tree-canopy-data.rda'
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
 
+```{r}
+
+data_clean <- data_clean %>%
+   mutate(estimate = (estimate/100))
+
+```
+
 ```{r column facet - tract}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
@@ -371,9 +378,9 @@ y = "estimate"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0 
-y_max = 70
-dec = 1
-esttype = "number"
+y_max = .70
+dec = 0
+esttype = "percent"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
@@ -592,7 +599,7 @@ df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0
-y_max = 70
+y_max = .70
 color = "purples"
 
 line_chart <- equity_tracker_line_facet(df = df,

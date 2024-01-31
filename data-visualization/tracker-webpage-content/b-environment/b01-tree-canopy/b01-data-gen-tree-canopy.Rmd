@@ -1,5 +1,5 @@
 ---
-title: "Tree Canopy Average Percent Coverage - 2011 and 2021"
+title: "Tree Canopy Average Percent Coverage - 2011, 2016, and 2021"
 subtite: "Data Gen: Exploring, Cleaning, Transforming (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -64,10 +64,11 @@ library(showtextdb) #required for showtext
 
 # Download data 
 ## Primary data 
-Data comes from the [MRLC](https://www.mrlc.gov/data). Data are available (manual download) for 2011 and 2021.
+Data comes from the [MRLC](https://www.mrlc.gov/data). Data are available (manual download) for 2011, 2016, and 2021.
 ```{r, include=FALSE}
 folder_path <- "Y:/Equity Indicators/tracker-webpage-content/b-environment/b01-tree-canopy/raw-data"
 canopy_11 <- read.csv(file.path(folder_path,"canopy_11.csv"))
+canopy_16 <- read.csv(file.path(folder_path,"canopy_16.csv"))
 canopy_21 <- read.csv(file.path(folder_path,"canopy_21.csv"))
 
 indicator_measure <- "Avg_Per"
@@ -87,15 +88,18 @@ crosswalk_10_20 <- get_table(schema="census",
                              tbl_name="v_geo_relationships_tracts")
 ```
 
-### tract-level population data for 2021 and 2011
+### tract-level population data for 2021, 2016 and 2011
 ```{r, include=FALSE}
 # getting census population data by tract
 tracts_11_21 <- get_acs_recs(geography ='tract', 
                                 table.names = 'B01003',
-                                years = c(2011, 2021),
+                                years = c(2011, 2016, 2021),
                                 acs.type = 'acs5')
 tract.11 <- tracts_11_21 %>% 
   filter(year==2011)
+
+tract.16 <- tracts_11_21 %>% 
+  filter(year==2016)
 
 tract.21 <- tracts_11_21 %>% 
   filter(year==2021)
@@ -112,8 +116,9 @@ tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/servi
 tracts20.lyr<-st_read(tracts20.url)
 tracts10.lyr<-st_read(tracts10.url)
 
-tracts20.lyr<-tracts20.lyr[,-20] #removing population column
-tracts10.lyr<-tracts10.lyr[,-20] #removing population column
+# population in not used for this indicator
+# tracts20.lyr<-tracts20.lyr[,-20] #removing population column
+# tracts10.lyr<-tracts10.lyr[,-20] #removing population column
 
 nrow(tracts20.lyr) #919
 nrow(tracts10.lyr) #773
@@ -123,8 +128,9 @@ nrow(tracts10.lyr) #773
 The tree canopy data are available in 2020 geographies.
 ```{r, include=FALSE}
 # check number of rows in data sets
-nrow(canopy_11) #
-nrow(canopy_21) #
+nrow(canopy_11) #776
+nrow(canopy_16) #773
+nrow(canopy_21) #919
 ```
 The 2020 data set that could be used without overlapping years include 1,465 records each. This closely matches the number of records in the 2010 census tract shapefile for WA state, published by the [US Census Bureau, Geography Division](https://www.census.gov/cgi-bin/geo/shapefiles/index.php) (1,458; in comparison to the 1,784 tracts in the 2020 shapefile).
 
@@ -140,6 +146,12 @@ canopy_11 <- canopy_11 %>%
            County.Name=="Kitsap" |
            County.Name=="Pierce" |
            County.Name=="Snohomish")
+canopy_16 <- canopy_16 %>% 
+  mutate(year=2016) %>% 
+  filter(County.Name=="King" |
+           County.Name=="Kitsap" |
+           County.Name=="Pierce" |
+           County.Name=="Snohomish")
 canopy_21 <- canopy_21 %>% 
   mutate(year=2021) %>% 
   filter(County.Name=="King" |
@@ -147,30 +159,36 @@ canopy_21 <- canopy_21 %>%
            County.Name=="Pierce" |
            County.Name=="Snohomish")
 
-tract.21 <- tract.21 %>%
-  dplyr::mutate(geoid20=GEOID) %>%
-  dplyr::mutate(total_pop21=estimate)
-
-tract.11 <- tract.11 %>%
-  dplyr::mutate(geoid10=GEOID) %>%
-  dplyr::mutate(total_pop11=estimate)
-
-canopy_21 <- merge(x = canopy_21, y = tract.21[ , c("geoid20", "total_pop21")], by = "geoid20", all.x=TRUE) #pull in population
-
-canopy_11 <- merge(x = canopy_11, y = tract.11[ , c("geoid10", "total_pop11")], by = "geoid10", all.x=TRUE)
+#Population is not used for this indicator
+# tract.21 <- tract.21 %>%
+#   dplyr::mutate(geoid20=GEOID) %>%
+#   dplyr::mutate(total_pop21=estimate)
+# 
+# tract.11 <- tract.11 %>%
+#   dplyr::mutate(geoid10=GEOID) %>%
+#   dplyr::mutate(total_pop11=estimate)
+# 
+# canopy_21 <- merge(x = canopy_21, y = tract.21[ , c("geoid20", "total_pop21")], by = "geoid20", all.x=TRUE) #pull in population
+# 
+# canopy_11 <- merge(x = canopy_11, y = tract.11[ , c("geoid10", "total_pop11")], by = "geoid10", all.x=TRUE)
 
 canopy_21 <- merge(x = canopy_21, y = tracts20.lyr[ , c("geoid20", "land_acres")], by = "geoid20", all.x=TRUE) #pull in land_acres
 
+canopy_16 <- merge(x = canopy_16, y = tracts10.lyr[ , c("geoid10", "land_acres")], by = "geoid10", all.x=TRUE)
+
 canopy_11 <- merge(x = canopy_11, y = tracts10.lyr[ , c("geoid10", "land_acres")], by = "geoid10", all.x=TRUE)
 
-canopy_21 <- canopy_21[,-8] #remove geometry
-canopy_11 <- canopy_11[,-8]
+canopy_21 <- canopy_21[,-7] #remove geometry
 
-tract.21 <- tract.21 %>%
-   dplyr::mutate(GEOID=geoid20) 
-
-tract.11 <- tract.11 %>%
-   dplyr::mutate(GEOID=geoid10) 
+#population tracts are not needed
+# tract.21 <- tract.21 %>%
+#    dplyr::mutate(GEOID=geoid20) 
+# 
+# tract.16 <- tract.16 %>%
+#    dplyr::mutate(GEOID=geoid10) 
+# 
+# tract.11 <- tract.11 %>%
+#    dplyr::mutate(GEOID=geoid10) 
 
 # data_tract <- data_tract %>%
 #    dplyr::mutate(estimate=as.numeric(average)) # rename value variable for consistency
@@ -180,23 +198,24 @@ tract.11 <- tract.11 %>%
 ### Map
 #### Join recent data to spatial file
 ```{r, include=FALSE}
-# join geographic data to tree canopy data - staying in 2010 geographies to not display false sense of accuracy
+# join geographic data to tree canopy data
 data_tract <- merge(tracts20.lyr, canopy_21,
                     by.x="geoid20",
                     by.y="geoid20", 
                     all.x=TRUE)
 
-tract_acs_21data <- get_acs_recs(geography ='tract', table.names = 'B01003', years = c(2021), acs.type = 'acs5')
-  
-tract_acs_21data <- tract_acs_21data %>%
-  rename(total_pop21=estimate) %>%
-  rename(geoid20=GEOID)
+#population is not used for this indicator
+# tract_acs_21data <- get_acs_recs(geography ='tract', table.names = 'B01003', years = c(2021), acs.type = 'acs5')
+#   
+# tract_acs_21data <- tract_acs_21data %>%
+#   rename(total_pop21=estimate) %>%
+#   rename(geoid20=GEOID)
  
-tract_acs_21data <- tract_acs_21data %>%
-  dplyr::select(geoid20, total_pop21)
-
-data_tract <- left_join(data_tract, tract_acs_21data, 
-                        by="geoid20")
+# tract_acs_21data <- tract_acs_21data %>%
+#   dplyr::select(geoid20, total_pop21)
+# 
+# data_tract <- left_join(data_tract, tract_acs_21data, 
+#                         by="geoid20")
 
 data_tract <- data_tract %>% 
   dplyr::mutate(estimate=as.numeric(Avg_Per)) # rename value variable for consistency
@@ -390,6 +409,7 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 
 # print map
 tract_map
+
 ```
 
 ### Missing Data
@@ -468,6 +488,7 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 
 # print map
 tract_map
+
 ```
 
 ### Descriptive Statistics
@@ -611,21 +632,21 @@ Save final data set (.rda) for map
 ```{r, include=FALSE}
 # This is the data set used to create the map of the most recent data. For this data set, there is one additional transformation that is needed before saving it for final visualization in the 'vis' script. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk. 
 
-head(tract.21) # to determine field names
-tract.21.edit <- tract.21 %>% 
-   dplyr::mutate(pop21=estimate) # the rate is already 'estimate'
-
-# merge 2020 acs population data to crosswalk file
-pop21_crosswalk <- merge(tract.21.edit, crosswalk_10_20, 
-                         by.x="GEOID",
-                         by.y="geoid20", 
-                         all.x=TRUE)
-
-# calculate population by adding 2020 tracts that were split from 2010 tracts
-pop21 <- pop21_crosswalk %>% 
-  dplyr::group_by(geoid10) %>% 
-  dplyr::summarise(total_pop21=sum(pop21)) %>%
-  as_tibble()
+# head(tract.21) # to determine field names
+# tract.21.edit <- tract.21 %>% 
+#    dplyr::mutate(pop21=estimate) # the rate is already 'estimate'
+# 
+# # merge 2020 acs population data to crosswalk file
+# pop21_crosswalk <- merge(tract.21.edit, crosswalk_10_20, 
+#                          by.x="GEOID",
+#                          by.y="geoid20", 
+#                          all.x=TRUE)
+# 
+# # calculate population by adding 2020 tracts that were split from 2010 tracts
+# pop21 <- pop21_crosswalk %>% 
+#   dplyr::group_by(geoid10) %>% 
+#   dplyr::summarise(total_pop21=sum(pop21)) %>%
+#   as_tibble()
 
 ```
 
@@ -678,39 +699,67 @@ save(data_tract, file = file.path(base_dir,
 equity_tracts_21 <- equity_tracts %>% 
   dplyr::filter(data_year==2021)
 
-# join data to equity quintiles (on 2020 census tracts)
+# join WTN data to equity quintiles (on 2020 census tracts)
 data_equity_tracts <- merge(canopy_21, equity_tracts_21,
                             by.x="geoid20",
                             by.y="geoid", 
                             all.x=TRUE)
 
+# join data to equity quintiles (on 2020 census tracts)
+data_equity_tract21 <- data_equity_tracts
+                  
 # join 2021 acs population data to tree canopy data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract21 <- merge(tract.21, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="geoid20", 
-                             all.x=TRUE)
+# data_equity_tract21 <- merge(tract.21, data_equity_tracts,
+#                              by.x="GEOID",
+#                              by.y="geoid20", 
+#                              all.x=TRUE)
 
 # check data set
 nrow(data_equity_tract21)
+```
 
+```{r}
+# 2016 data -----
+equity_tracts_16 <- equity_tracts %>% 
+  dplyr::filter(data_year==2016)
+
+# join data to equity quintiles (on 2010 census tracts)
+data_equity_tracts <- merge(canopy_16, equity_tracts_16,
+                            by.x="geoid10",
+                            by.y="geoid", 
+                            all.x=TRUE)
+
+canopy_16 %<>%
+  dplyr::rename("geoid" = "geoid10")
+
+data_equity_tract16 <- data_equity_tracts
+
+# check data set
+nrow(data_equity_tract16)
+```
+
+```{r}
 # 2011 data -----
 equity_tracts_11 <- equity_tracts %>% 
   dplyr::filter(data_year==2011)
 
-canopy_11 %<>%
-  dplyr::rename("geoid" = "geoid10")
-
-# join data to equity quintiles (on 2020 census tracts)
+# join data to equity quintiles (on 2010 census tracts)
 data_equity_tracts <- merge(canopy_11, equity_tracts_11,
-                            by.x="geoid",
+                            by.x="geoid10",
                             by.y="geoid", 
                             all.x=TRUE)
 
+data_equity_tract11 <- data_equity_tracts
+
+canopy_11 %<>%
+  dplyr::rename("geoid" = "geoid10")
+
+
 # join 2011 acs population data to tree canopy data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract11 <- merge(tract.11, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="geoid", 
-                             all.x=TRUE)
+# data_equity_tract11 <- merge(tract.11, data_equity_tracts,
+#                              by.x="GEOID",
+#                              by.y="geoid", 
+#                              all.x=TRUE)
 
 # check data set
 nrow(data_equity_tract11)
@@ -722,15 +771,24 @@ The data sets need to be cleaned and pivoted to a longer table so that there is 
 ```{r, include=FALSE}
 # clean/simplify data sets
 data_equity_quintiles21 <- data_equity_tract21 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
+  dplyr::mutate(data_year=format(year,format="%Y")) %>% 
+  dplyr::mutate(Avg_Per_num=as.numeric(Avg_Per))
+
+data_equity_quintiles16 <- data_equity_tract16 %>% 
+  dplyr::mutate(data_year=format(year,format="%Y")) %>% 
   dplyr::mutate(Avg_Per_num=as.numeric(Avg_Per))
 
 data_equity_quintiles11 <- data_equity_tract11 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
+  dplyr::mutate(data_year=format(year,format="%Y")) %>% 
   dplyr::mutate(Avg_Per_num=as.numeric(Avg_Per))
 
 # pivot data set so that there is one column with quintile designation
 data_equity_pivot21<- data_equity_quintiles21 %>% 
+  pivot_longer(cols = poc_quintile:lep_quintile,
+               names_to = "equity_group",
+               values_to = "quintile")
+
+data_equity_pivot16<- data_equity_quintiles16 %>% 
   pivot_longer(cols = poc_quintile:lep_quintile,
                names_to = "equity_group",
                values_to = "quintile")
@@ -744,6 +802,7 @@ data_equity_pivot11<- data_equity_quintiles11 %>%
 ```{r}
 # check data sets
 nrow(data_equity_pivot11)
+nrow(data_equity_pivot16)
 nrow(data_equity_pivot21)
 ```
 
@@ -765,6 +824,14 @@ data_equity_pivot21_calc <- data_equity_pivot21 %>%
   as_tibble() %>%
   mutate(data_year=2021) 
 
+data_equity_pivot16_calc <- data_equity_pivot16 %>% 
+  filter(!is.na(quintile)) %>%
+  dplyr::group_by(equity_group, quintile, county) %>%
+  summarise(wt_Avg_Per=(sum(Avg_Per_num*land_acres, na.rm =TRUE))/(sum(land_acres, na.rm=TRUE))) %>%
+  mutate(County.Name="Region") %>% 
+  as_tibble() %>%
+  mutate(data_year=2016) 
+
 data_equity_pivot11_calc <- data_equity_pivot11 %>% 
   filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
@@ -778,6 +845,7 @@ data_equity_pivot11_calc <- data_equity_pivot11 %>%
 ```{r}
 # check data sets
 nrow(data_equity_pivot11_calc)
+nrow(data_equity_pivot16_calc)
 nrow(data_equity_pivot21_calc)
 ```
 These data sets should include records for:
@@ -806,7 +874,7 @@ data_equity_wt21 <- data_equity_pivot21 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
   dplyr::mutate(tot_risk_tract=land_acres*Avg_Per_num) %>%
   dplyr::group_by(county, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
+  dplyr::summarise(tracts=length(geoid20),
                    tot_Avg_Per=(sum(tot_risk_tract, na.rm = TRUE)),
                    tot_pop=(sum(land_acres, na.rm = TRUE))) %>% #kept tot_pop to minimize updating more code
   dplyr::mutate(wt_Avg_Per=tot_Avg_Per/tot_pop) 
@@ -816,23 +884,33 @@ data_equity_wt21_test <- data_equity_wt21 %>%
   dplyr::filter(equity_group=="income_quintile")
   sum(data_equity_wt21_test$tot_pop) #4,197,443
 
+data_equity_wt16 <- data_equity_pivot16 %>%
+  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
+  dplyr::mutate(tot_risk_tract=land_acres*Avg_Per_num) %>%
+  dplyr::group_by(county, data_year, equity_group, quintile) %>%
+  dplyr::summarise(tracts=length(geoid10),
+                   tot_Avg_Per=(sum(tot_risk_tract, na.rm = TRUE)),
+                   tot_pop=(sum(land_acres, na.rm = TRUE))) %>%
+  dplyr::mutate(wt_Avg_Per=tot_Avg_Per/tot_pop)   
+
 # calculations to get weighted average for tree canopy percentage per equity group/quintile
 data_equity_wt11 <- data_equity_pivot11 %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
   dplyr::mutate(tot_risk_tract=land_acres*Avg_Per_num) %>%
   dplyr::group_by(county, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
+  dplyr::summarise(tracts=length(geoid10),
                    tot_Avg_Per=(sum(tot_risk_tract, na.rm = TRUE)),
                    tot_pop=(sum(land_acres, na.rm = TRUE))) %>%
   dplyr::mutate(wt_Avg_Per=tot_Avg_Per/tot_pop) 
 
-# check population
-data_equity_wt11_test <- data_equity_wt11 %>%
-  dplyr::filter(equity_group=="income_quintile")
-  sum(data_equity_wt11_test$tot_pop) #4,197,443
+# # check population
+# data_equity_wt11_test <- data_equity_wt11 %>%
+#   dplyr::filter(equity_group=="income_quintile")
+#   sum(data_equity_wt11_test$tot_pop) #4,197,443
 
 # check data set
 nrow(data_equity_wt11)
+nrow(data_equity_wt16)
 nrow(data_equity_wt21)
 
 ```
@@ -847,7 +925,7 @@ This data sets should include records for:
 
 ## Combine years into one data set
 ```{r}
-data_tract <- as.data.frame(rbind(data_equity_pivot11_calc,
+data_tract <- as.data.frame(rbind(data_equity_pivot11_calc, data_equity_pivot16_calc,
         data_equity_pivot21_calc)) %>%
    dplyr::select(-County.Name) %>% 
   filter(!is.na(quintile))
@@ -863,6 +941,57 @@ This data set should include records for:
     * 2010: (subtracting) 2 missing focus groups(disability, lep) * 5 equity quintiles * 5 geographies
     * 2015: (subtracting) 1 missing focus group (lep) * 5 equity quintiles * 5 geographies
 * 5 equity quintiles
+
+### Address "Low - Low Medium" quintile group
+This code was added because of Kitsap/LEP data - there were too many tracts with 0, so we combined the bottom two quintiles into low - low medium. This change requires some additional processing so that all of the tracts (bottom 40%) in this combined quintile category are averaged and this average value is assigned to separate 'low' and 'low medium' quintile categories. 
+```{r}
+# nrow(data_tract) #398
+# unique(data_tract$quintile) #6 quintiles because of additional "Low - Low Medium"
+
+low_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile="Low") %>% 
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+lowmed_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>%
+  rename(quintile_original=quintile) %>%
+  mutate(quintile="Low Medium") %>% 
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+
+low_lowmed <- rbind(low_quintile,
+                    lowmed_quintile)
+# nrow(low_lowmed) #4
+
+# gather counties that have low - medium categorization
+low_lowmed_counties <- unique(low_lowmed$county) #Kitsap, Pierce
+low_lowmed_years <- unique(low_lowmed$data_year) #2020
+low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
+
+other_data <- data_tract %>% 
+  filter(quintile!="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile=quintile_original)
+# nrow(other_data) #396
+
+data_tract <- rbind(low_lowmed, #4
+                    other_data) #396
+
+nrow(data_tract) #400 - should be fewer because of duplicates (396)- low and low medium present in data set because of aggregation/calculations in previous steps - need to be removed and replaced with averaged values
+# table(data_tract$quintile, data_tract$county) #should not have extra in low and low medium quintile categories
+# unique(data_tract$quintile) #5 quintiles
+
+# remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
+data_tract <- data_tract %>% 
+  filter(!(county %in% low_lowmed_counties & 
+           data_year %in% low_lowmed_years &
+           equity_group %in% low_lowmed_equity &
+           (quintile_original=="Low" | 
+             quintile_original=="Low Medium")))
+
+# nrow(data_tract) #400
+# table(data_tract$quintile, data_tract$county) #should not have extra in low and low medium quintile categories
+```
 
 ## Rename and factor
 ```{r}
