@@ -1,5 +1,8 @@
 elmer_conn_string: DRIVER={ODBC Driver 17 for SQL Server}; SERVER=AWS-PROD-SQL\Sockeye; DATABASE=Elmer; trusted_connection=yes
 
+# following can be area or population
+weight_type: area
+
 buffer_size: 10560
 
 crs: 2285

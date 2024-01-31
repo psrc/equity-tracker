@@ -11,6 +11,7 @@ import pyodbc
 from pymssql import connect
 from pathlib import Path
 
+
 file = Path().joinpath(configuration.args.configs_dir, "config.yaml")
 
 config = yaml.safe_load(open(file))
@@ -67,6 +68,6 @@ for file_path in file_paths:
 
     print(f"finished processing {str(year)}")
 df = pd.concat(data_list, axis=0)
-#df.reset_index(inplace = True)
-df.to_csv(Path(config.output_path)/config.output_file_name, index=False)
+# df.reset_index(inplace = True)
+df.to_csv(Path(config.output_path) / config.output_file_name, index=False)
 print("done")
