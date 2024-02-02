@@ -384,7 +384,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'g03-sidewalk-completeness-column'
 
 # column Chart - html for interactive
-rmarkdown::render("C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-creator.RMD", 
+rmarkdown::render("C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-creator.Rmd", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -441,242 +441,44 @@ filter <- data_clean %>%
   filter(county=="Region",
          equity_group=="poc_quintile")
 
-# region low quintile poc households: 25%	
+# region low quintile poc households: 25%
+# region low-med poc households: 55%
 # region high quintile poc households: 80%
-# 80-25 = 55 pts
 
 filter <- data_clean %>% 
-  filter(quintile=="High",
-         equity_group=="income_quintile")
+  filter(county=="Region",
+         equity_group=="lep_quintile")
 
-# region high quintile low income households: 71.45515	
-# pierce high quintile low income households: 63.50990
-# 71.45515-63.50990=7.94525
+# region high quintile lep households: 83%
+# region low quintile lep households: 38%
 
-filter <- data_clean %>% 
-  filter(equity_group=="lep_quintile",
-         quintile=="Low"|
-           quintile=="High")
-
-# region dif bt high/low quintiles for lep: 79.04127-77.92853=1.11274
-# king dif bt high/low quintiles for lep: 80.32595-77.63977=2.68618
-# pierce dif bt high/low quintiles for lep: 78.46118-70.37597=8.08521
-# snohomish dif bt high/low quintiles for lep: 80.35905-80.50632=-0.14727
+data_clean %>% dplyr::filter(estimate == min(estimate))
+data_clean %>% dplyr::filter(estimate == max(estimate))
+# min: 5% - Kitsap, low lep
+# max: 96% - King, low youth
 
 filter <- data_clean %>% 
-  filter(equity_group=="income_quintile",
-         quintile=="Low"|
-           quintile=="High")
+  filter(equity_group=="disability_quintile") %>% 
+  arrange(estimate)
 
-# region dif bt high/low quintiles for income: 81.98596-71.45515=10.53081
-# king dif bt high/low quintiles for income: 81.94740-73.03439=8.91301
-# kitsap dif bt high/low quintiles for income: 85.48813-69.90245=15.58568
-# pierce dif bt high/low quintiles for income: 80.93128-63.50990=17.42138
-# snohomish dif bt high/low quintiles for income: 82.09946-78.50544=3.59402
-
-filter <- data_clean %>% 
-  filter(county!="Region",
-         equity_group=="youth_quintile",
-         quintile=="Low"|
-           quintile=="High")
-# king dif bt high/low quintiles for income: 79.29009-76.35762=2.93247
-# kitsap dif bt high/low quintiles for income: 59.86058-82.22206=-22.36148
-# pierce dif bt high/low quintiles for income: 66.70910-75.97165=-9.26255
-# snohomish dif bt high/low quintiles for income: 81.56795-80.16112=1.40683
+# 
 ```
 
-1. 76.7 years: The regional life expectancy of people living in census tracts with the highest concentration of people of color, compared to 81.2 in census tracts with the lowest concentrations of people of color
-2. 7.9 years: The life expectancy of those living census tracts with the highest concentration of low income households is lowest in Pierce County - a difference of 7.9 years when compared to the regional average
-3. 7.0 years: Those living in census tracts with the highest concentration of limited English proficient households have a shorter life expectancy in Pierce County by 7.0 years, when compared to the regional average 
+1. 83%: The share of sidewalk completeness for census tracts in the region with the highest concentration of limited English proficient households, compared to 38% in census tracts with the lowest concentration of limited English proficient households
+2. 5%: The lowest share of sidewalk completeness across categories, found in Kitsap County tracts with the lowest proportion of limited English proficient households
+3. 28%: The share of sidewalk completeness for tracts in Pierce County with the highest concentration of people with disabilities
 
 \
 
 #### Insights & Analysis
 
-* The smallest difference in life expectancy between census tracts with the highest and lowest concentrations of households with lower income is in Snohomish County (3.6 years), while the largest difference is in Pierce County (17.4 years)
-* The life expectancy of those living in census tracts with the highest concentration of limited English proficient households is lower in all the counties except for Snohomish County  
-* There is no noticeable relationship between life expectancy and living in census tracts with high and low concentrations of people with disabilities
-* When comparing the life expectancy of those living in census tracts with the highest and lowest concentrations of households with children under 18 years old, life expectancy is slightly higher in King County (2.9 years) and Snohomish County (1.4 years) and much lower in Kitsap County (-22.4 years) and Pierce County (-9.3 years) 
+* Census tracts in the region with the highest concentration of people of color have more than three times the proportion of sidewalk completeness along arterials than tracts with the lowest concentration of people of color (80% vs. 25%).
+* The highest proportion of sidewalk completeness (96%) is found in King County tracts with the lowest concentration of households with youth. Tracts in King County with the highest concentration of households with youth have a share of only 59%.
+* For the region as a whole, tracts with the highest concentration of people of color, low income households, and limited English proficient households have higher proportions of sidewalk completeness than tracts with the lowest concentration of those groups. For tracts with the highest concentration of people with disabilities and households with older adults, the opposite is true.
 
 \
 \
 
-
-## 3. Facet of trend data
-### Create Visual
-<style type="text/css">
-.main-container {
-  max-width: 100% !important;
-  margin: auto;
-}
-</style>
-
-```{r line facet - tract, include=FALSE}
-# Create Facet Line Chart
-
-# set variables
-df = data_clean
-x = "data_year" # different from variables for facet column
-fill = "quintile_ord" # different from variables for facet column
-y_min = 50
-y_max = 95
-color = "purples"
-
-line_chart <- equity_tracker_line_facet(df = df,
-                                        geo = geo,
-                                        x = x,
-                                        y = y,
-                                        fill = fill,
-                                        facet = facet,
-                                        y_min = y_min,
-                                        y_max = y_max,
-                                        dec = dec,
-                                        esttype = esttype,
-                                        color = color,
-                                        num_colors = num_colors,
-                                        color_rev = color_rev,
-                                        width = '420px',
-                                        height = '380px')
-```
-
-```{r output final line chart - tract, include=FALSE}
-# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
-# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
-
-# set folder structure
-file_name <- 'a01-life-expectancy-line'
-
-# Line Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
-                  params = list(df = df,
-                                geo = geo,
-                                x = x,
-                                y = y,
-                                fill = fill,
-                                facet = facet,
-                                y_min = y_min,
-                                y_max = y_max,
-                                dec = dec,
-                                esttype = esttype,
-                                color = color,
-                                num_colors = num_colors,
-                                color_rev = color_rev,
-                                title = title,
-                                source = source,
-                                subtitle = subtitle,
-                                width = '420px',
-                                height = '380px',
-                                charttype = "line"),
-                  output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
-
-# Line Chart - png for use in static file
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
-                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
-                  vwidth = 1920, vheight = 1080)
-```
-
-<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
-`r title`
-</p>
-<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
-`r subtitle`
-</p>
-```{r line chart - tract, echo=FALSE}
-if (output_type == "html") {
-
-  line_chart  
-  
-} else {
-  
-  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
-  
-}
-# line_chart
-```
-<p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
-</p> 
-
-#### Data call outs
-```{r line facet calculations - tract, include=FALSE, eval=FALSE}
-# calculate call out information
-filter <- data_clean %>% 
-  filter(county=="Region",
-         equity_group=="poc_quintile",
-         quintile=="Low" | 
-           quintile=="High",
-         data_year=="2010" |
-           data_year=="2020")
-
-# 2010 region low quintile poc households: 80.54142	
-# 2010 region high quintile poc households: 76.64042
-# 80.54142-76.64042=3.901
-# 2020 region low quintile poc households: 81.19030
-# 2020 region high quintile poc households: 76.67422
-# 81.19030-76.67422=4.51608
-# ((4.51608-3.901)/(3.901))*100: 15.8% change
-
-filter <- data_clean %>% 
-  filter(county=="Region",
-         equity_group=="income_quintile",
-         quintile=="Low" | 
-           quintile=="High",
-         data_year=="2010" |
-           data_year=="2020")
-
-# 2010 region low quintile income: 75.48994	
-# 2010 region high quintile income: 72.81326
-# 75.48994-72.81326=2.67668
-# 2020 region low quintile income: 81.98596
-# 2020 region high quintile income: 71.45515
-# 81.98596-71.45515=10.53081
-# ((10.53081-2.67668)/(2.67668))*100: 293.4281% change
-
-filter <- data_clean %>% 
-  filter(county=="Snohomish",
-         equity_group=="poc_quintile",
-         quintile=="Low" | 
-           quintile=="High")
-
-filter <- data_clean %>% 
-  filter(county!="Region",
-         equity_group=="income_quintile",
-         quintile=="Low" | 
-           quintile=="High",
-         data_year=="2010" |
-           data_year=="2020")
-
-# 2020 King dif low/high income: 81.94740-73.03439=8.91301
-# 2010 King dif low/high income: 74.67479-75.27990=-0.60511
-# 2020 Kitsap dif low/high income: 85.48813-69.90245=15.58568
-# 2010 Kitsap dif low/high income: 78.56102-64.58841=13.97261
-# 2020 Pierce dif low/high income: 80.93128-63.50990=17.42138
-# 2010 Pierce dif low/high income: 76.74249-66.53859=10.2039
-# 2020 Snohomish dif low/high income: 82.09946-78.50544=3.59402
-# 2010 Snohomish dif low/high income: 76.01877-77.99171=-1.97294
-
-filter <- data_clean %>% 
-  filter(county!="Region",
-         equity_group=="lep_quintile",
-         quintile=="High")
-
-```
-
-1. 3.9 years: The regional life expectancy gap between census tracts with the highest and lowest concentrations of people of color in 2010, a 15.8% smaller gap than in 2020
-2. 293%: The increase in the regional life expectancy gap between census tracts with the highest and lowest concentrations of households below 200% of the poverty line between 2010 and 2020
-3. 71.5 years: The 2020 regional life expectancy in tracts with the highest concentrations of households below 200% of the poverty line, 7 years fewer than the regional average (78.8) and 9 years fewer than the regional median (80.9)
-
-\
-
-#### Insights & Analysis
-
-* Snohomish County is the only county in the region where the life expectancy of the census tracts with the highest concentration of people of color exceeds the life expectancy of the census tracts with the lowest concentration of people of color, a trend consistent over the past decade
-* The life expectancy gaps between census tracts with the highest and lowest concentration of households below 200% of the poverty line increased in all counties between 2010 and 2020, with the largest gap change in Pierce County (7.2 years) and the smallest gap change in Kitsap County (1.6 years)
-* The 2020 life expectancy of those living in the census tracts with the highest concentrations of households with limited English proficiency is shortest in Pierce County (70.4 years), compared to King County () and Snohomish County (80.5 years)
-
-\
-\
 
 # Transfer files
 ## Copy files from Github > Y drive
