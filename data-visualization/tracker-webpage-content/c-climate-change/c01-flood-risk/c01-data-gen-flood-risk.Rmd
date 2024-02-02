@@ -86,7 +86,7 @@ crosswalk_10_20 <- get_table(schema="census",
                              tbl_name="v_geo_relationships_tracts")
 ```
 
-### tract-level population data for 2021
+### tract-level population data for 2021 - not used for this indicator
 ```{r, include=FALSE}
 # getting census population data by tract
 tracts_21 <- get_acs_recs(geography ='tract', 
@@ -141,7 +141,7 @@ flood_22 <- flood_22 %>%
 ### Map
 #### Join recent data to spatial file
 ```{r, include=FALSE}
-# join geographic data to flood risk score data - staying in 2010 geographies to not display false sense of accuracy
+# join geographic data to flood risk score data
 data_tract <- merge(tracts20.lyr, flood_22,
                     by.x="geoid20",
                     by.y="Census.Tract", 
@@ -569,7 +569,7 @@ Save final data set (.rda) for map
 ```{r, include=FALSE}
 # This is the data set used to create the map of the most recent data. For this data set, there is one additional transformation that is needed before saving it for final visualization in the 'vis' script. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk. 
 
-head(tract.20) # to determine field names
+#head(tract.20) # to determine field names
 tract.21.edit <- tract.21 %>% 
    dplyr::mutate(pop21=estimate) # the rate is already 'estimate'
 
@@ -690,9 +690,8 @@ data_equity_pivot21_calc <- data_equity_pivot21 %>%
   filter(!is.na(quintile)) %>%
   dplyr::group_by(equity_group, quintile, county) %>%
   summarise(wt_average=(sum(average_num*prop_w_score, na.rm =TRUE))/(sum(prop_w_score, na.rm=TRUE))) %>%
-  mutate(County.Name="Region") %>%
   as_tibble() %>%
-  mutate(data_year=2021)
+  mutate(data_year=2021) 
 
 ```
 
@@ -709,7 +708,7 @@ These data sets should include records for:
 * 5 equity quintiles 
 
 
-### Calculate by equity quintile
+### Calculate by equity quintile - already calculated in data_equity_pivot21_calc
 The scores are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2020). 
 
 ```{r}
@@ -722,14 +721,14 @@ The scores are available at the census tract level but we want to calculate the 
 # sum(tracts20.lyr$total_pop21) 
 
 # calculations to get weighted average for flood risk score per equity group/quintile
-data_equity_wt21 <- data_equity_pivot21 %>%
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=prop_w_score*average_num) %>%
-  dplyr::group_by(county, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_rate=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_prop=(sum(prop_w_score, na.rm = TRUE))) %>%
-  dplyr::mutate(wt_average=tot_rate/tot_prop) 
+# data_equity_wt21 <- data_equity_pivot21 %>%
+#   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
+#   dplyr::mutate(tot_risk_tract=prop_w_score*average_num) %>%
+#   dplyr::group_by(county, data_year, equity_group, quintile) %>%
+#   dplyr::summarise(tracts=length(GEOID),
+#                    tot_rate=(sum(tot_risk_tract, na.rm = TRUE)),
+#                    tot_prop=(sum(prop_w_score, na.rm = TRUE))) %>%
+#   dplyr::mutate(wt_average=tot_rate/tot_prop) 
 
 # check population
 # data_equity_wt21_test <- data_equity_wt21 %>%
@@ -775,6 +774,57 @@ This data set should include records for:
     * 2010: (subtracting) 2 missing focus groups(disability, lep) * 5 equity quintiles * 5 geographies
     * 2015: (subtracting) 1 missing focus group (lep) * 5 equity quintiles * 5 geographies
 * 5 equity quintiles
+
+### Address "Low - Low Medium" quintile group
+This code was added because of Kitsap/LEP data - there were too many tracts with 0, so we combined the bottom two quintiles into low - low medium. This change requires some additional processing so that all of the tracts (bottom 40%) in this combined quintile category are averaged and this average value is assigned to separate 'low' and 'low medium' quintile categories. 
+```{r}
+#nrow(data_tract) #149
+#unique(data_tract$quintile) #6 quintiles because of additional "Low - Low Medium"
+
+low_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile="Low") %>% 
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+lowmed_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>%
+  rename(quintile_original=quintile) %>%
+  mutate(quintile="Low Medium") %>% 
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+
+low_lowmed <- rbind(low_quintile,
+                    lowmed_quintile)
+# nrow(low_lowmed) #2
+
+# gather counties that have low - medium categorization
+low_lowmed_counties <- unique(low_lowmed$county) #Kitsap
+low_lowmed_years <- unique(low_lowmed$data_year) #2021
+low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
+
+other_data <- data_tract %>% 
+  filter(quintile!="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile=quintile_original)
+# nrow(other_data) #148
+
+data_tract <- rbind(low_lowmed, #2
+                    other_data) #148
+
+nrow(data_tract) #150 - should be fewer because of duplicates (148)- low and low medium present in data set because of aggregation/calculations in previous steps - need to be removed and replaced with averaged values
+# table(data_tract$quintile, data_tract$County.Name) #should not have extra in low and low medium quintile categories
+# unique(data_tract$quintile) #5 quintiles
+
+# remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
+data_tract <- data_tract %>% 
+  filter(!(county %in% low_lowmed_counties & 
+           data_year %in% low_lowmed_years &
+           equity_group %in% low_lowmed_equity &
+           (quintile_original=="Low" | 
+             quintile_original=="Low Medium")))
+
+# nrow(data_tract) #150
+# table(data_tract$quintile, data_tract$county) #should not have extra in low and low medium quintile categories
+```
 
 ## Rename and factor
 ```{r}

@@ -4,13 +4,14 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  html_document:
+  html_document: 
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
     word_document:
+
 ---
   
 ```{r rmarkdown setup, include=FALSE}
