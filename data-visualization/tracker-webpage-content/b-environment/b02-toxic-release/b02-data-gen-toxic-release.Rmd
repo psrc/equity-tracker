@@ -71,15 +71,11 @@ Data comes from [EPA](https://www.epa.gov/toxics-release-inventory-tri-program).
 # Stefan Coe, Brian Lee, and Meg Grzybowski worked to identify point sources, create buffers around those sources, and then weight the amount of chemical emissions (accounting for multiple sources in one location and adding the compounding impacts). 
 # The gdb files live here: W:\gis\projects\Megan\TRI_stefan.gdb
 
-
 folder_path <- "Y:/Equity Indicators/tracker-webpage-content/b-environment/b02-toxic-release/raw-data"
-life_expec_01_05 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_01_05.csv"))
-life_expec_06_10 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_06_10.csv"))
-life_expec_11_15 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_11_15.csv"))
-life_expec_16_20 <- read.csv(file.path(folder_path,"Life_Expectancy_at_Birth_16_20.csv"))
+toxic_release <- read.csv(file.path(folder_path,"toxic_release.csv"))
 ```
 \
-Although there are innumerable possible data sets, we will be using the most recent data set to keep it to (*2023*).
+Although there are innumerable possible data sets, the data sets we will be using will span 2010-2022 (most current data).
 
 
 ## Additional data
@@ -98,19 +94,19 @@ crosswalk_10_20 <- get_table(schema="census",
 ```
 
 ### tract-level population data
-to weight life expectancy for 2010, 2015, 2020
+to weight life expectancy for 2010, 2015, 2020 - unnecessary for this indicator
 ```{r, include=FALSE}
 # getting census population data by tract
-tracts_10_15_20 <- get_acs_recs(geography ='tract', 
-                                table.names = 'B01003',
-                                years = c(2010, 2015, 2020),
-                                acs.type = 'acs5')
-tract.10 <- tracts_10_15_20 %>% 
-  filter(year==2010)
-tract.15 <- tracts_10_15_20 %>% 
-  filter(year==2015)
-tract.20 <- tracts_10_15_20 %>% 
-  filter(year==2020)
+# tracts_10_15_20 <- get_acs_recs(geography ='tract', 
+#                                 table.names = 'B01003',
+#                                 years = c(2010, 2015, 2020),
+#                                 acs.type = 'acs5')
+# tract.10 <- tracts_10_15_20 %>% 
+#   filter(year==2010)
+# tract.15 <- tracts_10_15_20 %>% 
+#   filter(year==2015)
+# tract.20 <- tracts_10_15_20 %>% 
+#   filter(year==2020)
 ```
 
 ### tract spatial file
@@ -128,60 +124,34 @@ nrow(tracts10.lyr) #773
 ```
 
 # Explore data
-The 2010 and 2015 equity tracts are in 2010 geographies and include ~770 census tracts, each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The 2010, 2015, an 2020 life expectancy data are available from WTN in 2010 geographies, so the 2020-year data will need to be translated to 2020 geographies to be able to use the 2020 population information.
+The data spans two census geography time frames - 2010 and 2020. Because the toxic release data is available at the point source location, they were translated to 2010 and 2020 geographies, depending on the data year (2010 geographies: 2010-2019; 2020 geographies: 2020-), each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The values are weighted by the synthetic population for each tract (not assuming equal distribution) - a measure of the average exposure to each person in the tract.
 ```{r, include=FALSE}
-# check number of rows in data sets
-nrow(life_expec_01_05) #1465
-nrow(life_expec_06_10) #1465
-nrow(life_expec_11_15) #1465
-nrow(life_expec_16_20) #1465
+# check number of rows in data set
+nrow(toxic_release) #9608
 ```
-The four possible WTN data sets that could be used without overlapping years include 1,465 records each. This closely matches the number of records in the 2010 census tract shapefile for WA state, published by the [US Census Bureau, Geography Division](https://www.census.gov/cgi-bin/geo/shapefiles/index.php) (1,458; in comparison to the 1,784 tracts in the 2020 shapefile).
+Because the toxic release data is released yearly, we have chosen to start at 2010 through the most recent data set that corresponds to our equity demographic groups (available 2021). Because there is exposure data released every year, we match it with the corresponding equity demographic data, also available every year (but in overlapping 5-year time spans).
 
 ```{r, include=FALSE}
 # to check the field names and data class
-str(life_expec_16_20)
-
-# add column with the last year of the 5-year span
-# filter to PSRC counties
-life_expec_01_05 <- life_expec_01_05 %>% 
-  mutate(year=2005) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
-life_expec_06_10 <- life_expec_06_10 %>% 
-  mutate(year=2010) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
-life_expec_11_15 <- life_expec_11_15 %>% 
-  mutate(year=2015) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
-life_expec_16_20 <- life_expec_16_20 %>% 
-  mutate(year=2020) %>% 
-  filter(County.Name=="King" |
-           County.Name=="Kitsap" |
-           County.Name=="Pierce" |
-           County.Name=="Snohomish")
+str(toxic_release)
 ```
 
 ## Most Recent Data
 ### Map
 #### Join recent data to spatial file
 ```{r, include=FALSE}
-# join base 2010 geographic data to WTN health data - staying in 2010 geographies to not display false sense of accuracy
-data_tract <- merge(tracts10.lyr, life_expec_16_20,
-                    by.x="geoid10",
-                    by.y="Census.Tract", 
+# filter to most recent toxic release data
+toxic_release_22 <- toxic_release %>% 
+  dplyr::filter(year==2022)
+# join base 2020 geographic data to toxic release data 
+data_tract <- merge(tracts20.lyr, toxic_release_22,
+                    by.x="geoid20",
+                    by.y="geoid", 
                     all.x=TRUE)
 
 data_tract <- data_tract %>% 
-  dplyr::mutate(estimate=as.numeric(Life.Expectancy)) # rename value variable for consistency
+  dplyr::mutate(estimate_prelog=as.numeric(exposure), # rename value variable for consistency
+                estimate=log(estimate_prelog+1)) 
 ```
 
 ```{r}
@@ -330,7 +300,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Life Expectancy"
+var_name <- "Toxic Release Exposure"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -383,7 +353,7 @@ Life expectancy calculations can fluctuate considerably in smaller populations o
 data_tract_na <- data_tract %>% 
   filter(is.na(estimate))
 
-nrow(data_tract_na) #27 tracts
+nrow(data_tract_na) #0 tracts
 ```
 
 ```{r missing tract map}
@@ -397,7 +367,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Life Expectancy"
+var_name <- "Toxic Release Exposure"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -463,19 +433,17 @@ summary(data_tract_nona$estimate)
 
 **When weighted by tract populations.** 
 ```{r, include=FALSE}
-data_tract_nona_weight <- data_tract_nona %>% 
-  mutate(tot_age = estimate*total_pop10,
-         reg_tot = sum(tot_age),
-         tot_pop = sum(total_pop10),
-         est_weight_avg = reg_tot/tot_pop)
+# data_tract_nona_weight <- data_tract_nona %>% 
+#   mutate(tot_age = estimate*total_pop10,
+#          reg_tot = sum(tot_age),
+#          tot_pop = sum(total_pop10),
+#          est_weight_avg = reg_tot/tot_pop)
 
-distrib <- rep(data_tract_nona$estimate, data_tract_nona$total_pop10)
+# distrib <- rep(data_tract_nona$estimate, data_tract_nona$total_pop10)
+distrib <- rep(data_tract_nona$estimate)
 
-avg.value <- data_tract_nona_weight$est_weight_avg[1] #80.78997
 med.value <- median(distrib) #80.74
 ```
-*Average:* `r avg.value`
-\
 *Median:* `r med.value`
 \
 \
@@ -497,14 +465,14 @@ boxplot(distrib, horizontal = TRUE)
 #### Outliers
 The IQR criterion means that all observations above or below the first and third quartile respectively, and IQR is the difference between the third and first quartile) are considered as potential outliers by R [(source)](https://statsandr.com/blog/outliers-detection-in-r/).  
 ```{r}
-outliers <- boxplot.stats(distrib)$out
-outlier_rle <- rle(outliers)
-outlier_df <- data.frame(unclass(outlier_rle)) %>% 
-  rename(population = lengths,
-         health_in = values) %>% 
-  arrange(health_in)
-
-outlier_df
+# outliers <- boxplot.stats(distrib)$out
+# outlier_rle <- rle(outliers)
+# outlier_df <- data.frame(unclass(outlier_rle)) %>% 
+#   rename(population = lengths,
+#          health_in = values) %>% 
+#   arrange(health_in)
+# 
+# outlier_df
 ```
 \
 
@@ -513,12 +481,12 @@ The following steps are specific to the life expectancy dataset and may or may n
 
 ###### Identify census tracts with outliers
 ```{r include=FALSE}
-outlier_values <- outlier_df[,2]
-
-data_tract_nona_weight_outliers <- data_tract_nona_weight %>% 
-  dplyr::filter(estimate %in% outlier_values)
-
-num_outliers <- nrow(data_tract_nona_weight_outliers) #7
+# outlier_values <- outlier_df[,2]
+# 
+# data_tract_nona_weight_outliers <- data_tract_nona_weight %>% 
+#   dplyr::filter(estimate %in% outlier_values)
+# 
+# num_outliers <- nrow(data_tract_nona_weight_outliers)
 ```
 There are `r num_outliers` tracts that have outliers. 
 \
@@ -543,50 +511,50 @@ displacement_simp <- displacement.lyr %>%
 ```
 
 ```{r, include=FALSE}
-data_tract_nona_weight_outliers %<>% 
-  dplyr::mutate(geoid=trimws(geoid10))
-
-# join outlier tract datas to spatial dispalcement tract data to isolate tracts with outlier data
-data_tract_risk_outliers <- merge(x=displacement_simp, 
-                                      y=data_tract_nona_weight_outliers,
-                                      by.x="geoid10",
-                                      by.y="geoid",
-                                      all.y=TRUE)
-head(data_tract_risk_outliers)
-# class(data_tract_risk_outliers)
-# plot(data_tract_risk_outliers$geometry)
-nrow(data_tract_risk_outliers) #7
-pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop10, na.rm = T)) #33152
-pop_outliers_num <- label_comma()(pop_outliers)
+# data_tract_nona_weight_outliers %<>% 
+#   dplyr::mutate(geoid=trimws(geoid10))
+# 
+# # join outlier tract datas to spatial dispalcement tract data to isolate tracts with outlier data
+# data_tract_risk_outliers <- merge(x=displacement_simp, 
+#                                       y=data_tract_nona_weight_outliers,
+#                                       by.x="geoid10",
+#                                       by.y="geoid",
+#                                       all.y=TRUE)
+# head(data_tract_risk_outliers)
+# # class(data_tract_risk_outliers)
+# # plot(data_tract_risk_outliers$geometry)
+# nrow(data_tract_risk_outliers) #7
+# pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop10, na.rm = T)) #33152
+# pop_outliers_num <- label_comma()(pop_outliers)
 ```
 There are `r pop_outliers_num` people (2020 Decennial Census) in these outlier tracts.
 \
 \
 ```{r}
 # compare the two measures
-plot(data_tract_risk_outliers$risk_score, 
-     data_tract_risk_outliers$estimate)
+# plot(data_tract_risk_outliers$risk_score, 
+#      data_tract_risk_outliers$estimate)
 ```
 
 ```{r}
-# this will be different for each indicator - the code and the text included below...
-# based on the plot in the last chunk, this code is meant to isolate outlier(s) - in this case it filters for the outliers with high risk scores and high life expectancy
-
-# outlier #1
-data_tract20_outliers_1 <- data_tract_risk_outliers %>% 
-  filter(risk_score > 50)
-
-# code to look at the scores and census tracts that are outliers
-data_tract20_outliers_1
-
-# outlier #2
-data_tract20_outliers_2 <- data_tract_risk_outliers %>% 
-  filter(risk_score < 17)
-
-# code to look at the scores and census tracts that are outliers
-data_tract20_outliers_2
-
-# To locate the census tracts on the map, its easy to use the Data Portal (https://psrc-psregcncl.hub.arcgis.com/datasets/census-tracts-2020/explore?location=47.506129%2C-121.980700%2C9.23) - just filter on the geoid20 field. 
+# # this will be different for each indicator - the code and the text included below...
+# # based on the plot in the last chunk, this code is meant to isolate outlier(s) - in this case it filters for the outliers with high risk scores and high life expectancy
+# 
+# # outlier #1
+# data_tract20_outliers_1 <- data_tract_risk_outliers %>% 
+#   filter(risk_score > 50)
+# 
+# # code to look at the scores and census tracts that are outliers
+# data_tract20_outliers_1
+# 
+# # outlier #2
+# data_tract20_outliers_2 <- data_tract_risk_outliers %>% 
+#   filter(risk_score < 17)
+# 
+# # code to look at the scores and census tracts that are outliers
+# data_tract20_outliers_2
+# 
+# # To locate the census tracts on the map, its easy to use the Data Portal (https://psrc-psregcncl.hub.arcgis.com/datasets/census-tracts-2020/explore?location=47.506129%2C-121.980700%2C9.23) - just filter on the geoid20 field. 
 ```
 
 
@@ -595,45 +563,43 @@ Save final data set (.rda) for map
 ```{r, include=FALSE}
 # This is the data set used to create the map of the most recent data. For this data set, there is one additional transformation that is needed before saving it for final visualization in the 'vis' script. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk. 
 
-# Because the measure (life expectancy) does not account for the population of the tract, it hasn't been normalized and needs to be weighted in order to aggregate to the region level. The map is going to visualize 2020 data, but in 2010 geographies. The original WTN data set was merged to the 2010 spatial file which has 2010 population numbers. To get 2020 population numbers, we need to aggregate population numbers in the 2020 tracts that were split from 2010 tracts. 
+# Because the measure (toxic release exposure) DOES account for the population of the tract, it's already been normalized and doesn't need to be weighted to aggregate to the region level. The map is going to visualize 2022 data in 2020 geographies.
 
  
-head(tract.20) # to determine field names of population data frame
-tract.20.edit <- tract.20 %>% 
-  dplyr::mutate(pop20=estimate) # the life expectancy value is already 'estimate'
-
-# merge 2020 acs population data to crosswalk file
-pop20_crosswalk <- merge(tract.20.edit, crosswalk_10_20, 
-                         by.x="GEOID",
-                         by.y="geoid20", 
-                         all.x=TRUE)
-
-# calculate population by adding 2020 tracts that were split from 2010 tracts
-pop20 <- pop20_crosswalk %>% 
-  dplyr::group_by(geoid10) %>% 
-  dplyr::summarise(total_pop20=sum(pop20))
-
-# merge 2020 population by 2010 tracts to life expectancy data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_tract <- merge(data_tract, pop20, 
-                         by.x="geoid10",
-                         by.y="geoid10", 
-                         all.x=TRUE)
+# head(tract.20) # to determine field names of population data frame
+# tract.20.edit <- tract.20 %>% 
+#   dplyr::mutate(pop20=estimate) # the life expectancy value is already 'estimate'
+# 
+# # merge 2020 acs population data to crosswalk file
+# pop20_crosswalk <- merge(tract.20.edit, crosswalk_10_20, 
+#                          by.x="GEOID",
+#                          by.y="geoid20", 
+#                          all.x=TRUE)
+# 
+# # calculate population by adding 2020 tracts that were split from 2010 tracts
+# pop20 <- pop20_crosswalk %>% 
+#   dplyr::group_by(geoid10) %>% 
+#   dplyr::summarise(total_pop20=sum(pop20))
+# 
+# # merge 2020 population by 2010 tracts to life expectancy data - this is for eventual weighting (which may not be necessary depending on the indicator)
+# data_tract <- merge(data_tract, pop20, 
+#                     by.x="geoid10",
+#                     by.y="geoid10", 
+#                     all.x=TRUE)
 ```
 
 ```{r, region and county numbers for map labels}
 # calculating data by county 
 county_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
-  # dplyr::select(county_name, estimate, total_pop20) %>% #to simplify table to necessary fields
   dplyr::group_by(county_name) %>% 
-  dplyr::mutate(cnty_estimate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% #calculate weighted value by county
+  dplyr::mutate(cnty_estimate=mean(estimate)) %>% #calculate value by county
   dplyr::distinct(county_name, cnty_estimate)
 
 # calculating data by region
 reg_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
-  dplyr::select(estimate, total_pop20) %>% #to simplify table to necessary fields
-  dplyr::mutate(reg_estimate=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% #calculate weighted value for region
+  dplyr::mutate(reg_estimate=mean(estimate)) %>%  #calculate value for region
   dplyr::distinct(reg_estimate)
 
 # add region data to county data
@@ -650,9 +616,9 @@ data_tract <- merge(data_tract, county_reg_data,
 ```{r}
 # set folder structure
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'a-regional-health-collaboration'
-ind_dir <- 'a01-life-expectancy'
-file_name <- 'a01-life-expectancy-map-data'
+theme_dir <- 'b-environment'
+ind_dir <- 'b02-toxic-release'
+file_name <- 'b02-toxic-release-map-data'
 
 # save final data set as .rda
 save(data_tract, file = file.path(base_dir,
@@ -662,156 +628,109 @@ save(data_tract, file = file.path(base_dir,
 ```
 
 # Explore data by equity quintile
-## Join primary data to equity quintiles and acs population
-```{r}
-# 2010 data -----
-equity_tracts_10 <- equity_tracts %>% 
-  dplyr::filter(data_year==2010)
+## Join primary data to equity quintiles
+```{r, include=FALSE}
+# primary data - toxic release ----
+head(toxic_release)
+unique(toxic_release$year)
 
-# join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(life_expec_06_10, equity_tracts_10,
-                            by.x="Census.Tract",
-                            by.y="geoid", 
-                            all.x=TRUE)
+# add county information
+# toxic_release <- toxic_release %>%
+#   dplyr::mutate(county_code=substr(geoid, 3, 5), # add county to tract level data
+#                 county_name = case_when(county_code=="033" ~"King",
+#                                         county_code=="035" ~"Kitsap",
+#                                         county_code=="053" ~"Pierce",
+#                                         county_code=="061" ~"Snohomish"))
 
-# join 2010 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract10 <- merge(tract.10, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="Census.Tract", 
-                             all.x=TRUE)
+# geoid is number, set it as character to join with equity quintile tract Elmer data
+toxic_release <- toxic_release %>% 
+  dplyr::mutate(geoid=as.character(geoid))
 
-# check data set
-nrow(data_equity_tract10) #1548
+# equity quintiles ----
+head(equity_tracts)
+unique(equity_tracts$data_year)
+
+# the differences for these data - toxic release (2010-2022), equity tracts (2009-2020)
+# will try an inner join based on year and geoid - removes 2020 from data because not available for toxic release, but should be available?
+
+# toxic_release_equity_tracts <- inner_join(toxic_release, equity_tracts,
+#                                           by = c("year" = "data_year", 
+#                                                  "geoid" = "geoid"))
+merge <- merge(equity_tracts, toxic_release, 
+               by.x=c("data_year", "geoid"),
+               by.y=c("year","geoid"),
+               all.x=TRUE)
+
+unique(merge$data_year) #2009-2021
+# need to remove 2009 - not included in toxic release data
+# 
+toxic_release_equity_tracts <- merge %>% 
+  dplyr::filter(data_year!=2009)
+
+unique(toxic_release_equity_tracts$county) #5
+# table(toxic_release_equity_tracts$data_year,toxic_release_equity_tracts$county)
+# table(equity_tracts$data_year,equity_tracts$county)
+
+# test <- toxic_release_equity_tracts %>% 
+#   dplyr::filter(data_year==2021,
+#                 geoid=="53035080500")
+
+# separate 2010 and 2020 geographies
+toxic_release_equity_10 <- toxic_release_equity_tracts %>% 
+  dplyr::filter(data_year<2020) #15440
+
+n_distinct(toxic_release_equity_10$geoid) #772 - check to make sure in correct geography
+
+toxic_release_equity_20 <- toxic_release_equity_tracts %>% 
+  dplyr::filter(data_year>=2020) #3676
+
+n_distinct(toxic_release_equity_20$geoid) #919 - check to make sure in correct geography
+
+tot_row <- (772*2*10)+(919*2*2)
 ```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
-
-```{r}
-# 2015 data ----- 
-equity_tracts_15 <- equity_tracts %>% 
-  dplyr::filter(data_year==2015)
-
-# join WTN data to equity quintiles (on 2010 census tracts)
-data_equity_tracts <- merge(life_expec_11_15, equity_tracts_15,
-                            by.x="Census.Tract",
-                            by.y="geoid", 
-                            all.x=TRUE)
-
-# join 2015 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract15 <- merge(tract.15, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="Census.Tract", 
-                             all.x=TRUE)
-
-# check data set
-nrow(data_equity_tract15)
-```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
-
-```{r}
-# 2020 data -----
-equity_tracts_20 <- equity_tracts %>% 
-  dplyr::filter(data_year==2020)
-
-# join WTN data (in 2010 census tracts) to cross walk
-data_crosswalk <- merge(crosswalk_10_20, life_expec_16_20,
-                        by.x="geoid10",
-                        by.y="Census.Tract",
-                        all.x=TRUE)
-
-# join WTN data to equity quintiles (on 2020 census tracts)
-data_equity_tracts <- merge(data_crosswalk, equity_tracts_20,
-                            by.x="geoid20",
-                            by.y="geoid", 
-                            all.x=TRUE)
-
-# join 2020 acs population data to WTN data - this is for eventual weighting (which may not be necessary depending on the indicator)
-data_equity_tract20 <- merge(tract.20, data_equity_tracts,
-                             by.x="GEOID",
-                             by.y="geoid20", 
-                             all.x=TRUE)
-
-# check data set
-nrow(data_equity_tract20)
-```
-This data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county.
+The data set should include about twice the number of census tracts in the region - census tracts are listed twice - once as part of the region and another as part of their corresponding county. Because toxic release data is available for every year, starting in 2010, the data set should have a row for every 2010 tract (twice, for 10 years) and every 2020 tract (twice, for 2 years) = `r tot_row`.
 
 ## Transform/pivot
 The data sets need to be cleaned and pivoted to a longer table so that there is only one field for the 6 different equity categories, instead of one field for each.
 ```{r, include=FALSE}
-# clean/simplify data sets
-data_equity_quintiles10 <- data_equity_tract10 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
-
-data_equity_quintiles15 <- data_equity_tract15 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
-
-data_equity_quintiles20 <- data_equity_tract20 %>% 
-  dplyr::mutate(data_year=format(year.x,format="%Y")) %>% 
-  dplyr::mutate(Life.Expectancy_num=as.numeric(Life.Expectancy))
-
 # pivot data set so that there is one column with quintile designation
-data_equity_pivot10 <- data_equity_quintiles10 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
-               names_to = "equity_group",
-               values_to = "quintile")
-
-data_equity_pivot15 <- data_equity_quintiles15 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
-               names_to = "equity_group",
-               values_to = "quintile")
-
-data_equity_pivot20 <- data_equity_quintiles20 %>% 
-  pivot_longer(cols = poc_quintile:lep_quintile,
+toxic_release_equity_tracts_pivot <- toxic_release_equity_tracts %>% 
+   pivot_longer(cols = poc_quintile:lep_quintile,
                names_to = "equity_group",
                values_to = "quintile")
 ```
 
 ```{r}
 # check data sets
-nrow(data_equity_pivot10)
-nrow(data_equity_pivot15)
-nrow(data_equity_pivot20)
+nrow(toxic_release_equity_tracts_pivot) #114696
 ```
 
 These data sets should include records for:
 
-* 2 geographies (region and whichever county the tract belongs to) x # census tracts (~773 for 2010/15, ~919 for 2020)
+* 2 geographies (region and whichever county the tract belongs to) x # census tracts (~773 for 2010-2019, ~919 for 2020-2021)
 * 6 equity focus groups (disability and lep are not available in for 2010, lep not available in 2015 - but still show up as NA)
 
 
 ## Calculations
 ### Calculate by region
-The life expectancy values are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2010, 2015, 2020).
+The exposure values are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2010, 2015, 2020).
 ```{r}
-data_equity_pivot10_calc <- data_equity_pivot10 %>% 
-  filter(!is.na(quintile)) %>% #missing lep and disability data
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2010)
+toxic_release_equity_tracts_pivot_reg_calc <- toxic_release_equity_tracts_pivot %>% 
+  # filter(!is.na(quintile)) %>% #missing lep and disability data
+  dplyr::group_by(data_year,equity_group, quintile) %>%
+  summarise(exposure=(mean(exposure, na.rm=TRUE))) %>% 
+  mutate(county="Region")
 
-data_equity_pivot15_calc <- data_equity_pivot15 %>% 
-  filter(!is.na(quintile)) %>% #missing lep data
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2015)
-
-data_equity_pivot20_calc <- data_equity_pivot20 %>% 
-  filter(!is.na(quintile)) %>%
-  dplyr::group_by(equity_group, quintile) %>%
-  summarise(wt_life_expec=(sum(Life.Expectancy_num*estimate, na.rm =TRUE))/(sum(estimate, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region") %>% 
-  mutate(data_year=2020)
+toxic_release_equity_tracts_pivot_reg_calc <- toxic_release_equity_tracts_pivot %>% 
+  filter(county=="Region") %>% 
+  dplyr::group_by(data_year,equity_group, quintile) %>%
+  summarise(exposure=(mean(exposure, na.rm=TRUE))) %>% 
+  mutate(county="Region")
 ```
 
 ```{r}
 # check data sets
-nrow(data_equity_pivot10_calc)
-nrow(data_equity_pivot15_calc)
-nrow(data_equity_pivot20_calc)
+nrow(toxic_release_equity_tracts_pivot_reg_calc)
 ```
 These data sets should include records for:
 
@@ -820,123 +739,38 @@ These data sets should include records for:
      * 2010: only 4 equity focus groups
      * 2015: only 5 equity focus groups
 * 5 equity quintiles 
+* 11 years
 
 
-### Calculate by equity quintile
-The life expectancy values are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates (2010, 2015, 2020). 
+### Calculate by equity quintile/county (including region)
+The exposure values are available at the census tract level but we want to calculate the average values by the 6 equity/5 quintile groups. 
 ```{r}
-# calculate 2010 region population
-population_test <- data_equity_pivot10 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,603,425
-
-sum(tract.10$estimate) #3,603,425
-
-# calculations to get weighted average life expectancy
-data_equity_wt10 <- data_equity_pivot10 %>% 
+# calculations to get average exposure
+toxic_release_equity_tracts_pivot_calc_cnty <- toxic_release_equity_tracts_pivot %>% 
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt10_test <- data_equity_wt10 %>% 
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt10_test$tot_pop) #3,603,425
+  dplyr::group_by(county, data_year, equity_group, quintile) %>%
+  dplyr::summarise(exposure=(mean(exposure, na.rm=TRUE)), .groups = 'drop')
 
 # check data set
-nrow(data_equity_wt10)
+nrow(toxic_release_equity_tracts_pivot_calc_cnty)
 ```
-The regional population in 2010: `r population_test`
-\
-\
-This data sets should include records for:
-
-* 4 geographies: 4 PSRC counties
-* 4 equity focus groups (disability and lep are not available in for 2010)
-* 5 equity quintiles 
-
-```{r}
-# calculate 2015 region population
-population_test <- data_equity_pivot15 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #3,869,802
-
-# calculations to get weighted average life expectancy
-data_equity_wt15 <- data_equity_pivot15 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt15_test <- data_equity_wt15 %>%
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt15_test$tot_pop) #3,869,802
-
-# check data set
-nrow(data_equity_wt15)
-```
-The regional population in 2015: `r population_test`
-\
-\
-This data sets should include records for:
-
-* 4 geographies: 4 PSRC counties
-* 5 equity focus groups (lep not available in 2015)
-* 5 equity quintiles 
-
-```{r}
-# calculate 2020 region population
-population_test <- data_equity_pivot20 %>% 
-  distinct(GEOID, .keep_all = TRUE) %>%
-  dplyr::summarise(pop=formatC((sum(estimate, na.rm=TRUE)), format="d", big.mark=",")) #4,197,443	
-
-sum(tracts20.lyr$total_pop20) #4,294,373
-
-# calculations to get weighted average life expectancy per equity group/quintile
-data_equity_wt20 <- data_equity_pivot20 %>% 
-  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  dplyr::mutate(tot_risk_tract=estimate*Life.Expectancy_num) %>% 
-  dplyr::group_by(County.Name, data_year, equity_group, quintile) %>%
-  dplyr::summarise(tracts=length(GEOID),
-                   tot_age=(sum(tot_risk_tract, na.rm = TRUE)),
-                   tot_pop=(sum(estimate, na.rm = TRUE))) %>% 
-  dplyr::mutate(wt_life_expec=tot_age/tot_pop)
-
-# # check population
-# data_equity_wt20_test <- data_equity_wt20 %>%
-#   dplyr::filter(equity_group=="income_quintile")
-# sum(data_equity_wt20_test$tot_pop) #4,197,443
-
-# check data set
-nrow(data_equity_wt20)
-```
-The regional population in 2020: `r population_test`
-\
-\
 This data sets should include records for:
 
 * 4 geographies: 4 PSRC counties
 * 6 equity focus groups
 * 5 equity quintiles 
+* 11 years
+
 
 ## Combine years into one data set
 ```{r}
-data_tract <- as.data.frame(rbind(data_equity_wt10,
-                                  data_equity_wt15,
-                                  data_equity_wt20)) %>% 
-  dplyr::select(-tot_age, -tot_pop, -tracts) %>% 
-  rbind(data_equity_pivot10_calc,
-        data_equity_pivot15_calc,
-        data_equity_pivot20_calc) %>% 
-  filter(!is.na(quintile))
+# data_tract <- as.data.frame(rbind(toxic_release_equity_tracts_pivot_reg_calc,
+#                                   toxic_release_equity_tracts_pivot_calc_cnty))
+
+data_tract <- toxic_release_equity_tracts_pivot_calc_cnty %>% 
+  dplyr::mutate(estimate_prelog=as.numeric(exposure), # rename value variable for consistency
+                estimate=log(estimate_prelog+1)) %>% 
+  dplyr::mutate(data_year_yr=as.character(data_year))
 
 # check data set
 str(data_tract)
@@ -949,6 +783,57 @@ This data set should include records for:
     * 2010: (subtracting) 2 missing focus groups(disability, lep) * 5 equity quintiles * 5 geographies
     * 2015: (subtracting) 1 missing focus group (lep) * 5 equity quintiles * 5 geographies
 * 5 equity quintiles
+
+### Address "Low - Low Medium" quintile group
+This code was added because of Kitsap/LEP data - there were too many tracts with 0, so we combined the bottom two quintiles into low - low medium. This change requires some additional processing so that all of the tracts (bottom 40%) in this combined quintile category are averaged and this average value is assigned to separate 'low' and 'low medium' quintile categories. 
+```{r}
+# nrow(data_tract) #378
+# unique(data_tract$quintile) #6 quintiles because of additional "Low - Low Medium"
+
+low_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile="Low") %>% 
+  filter(County.Name!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+lowmed_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>%
+  rename(quintile_original=quintile) %>%
+  mutate(quintile="Low Medium") %>% 
+  filter(County.Name!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+
+low_lowmed <- rbind(low_quintile,
+                    lowmed_quintile)
+# nrow(low_lowmed) #4
+
+# gather counties that have low - medium categorization
+low_lowmed_counties <- unique(low_lowmed$County.Name) #Kitsap, Pierce
+low_lowmed_years <- unique(low_lowmed$data_year) #2020
+low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
+
+other_data <- data_tract %>% 
+  filter(quintile!="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>% 
+  mutate(quintile=quintile_original)
+# nrow(other_data) #375
+
+data_tract <- rbind(low_lowmed, #4
+                    other_data) #375
+
+nrow(data_tract) #379 - should be fewer because of duplicates (375)- low and low medium present in data set because of aggregation/calculations in previous steps - need to be removed and replaced with averaged values
+# table(data_tract$quintile, data_tract$County.Name) #should not have extra in low and low medium quintile categories
+# unique(data_tract$quintile) #5 quintiles
+
+# remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
+data_tract <- data_tract %>% 
+  filter(!(County.Name %in% low_lowmed_counties & 
+           data_year %in% low_lowmed_years &
+           equity_group %in% low_lowmed_equity &
+           (quintile_original=="Low" | 
+             quintile_original=="Low Medium")))
+
+# nrow(data_tract) #375
+# table(data_tract$quintile, data_tract$County.Name) #should not have extra in low and low medium quintile categories
+```
 
 ## Rename and factor
 ```{r}
@@ -970,7 +855,7 @@ equity_group_order <- c("People of Color",
 
 # transforming data labels ----
 data_clean <- data_tract %>% 
-  mutate(county=County.Name) %>%  #rename value variable for consistency
+  # mutate(county=County.Name) %>%  #rename value variable for consistency
   mutate(county_ord = factor(county, levels=county_order)) %>%
   mutate(equity_group_ord = case_when(
     equity_group=="poc_quintile"~"People of Color",
@@ -984,8 +869,8 @@ data_clean <- data_tract %>%
   mutate(quintile_ord = factor(quintile_ord, levels = quintile_order))
 
 # Minor edits to the data
-data_clean <- data_clean %>%
-  dplyr::mutate(estimate=as.numeric(wt_life_expec)) #rename value variable for consistency
+# data_clean <- data_clean %>%
+#   dplyr::mutate(estimate=as.numeric(exposure)) #rename value variable for consistency
 
 # Sort the data to ensure the charts work
 data_clean <- data_clean %>%
@@ -997,7 +882,7 @@ data_clean <- data_clean %>%
 Save final data set for charts (.rda)
 ```{r}
 # set folder structure
-file_name <- 'a01-life-expectancy-data'
+file_name <- 'b02-toxic-release-data'
 
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,

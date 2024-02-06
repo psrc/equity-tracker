@@ -186,7 +186,7 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # check maximum value of data
-summary(data_tract$estimate) # max is 95.39, so rounding to 100 makes sense
+# summary(data_tract$estimate) # max is 95.39, so rounding to 100 makes sense
 max_value <- 100 # this value will be the max value in the legend
 
 # set up palettes
@@ -288,34 +288,12 @@ data <- data_tract %>%
   st_drop_geometry()
 
 # calculate call out information
-calc <- data %>%
-  mutate(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE)))
-# regional average life expectancy: 78.83183
-
-x<-rep(data$estimate,times=data$total_pop20)
-df1<-data.frame(x)
-summary(df1$x)
-median(df1$x, na.rm=TRUE)
-hist(df1$x)
-# regional median life expectancy: 80.86  
-
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
 # 3 highest: 53053070316 (Auburn) Pierce (95.39), 53033004400 (Ravenna/U-District/Roosevelt) King (92.14), 53033032309 (Redmond) King (91.25)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
-
-# 3 lowest: 53053061900 (Tacoma-Lincoln International District) Pierce (67.31), 53053071806 (Lakewood) Pierce (69.74), (Tulalip Reservation) 53061940002 Snohomish (70.10)
-
-#95.39-67.31=28.08
-
-by_county <- data %>% 
-  dplyr::group_by(County.Name) %>% 
-  dplyr::summarise(life.expectancy.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-  dplyr::arrange(desc(life.expectancy.wgt))
-# Snohomish (80.66948), King (79.40807), Kitsap (78.91234), Pierce (75.69769)
-
 ```
 
 1. 78.8 years: The region's average life expectancy

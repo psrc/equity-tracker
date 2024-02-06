@@ -1,5 +1,8 @@
 elmer_conn_string: DRIVER={ODBC Driver 17 for SQL Server}; SERVER=AWS-PROD-SQL\Sockeye; DATABASE=Elmer; trusted_connection=yes
 
+# following can be area or population
+weight_type: area
+
 buffer_size: 10560
 
 crs: 2285
@@ -14,4 +17,14 @@ toxic_release_columns: ['on_site_release_total']
 
 toxic_release_data_path: Y:/Equity Indicators/tracker-webpage-content/b-environment/b02-toxic-release/raw-data/EPA_TRI_data
 
-output_file: T:/2023December/Stefan/toxic_release_exposure.csv
+#toxic_release_data_path: 'T:/2023December/Stefan/toxic_release_test'
+
+output_path: T:/2024January/Stefan/toxic_release_output
+
+output_file_name: toxic_release.csv
+
+vintage: 2023
+
+export_shapefiles: True
+
+export_year: 2010

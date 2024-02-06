@@ -433,7 +433,7 @@ head(data_clean) # make sure this is the correct data set
 data_clean <- data_clean %>% 
   filter(indicator_attribute=="With internet access") %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds and set retain consistent name - if you are not working with $ you will need to change this to the correct number of digits you would like to round to (for example, if using decimals, you may want to set digits=2 or if you using whole numbers you may want to set digits=0)
+  mutate(fact_value=round(fact_value, digits=3)) #round value and set retain consistent name
 
 data_clean #check to make sure the rounding worked for your indicator - if not will need to go back to generate data set in chunk around line 245
 ```
@@ -479,12 +479,13 @@ base_acs_data <- get_acs_recs(geography ='tract',
                               years = c(2021),
                               acs.type = 'acs5')
 
+# with internet ---------
 # filter only fields of interest - census tract, value, and reliability (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
 acs_data_filter <- base_acs_data %>% 
   dplyr::filter(variable=="S2801_C01_001" | #total households
                   variable=="S2801_C01_012") %>%  #with internet
   dplyr::mutate(internet = factor(case_when(label == "Estimate!!Total!!Total households" ~ "total_households",
-                                          TRUE ~ 'with_internet'))) %>%
+                                            TRUE ~ 'with_internet'))) %>%
   dplyr::select(GEOID, variable, internet, estimate, moe)
 
 # use the moe_sum function from tidycensus
@@ -526,6 +527,74 @@ acs_data <- acs_data_reliability %>%
   rename(estimate_dec='estimate_perc_internet') %>%
   mutate(estimate=estimate_dec*100) %>% 
   dplyr::select(GEOID,estimate,reliability)
+
+# acs_data_90 <- acs_data %>%
+#   dplyr::filter(estimate<90) #203
+```
+
+```{r, include=FALSE, eval=FALSE}
+# without internet --------- 
+# filter only fields of interest - census tract, value, and reliability (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
+acs_data_filter <- base_acs_data %>% 
+  dplyr::filter(variable=="S2801_C01_001" | #total households
+                  variable=="S2801_C01_019") %>% #without internet
+  dplyr::mutate(internet = factor(case_when(label == "Estimate!!Total!!Total households" ~ "total_households",
+                                            TRUE ~ 'without_internet'))) %>%
+  dplyr::select(GEOID, variable, internet, estimate, moe)
+
+# use the moe_sum function from tidycensus
+acs_data_group <- acs_data_filter %>% 
+  dplyr::group_by(GEOID, internet)%>%
+  dplyr::summarise(estimate=sum(estimate), 
+                   moe=tidycensus::moe_sum(estimate=estimate, moe=moe))
+
+# pivot data to calculate percentage by census tract
+acs_data_pivot<- acs_data_group %>%   
+  pivot_wider(names_from = internet, values_from = c(estimate,moe))
+
+# calculating percentage/share of population per tract instead of integer
+acs_data_calc <- acs_data_pivot %>%
+  mutate(estimate_perc_internet=estimate_without_internet/estimate_total_households)
+
+# calculate moes
+acs_data_moes <- acs_data_calc %>%
+  rowwise() %>%
+  # mutate(moe_internet=tidycensus:moe_prop(num=estimate_with_internet,
+  #                                         denom=estimate_total_households,
+  #                                         moe_num=moe_with_internet,
+  #                                         moe_denom=moe_total_households)) #%>%
+  mutate(moe_internet=tidycensus::moe_sum(estimate = estimate_without_internet,
+                                          moe = moe_without_internet))
+
+acs_data_final<- acs_data_moes %>% 
+  # dplyr::select(GEOID, estimate_Owner_occupied_units, estimate_Total_units, estimate_perc_own_occ,
+  #               moe_Owner_occupied_units, moe_Total_units, moe_perc_own_occ) %>%
+  dplyr::filter(!is.na(estimate_without_internet))
+
+# calculate reliability values
+acs_data_reliability <-reliability_calcs(acs_data_final,
+                                         estimate='estimate_without_internet',
+                                         moe='moe_without_internet')
+
+# rename and simplify
+acs_data <- acs_data_reliability %>%
+  rename(estimate_dec='estimate_perc_internet') %>%
+  mutate(estimate=estimate_dec*100) %>%
+  # mutate(estimate_without=estimate_dec*100) %>% 
+  dplyr::select(GEOID,estimate,reliability)
+
+acs_data_without_90 <- acs_data_without %>%
+  dplyr::filter(estimate_without>10) #203
+
+# checking to make sure with and without = 100
+internet_access_data <- merge(acs_data,
+                              acs_data_without,
+                              "GEOID",
+                              "GEOID")
+internet_access_data_2 <- internet_access_data %>% 
+  dplyr::mutate(total=estimate+estimate_without)
+
+summary(internet_access_data_2$total)
 ```
 
 ### Joining data
@@ -536,6 +605,7 @@ acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
                               by.y="GEOID",
                               all.x=TRUE)
 
+# with internet ---------
 # getting data by county from acs 
 county_reg_acs_data <- get_acs_recs(geography ='county', 
                                     table.names = 'S2801', #subject table code
@@ -555,6 +625,52 @@ county_reg_data_aggregate <- county_reg_data_rename %>%
 county_reg_data_group <- county_reg_data_aggregate %>% 
   pivot_wider(names_from = internet, values_from = estimate) %>%
   dplyr::mutate(internet_perc = ((with_internet/total_households)*100),
+                county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
+
+# getting data by county
+county_data <- county_reg_data_group %>% 
+  dplyr::filter(name != "Region") %>% 
+  dplyr::rename(cnty_estimate=internet_perc) %>% #to distinguish between tract and county values
+  dplyr::select(county_name, cnty_estimate) #simplify table
+
+# getting data by region
+region_data <- county_reg_data_group %>% 
+  dplyr::filter(name == "Region") %>% 
+  dplyr::rename(reg_estimate=internet_perc) %>% #to distinguish between tract and county values
+  dplyr::select(county_name, reg_estimate) #simplify table
+
+# add region median to county data
+county_reg_data <- county_data %>% 
+  mutate(reg_estimate=region_data$reg_estimate)
+
+# merge tract, county, and region data into one data set 
+acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
+                        by.x="county_name",
+                        by.y="county_name",
+                        all.x=TRUE)
+```
+
+```{r, include=FALSE, eval=FALSE}
+# without internet --------- 
+# getting data by county from acs 
+county_reg_acs_data <- get_acs_recs(geography ='county', 
+                                    table.names = 'S2801', #subject table code
+                                    years = c(2021),
+                                    acs.type = 'acs5')
+county_reg_data_rename <- county_reg_acs_data %>% 
+  dplyr::filter(variable=="S2801_C01_001" | #total households
+                  variable=="S2801_C01_019") %>% #without internet
+  dplyr::mutate(internet = factor(case_when(label == "Estimate!!Total!!Total households" ~ "total_households",
+                                          TRUE ~ 'without_internet')))
+
+county_reg_data_aggregate <- county_reg_data_rename %>% 
+  dplyr::group_by(GEOID, name, internet) %>% 
+  dplyr::summarise(estimate=sum(estimate), .groups='drop')
+
+# pivot data to calculate percentage by census tract
+county_reg_data_group <- county_reg_data_aggregate %>% 
+  pivot_wider(names_from = internet, values_from = estimate) %>%
+  dplyr::mutate(internet_perc = ((without_internet/total_households)*100),
                 county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
 
 # getting data by county
