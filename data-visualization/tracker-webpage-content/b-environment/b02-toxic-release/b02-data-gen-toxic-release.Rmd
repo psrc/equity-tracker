@@ -1,7 +1,7 @@
 ---
 title: "Toxic Release"
 subtite: "Data Gen: Exploring, Cleaning, Transforming (tract data)"
-author: "Meg Grzybowski"
+author: "Meg Grzybowski, Grant Gibson"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   word_document:
@@ -70,9 +70,13 @@ Data comes from [EPA](https://www.epa.gov/toxics-release-inventory-tri-program).
 # Data for this indicator comes from GIS buffer analysis
 # Stefan Coe, Brian Lee, and Meg Grzybowski worked to identify point sources, create buffers around those sources, and then weight the amount of chemical emissions (accounting for multiple sources in one location and adding the compounding impacts). 
 # The gdb files live here: W:\gis\projects\Megan\TRI_stefan.gdb
+# Current method calculates pounds of release per sq ft
 
-folder_path <- "Y:/Equity Indicators/tracker-webpage-content/b-environment/b02-toxic-release/raw-data"
+folder_path <- "Y:/Equity Indicators/tracker-webpage-content/b-environment/b02-toxic-release/raw-data/output"
 toxic_release <- read.csv(file.path(folder_path,"toxic_release.csv"))
+
+# convert release from lb/sq ft to lb/acre
+toxic_release$release_acres <- toxic_release$on_site_release_total_exposure * 43560
 ```
 \
 Although there are innumerable possible data sets, the data sets we will be using will span 2010-2022 (most current data).
@@ -82,8 +86,8 @@ Although there are innumerable possible data sets, the data sets we will be usin
 
 ### equity quintile data and 2010-20 crosswalk file 
 
-* low, low medium, etc.) at the tract-level for each equity focus group for the years that correspond to the life expectancy data (2010, 2015, 2020
-* for the 2016-2020 life expectancy data set
+* low, low medium, etc.) at the tract-level for each equity focus group for the years that correspond to the toxic release data (2011, 2016, 2021
+* for the 2010-2022 toxic release data set
 ```{r, include=FALSE}
 # Elmer data sets - equity quintile tracts using psrcelmer() and crosswalk
 equity_tracts <- get_table(schema="equity", tbl_name="v_tract_shares")
@@ -91,22 +95,6 @@ table(equity_tracts$data_year)
 
 crosswalk_10_20 <- get_table(schema="census",
                              tbl_name="v_geo_relationships_tracts")
-```
-
-### tract-level population data
-to weight life expectancy for 2010, 2015, 2020 - unnecessary for this indicator
-```{r, include=FALSE}
-# getting census population data by tract
-# tracts_10_15_20 <- get_acs_recs(geography ='tract', 
-#                                 table.names = 'B01003',
-#                                 years = c(2010, 2015, 2020),
-#                                 acs.type = 'acs5')
-# tract.10 <- tracts_10_15_20 %>% 
-#   filter(year==2010)
-# tract.15 <- tracts_10_15_20 %>% 
-#   filter(year==2015)
-# tract.20 <- tracts_10_15_20 %>% 
-#   filter(year==2020)
 ```
 
 ### tract spatial file
@@ -124,16 +112,18 @@ nrow(tracts10.lyr) #773
 ```
 
 # Explore data
-The data spans two census geography time frames - 2010 and 2020. Because the toxic release data is available at the point source location, they were translated to 2010 and 2020 geographies, depending on the data year (2010 geographies: 2010-2019; 2020 geographies: 2020-), each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups. The values are weighted by the synthetic population for each tract (not assuming equal distribution) - a measure of the average exposure to each person in the tract.
+The data spans two census geography time frames - 2010 and 2020. Because the toxic release data is available at the point source location, they were translated to 2010 and 2020 geographies, depending on the data year (2010 geographies: 2010-2019; 2020 geographies: 2020-), each of which are assigned one of the 5 quintile categories for each of the 6 equity demographic groups.
 ```{r, include=FALSE}
 # check number of rows in data set
-nrow(toxic_release) #9608
+nrow(toxic_release) #7206
 ```
 Because the toxic release data is released yearly, we have chosen to start at 2010 through the most recent data set that corresponds to our equity demographic groups (available 2021). Because there is exposure data released every year, we match it with the corresponding equity demographic data, also available every year (but in overlapping 5-year time spans).
 
 ```{r, include=FALSE}
 # to check the field names and data class
 str(toxic_release)
+
+toxic_release$geoid <- as.character(toxic_release$geoid)  # to align data types for joining to tracts
 ```
 
 ## Most Recent Data
@@ -147,11 +137,13 @@ toxic_release_22 <- toxic_release %>%
 data_tract <- merge(tracts20.lyr, toxic_release_22,
                     by.x="geoid20",
                     by.y="geoid", 
-                    all.x=TRUE)
+                    all.x=TRUE) %>% 
+  #dplyr::mutate(estimate = on_site_release_total_exposure)
+  dplyr::mutate(estimate = release_acres)
 
-data_tract <- data_tract %>% 
-  dplyr::mutate(estimate_prelog=as.numeric(exposure), # rename value variable for consistency
-                estimate=log(estimate_prelog+1)) 
+# data_tract <- data_tract %>% 
+#   dplyr::mutate(estimate_prelog=as.numeric(release_acres), # rename value variable for consistency
+#                 estimate=log(estimate_prelog+1)) 
 ```
 
 ```{r}
@@ -300,7 +292,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Toxic Release Exposure"
+var_name <- "Toxic Site Release\n(pounds per acre)"
 
 # map settings
 tract_map <- leaflet() %>%
