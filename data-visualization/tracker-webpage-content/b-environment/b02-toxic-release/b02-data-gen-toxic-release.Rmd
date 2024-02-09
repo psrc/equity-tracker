@@ -1,5 +1,5 @@
 ---
-title: "Toxic Release"
+title: "Toxic Site Release"
 subtite: "Data Gen: Exploring, Cleaning, Transforming (tract data)"
 author: "Meg Grzybowski, Grant Gibson"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -423,7 +423,6 @@ data_tract_nona <- data_tract %>%
 summary(data_tract_nona$estimate)
 ```
 
-**When weighted by tract populations.** 
 ```{r, include=FALSE}
 # data_tract_nona_weight <- data_tract_nona %>% 
 #   mutate(tot_age = estimate*total_pop10,
@@ -434,7 +433,7 @@ summary(data_tract_nona$estimate)
 # distrib <- rep(data_tract_nona$estimate, data_tract_nona$total_pop10)
 distrib <- rep(data_tract_nona$estimate)
 
-med.value <- median(distrib) #80.74
+med.value <- median(distrib) #0.16
 ```
 *Median:* `r med.value`
 \
@@ -459,10 +458,10 @@ The IQR criterion means that all observations above or below the first and third
 ```{r}
 # outliers <- boxplot.stats(distrib)$out
 # outlier_rle <- rle(outliers)
-# outlier_df <- data.frame(unclass(outlier_rle)) %>% 
-#   rename(population = lengths,
-#          health_in = values) %>% 
-#   arrange(health_in)
+# outlier_df <- data.frame(unclass(outlier_rle)) %>%
+#   # rename(population = lengths,
+#   #        health_in = values) %>%
+#   arrange(values)
 # 
 # outlier_df
 ```
@@ -585,13 +584,13 @@ Save final data set (.rda) for map
 county_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
   dplyr::group_by(county_name) %>% 
-  dplyr::mutate(cnty_estimate=mean(estimate)) %>% #calculate value by county
+  dplyr::mutate(cnty_estimate=mean(estimate, na.rm = TRUE)) %>% #calculate value by county
   dplyr::distinct(county_name, cnty_estimate)
 
 # calculating data by region
 reg_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
-  dplyr::mutate(reg_estimate=mean(estimate)) %>%  #calculate value for region
+  dplyr::mutate(reg_estimate=mean(estimate, na.rm = TRUE)) %>%  #calculate value for region
   dplyr::distinct(reg_estimate)
 
 # add region data to county data
@@ -610,7 +609,8 @@ data_tract <- merge(data_tract, county_reg_data,
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 theme_dir <- 'b-environment'
 ind_dir <- 'b02-toxic-release'
-file_name <- 'b02-toxic-release-map-data'
+# file_name <- 'b02-toxic-release-map-data'
+file_name <- 'b02-toxic-release-map-data-feb2024'
 
 # save final data set as .rda
 save(data_tract, file = file.path(base_dir,
@@ -634,15 +634,11 @@ unique(toxic_release$year)
 #                                         county_code=="053" ~"Pierce",
 #                                         county_code=="061" ~"Snohomish"))
 
-# geoid is number, set it as character to join with equity quintile tract Elmer data
-toxic_release <- toxic_release %>% 
-  dplyr::mutate(geoid=as.character(geoid))
-
 # equity quintiles ----
 head(equity_tracts)
 unique(equity_tracts$data_year)
 
-# the differences for these data - toxic release (2010-2022), equity tracts (2009-2020)
+# the differences for these data - toxic release (2010-2022), equity tracts (2009-2021)
 # will try an inner join based on year and geoid - removes 2020 from data because not available for toxic release, but should be available?
 
 # toxic_release_equity_tracts <- inner_join(toxic_release, equity_tracts,
@@ -705,18 +701,19 @@ These data sets should include records for:
 
 ## Calculations
 ### Calculate by region
-The exposure values are available at the census tract level, but we want to calculate the regional average, using the census bureau's tract-level population estimates (2010, 2015, 2020).
+The release values are available at the census tract level, but we want to calculate the regional average.
 ```{r}
-toxic_release_equity_tracts_pivot_reg_calc <- toxic_release_equity_tracts_pivot %>% 
-  # filter(!is.na(quintile)) %>% #missing lep and disability data
-  dplyr::group_by(data_year,equity_group, quintile) %>%
-  summarise(exposure=(mean(exposure, na.rm=TRUE))) %>% 
-  mutate(county="Region")
+# toxic_release_equity_tracts_pivot_reg_calc <- toxic_release_equity_tracts_pivot %>% 
+#   filter(!is.na(quintile)) %>% #missing lep and disability data
+#   dplyr::group_by(data_year,equity_group, quintile) %>%
+#   summarise(release=(mean(release_acres, na.rm=TRUE)), .groups = 'drop') %>% 
+#   mutate(county="Region")
 
-toxic_release_equity_tracts_pivot_reg_calc <- toxic_release_equity_tracts_pivot %>% 
-  filter(county=="Region") %>% 
+toxic_release_equity_tracts_pivot_reg_calc <- toxic_release_equity_tracts_pivot %>%
+  filter(county=="Region"
+         & !is.na(quintile)) %>%
   dplyr::group_by(data_year,equity_group, quintile) %>%
-  summarise(exposure=(mean(exposure, na.rm=TRUE))) %>% 
+  summarise(release=(mean(release_acres, na.rm=TRUE)), .groups = 'drop') %>%
   mutate(county="Region")
 ```
 
@@ -735,13 +732,13 @@ These data sets should include records for:
 
 
 ### Calculate by equity quintile/county (including region)
-The exposure values are available at the census tract level but we want to calculate the average values by the 6 equity/5 quintile groups. 
+The release values are available at the census tract level but we want to calculate the average values by the 6 equity/5 quintile groups. 
 ```{r}
 # calculations to get average exposure
 toxic_release_equity_tracts_pivot_calc_cnty <- toxic_release_equity_tracts_pivot %>% 
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
   dplyr::group_by(county, data_year, equity_group, quintile) %>%
-  dplyr::summarise(exposure=(mean(exposure, na.rm=TRUE)), .groups = 'drop')
+  dplyr::summarise(release=(mean(release_acres, na.rm=TRUE)), .groups = 'drop')
 
 # check data set
 nrow(toxic_release_equity_tracts_pivot_calc_cnty)
@@ -760,9 +757,9 @@ This data sets should include records for:
 #                                   toxic_release_equity_tracts_pivot_calc_cnty))
 
 data_tract <- toxic_release_equity_tracts_pivot_calc_cnty %>% 
-  dplyr::mutate(estimate_prelog=as.numeric(exposure), # rename value variable for consistency
-                estimate=log(estimate_prelog+1)) %>% 
-  dplyr::mutate(data_year_yr=as.character(data_year))
+  dplyr::filter(data_year %in% c(2011, 2016, 2021)) %>% # filter years based on 5-yr ACS intervals
+  dplyr::mutate(estimate = release) #%>% 
+  #dplyr::mutate(data_year_yr=as.character(data_year))
 
 # check data set
 str(data_tract)
@@ -772,8 +769,7 @@ This data set should include records for:
 * 5 geographies: 4 PSRC counties + region
 * 3 years
 * 6 equity focus groups
-    * 2010: (subtracting) 2 missing focus groups(disability, lep) * 5 equity quintiles * 5 geographies
-    * 2015: (subtracting) 1 missing focus group (lep) * 5 equity quintiles * 5 geographies
+    * 2011: (subtracting) 2 missing focus groups(disability, lep) * 5 equity quintiles * 5 geographies
 * 5 equity quintiles
 
 ### Address "Low - Low Medium" quintile group
@@ -786,42 +782,42 @@ low_quintile <- data_tract %>%
   filter(quintile=="Low - Low Medium") %>% 
   rename(quintile_original=quintile) %>% 
   mutate(quintile="Low") %>% 
-  filter(County.Name!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
 lowmed_quintile <- data_tract %>% 
   filter(quintile=="Low - Low Medium") %>%
   rename(quintile_original=quintile) %>%
   mutate(quintile="Low Medium") %>% 
-  filter(County.Name!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
 
 low_lowmed <- rbind(low_quintile,
                     lowmed_quintile)
 # nrow(low_lowmed) #4
 
 # gather counties that have low - medium categorization
-low_lowmed_counties <- unique(low_lowmed$County.Name) #Kitsap, Pierce
-low_lowmed_years <- unique(low_lowmed$data_year) #2020
+low_lowmed_counties <- unique(low_lowmed$county) #Kitsap
+low_lowmed_years <- unique(low_lowmed$data_year) #2016, 2021
 low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
 
 other_data <- data_tract %>% 
   filter(quintile!="Low - Low Medium") %>% 
   rename(quintile_original=quintile) %>% 
   mutate(quintile=quintile_original)
-# nrow(other_data) #375
+# nrow(other_data) #396
 
 data_tract <- rbind(low_lowmed, #4
-                    other_data) #375
+                    other_data) #396
 
-nrow(data_tract) #379 - should be fewer because of duplicates (375)- low and low medium present in data set because of aggregation/calculations in previous steps - need to be removed and replaced with averaged values
-# table(data_tract$quintile, data_tract$County.Name) #should not have extra in low and low medium quintile categories
+nrow(data_tract) #400
+# table(data_tract$quintile, data_tract$county) #should not have extra in low and low medium quintile categories
 # unique(data_tract$quintile) #5 quintiles
 
 # remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
-data_tract <- data_tract %>% 
-  filter(!(County.Name %in% low_lowmed_counties & 
-           data_year %in% low_lowmed_years &
-           equity_group %in% low_lowmed_equity &
-           (quintile_original=="Low" | 
-             quintile_original=="Low Medium")))
+# data_tract <- data_tract %>% 
+#   filter(!(county %in% low_lowmed_counties & 
+#            data_year %in% low_lowmed_years &
+#            equity_group %in% low_lowmed_equity &
+#            (quintile_original=="Low" | 
+#              quintile_original=="Low Medium")))
 
 # nrow(data_tract) #375
 # table(data_tract$quintile, data_tract$County.Name) #should not have extra in low and low medium quintile categories
@@ -847,7 +843,6 @@ equity_group_order <- c("People of Color",
 
 # transforming data labels ----
 data_clean <- data_tract %>% 
-  # mutate(county=County.Name) %>%  #rename value variable for consistency
   mutate(county_ord = factor(county, levels=county_order)) %>%
   mutate(equity_group_ord = case_when(
     equity_group=="poc_quintile"~"People of Color",
@@ -860,10 +855,6 @@ data_clean <- data_tract %>%
   mutate(quintile_ord = str_wrap(quintile, width=7)) %>%
   mutate(quintile_ord = factor(quintile_ord, levels = quintile_order))
 
-# Minor edits to the data
-# data_clean <- data_clean %>%
-#   dplyr::mutate(estimate=as.numeric(exposure)) #rename value variable for consistency
-
 # Sort the data to ensure the charts work
 data_clean <- data_clean %>%
   arrange(county_ord, equity_group_ord, quintile_ord, data_year)
@@ -874,7 +865,8 @@ data_clean <- data_clean %>%
 Save final data set for charts (.rda)
 ```{r}
 # set folder structure
-file_name <- 'b02-toxic-release-data'
+# file_name <- 'b02-toxic-release-data'
+file_name <- 'b02-toxic-release-data-feb2024'
 
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,
