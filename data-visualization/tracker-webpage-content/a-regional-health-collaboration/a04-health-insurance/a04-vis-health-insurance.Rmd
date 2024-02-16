@@ -1,0 +1,747 @@
+---
+title: "Health Insurance"
+subtitle: "Visuals for Equity Tracker (PUMS data)"
+author: "Kristin Mitchell"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  word_document:
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+
+# to reference chart functions in Github
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+library(psrcplot)
+library(tidyverse)
+library(magrittr)
+
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+
+library(echarts4r)
+# remotes::install_github("JohnCoene/echarts4r",
+#                         force=TRUE)
+
+library(webshot2) #static image creation
+```
+
+```{r, choose output type}
+#output_type <- "word"
+output_type <- "html"
+```
+# 3 visuals for webpage
+This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
+\
+\
+**If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+
+## Indicator Explanation
+According to the CDC, "without health insurance, people are less likely to have a regular health care provider and more likely to skip routine health care. This puts them at increased risk for serious health problems." Accessing regular health care can help address health disparities.
+
+## 1. Map of most recent data
+To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
+```{r map legend settings, include=FALSE}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
+addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
+			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
+		  title = NULL, className = "info legend", layerId = NULL, 
+		  group = NULL, data = getMapData(map), decreasing = FALSE) {
+	position <- match.arg(position)
+	type <- "unknown"
+	na.color <- NULL
+	extra <- NULL
+	if (!missing(pal)) {
+		if (!missing(colors)) 
+			stop("You must provide either 'pal' or 'colors' (not both)")
+		if (missing(title) && inherits(values, "formula")) 
+			title <- deparse(values[[2]])
+		values <- evalFormula(values, data)
+		type <- attr(pal, "colorType", exact = TRUE)
+		args <- attr(pal, "colorArgs", exact = TRUE)
+		na.color <- args$na.color
+		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
+		    0) {
+			na.color <- NULL
+		}
+		if (type != "numeric" && !missing(bins)) 
+			warning("'bins' is ignored because the palette type is not numeric")
+		if (type == "numeric") {
+			cuts <- if (length(bins) == 1) 
+				pretty(values, bins)
+			else bins	
+			
+			if (length(bins) > 2) 
+				if (!all(abs(diff(bins, differences = 2)) <= 
+				         sqrt(.Machine$double.eps))) 
+					stop("The vector of breaks 'bins' must be equally spaced")
+			n <- length(cuts)
+			r <- range(values, na.rm = TRUE)
+			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+			n <- length(cuts)
+			p <- (cuts - r[1])/(r[2] - r[1])
+			extra <- list(p_1 = p[1], p_n = p[n])
+			p <- c("", paste0(100 * p, "%"), "")
+			if (decreasing == TRUE){
+				colors <- pal(rev(c(r[1], cuts, r[2])))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}else{
+				colors <- pal(c(r[1], cuts, r[2]))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}
+			colors <- paste(colors, p, sep = " ", collapse = ", ")
+			
+		}
+		else if (type == "bin") {
+			cuts <- args$bins
+			n <- length(cuts)
+			mids <- (cuts[-1] + cuts[-n])/2
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "bin", cuts))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "bin", cuts)
+			}
+			
+		}
+		else if (type == "quantile") {
+			p <- args$probs
+			n <- length(p)
+			cuts <- quantile(values, probs = p, na.rm = TRUE)
+			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
+				 na.rm = TRUE)
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "quantile", cuts, p))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "quantile", cuts, p)
+			}
+		}
+		else if (type == "factor") {
+			v <- sort(unique(na.omit(values)))
+			colors <- pal(v)
+			labels <- labFormat(type = "factor", v)
+			if (decreasing == TRUE){
+				colors <- pal(rev(v))
+				labels <- rev(labFormat(type = "factor", v))
+			}else{
+				colors <- pal(v)
+				labels <- labFormat(type = "factor", v)
+			}
+		}
+		else stop("Palette function not supported")
+		if (!any(is.na(values))) 
+			na.color <- NULL
+	}
+	else {
+		if (length(colors) != length(labels)) 
+			stop("'colors' and 'labels' must be of the same length")
+	}
+	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
+	               na_color = na.color, na_label = na.label, opacity = opacity, 
+	               position = position, type = type, title = title, extra = extra, 
+	               layerId = layerId, className = className, group = group)
+	invokeMethod(map, data, "addLegend", legend)
+}
+```
+
+### Create Visual
+```{r map .rda}
+# load map .rda
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a04-health-insurance'
+rda <- 'a04-health-insurance-map-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+``` 
+
+
+```{r}
+
+#move the decimal point for reg_estimate and cnty_estimate
+acs_data_tract <- acs_data_tract %>%
+   mutate(reg_estimate = (reg_estimate*100)) %>%
+   mutate(cnty_estimate = (cnty_estimate*100))
+
+```
+
+```{r acs map}
+# setting map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# check maximum value of data
+# summary(acs_data_tract$estimate) # max is 1
+max_value <- 100 # this value will be the max value in the legend
+
+# setting color palette
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,70)
+
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+#                                       domain = acs_data_plus_zero) # this is the value field
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
+
+# psrc_palette <- leaflet::colorNumeric(palette=psrc_purple_plus,
+#                                       domain = acs_data_tract$estimate)
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+#                                       domain = c(min(acs_data_tract$estimate,na.rm = TRUE),max_value, NA))
+
+# setting the legend/label variables
+var_name <- "Health Insurance <br> Coverage" # the <br> could be adjusted depending on the length/spacing of the name
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
+  paste("Tract value: ", 
+        prettyNum((round(acs_data_tract$estimate, digits=1))), " %"), 
+  paste("Tract data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ",
+        prettyNum((round(acs_data_tract$reg_estimate, digits=1))), " %"), 
+  paste("County value: ",
+        prettyNum((round(acs_data_tract$cnty_estimate, digits=1))), " %"), 
+  paste0("(",acs_data_tract$county_name," County)")) %>%
+  lapply(htmltools::HTML)
+
+# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
+#               big.mark = ","), #this wouldn't be necessary to include for %s    
+#         '%')) %>%
+#   lapply(htmltools::HTML)
+
+
+# map settings
+acs_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=acs_data_tract,
+              fillColor = psrc_palette(acs_data_plus_zero),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = labels) %>% 
+
+  # legend
+  addLegend_decreasing(pal = psrc_palette,
+                       values = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA),
+                       #values = c(min(acs_data_tract$estimate,na.rm = TRUE),max_value, NA),
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       labFormat = labelFormat(),
+                       decreasing = TRUE) %>% #to get legend high-low with correct color order
+  
+  # set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)  
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fixing the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix) # Convert CSS to HTML
+acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML code
+
+# printing map
+acs_map
+```
+Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+```{r generate acs map html, include=FALSE}
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a04-health-insurance\webpage-html-outputs
+
+# set folder structure
+map_name <- 'a04-heath-insurance-map.html'
+  
+# interactive webpage output process
+htmlwidgets::saveWidget(acs_map,
+                        file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
+```
+\
+\
+
+#### Data call outs
+```{r map calculations - pums, include=FALSE, eval=FALSE}
+# simplify data set
+data <- acs_data_tract %>%
+  st_drop_geometry()
+
+# calculate call out information
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# 17 tracts with 100% health insurance coverage - 13 in King, 2 in Kitsap (south end of Bainbridge and downtown Bremerton), 1 in Pierce (JBLM), and 1 in Snohomish (downtown Edmonds including ferry dock)
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+# 53061051401 (Lynnwood east of 99 between 196th and 220th - 75.9%), 53061041810 (south Everett east of 99 north of 128th - 76.3%), 53033030203 (north Federal Way - 76.5%), 53061050404 (Edmonds - west of 99 near Pine Ridge Park - 77.6%), 53033030006 (north Federal Way - 77.7%) - next two are in Pierce County
+```
+
+1. 94.4%: The region's average health insurance coverage
+2. 91.2%: The national average health insurance coverage
+3. 75.9%: The lowest average health insurance coverage at census tract level in the region
+
+\
+
+#### Insights & Analysis
+
+* Kitsap County has the highest average for health insurance coverage (95.3%), followed by King (94.6%), Pierce (93.9%), and Snohomish (93.9%)
+* There are 17 census tracts with 100% health insurance coverage which 13 are located in King County, two are in Kitsap, one in Pierce, and one in Snohomish
+* The five census tracts with the lowest health insurance coverage, Lynnwood (75.9%), Snohomish County/Everett (76.3%), Federal Way (76.5%), Edmonds (77.6%), and, again, Federal Way (77.7%)
+
+\
+\
+
+
+## 2. Facet of most recent data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r data setup, include=FALSE}
+# load visualization functions for charts
+source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+#source('equity-tracker-chart-functions.R') 
+
+# set folder structure
+rda <- 'a04-health-insurance-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+```
+
+
+
+```{r}
+
+#clean up
+data_clean <- data_clean %>%
+  filter(indicator_attribute == "With health insurance") %>%
+  filter(data_year != "2011")
+
+#move the decimal point for estimate
+# acs_data_tract <- acs_data_tract %>%
+#    mutate(estimate = (estimate/100))
+
+```
+
+```{r column facet - pums}
+# Create Facet Column Chart
+data_clean_column <- data_clean %>% 
+  dplyr::filter(data_year=="2021") #filter on most recent year
+
+# set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
+df = data_clean_column
+geo = "county"
+x = "focus_attribute_ord"
+y = "fact_value"
+facet = "focus_type_ord"
+fill = "focus_attribute_ord"
+y_min = 0
+y_max = 1
+dec = 0
+esttype = "percent"
+color = "purples"
+num_colors = 2
+color_rev = TRUE
+title = "Health Insurance Coverage"
+subtitle = ""
+source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
+
+column_chart <- equity_tracker_column_facet(df = df,
+                                            geo = geo,
+                                            x = x,
+                                            y = y,
+                                            facet = facet,
+                                            title = title,
+                                            y_min = y_min,
+                                            y_max = y_max,
+                                            dec = dec,
+                                            esttype = esttype,
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
+```
+
+```{r output final column chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a04-health-insurance\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
+
+# set folder structure
+file_name <- 'a04-health-insurance-rate-column'
+
+# column Chart - html for interactive
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                source = source,
+                                subtitle = subtitle),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+
+# Column Chart - png for use in static file
+# need to create a 'static-images' sub-folder in theme sub-folder if not already existing
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r column chart output - pums, echo=FALSE}
+
+if (output_type == "html") {
+
+  column_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+
+# column_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r column facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean_column %>% 
+  filter(county=="Region",
+         focus_type=="Income_cat")
+
+# region low income households: .86	
+# region non-low income households: .95
+# .86-.95=-.09
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="LEP_cat",
+         county=="Region")
+# region lep households: .79	
+# region non-lep households: .94
+# .79-.94=-0.15
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="LEP_cat",
+         vulnerability=="high vulnerability")
+
+# region lep households: .79	
+# king lep households: .79
+# kitsap lep households: .83
+# pierce lep households: .77
+# snohomish lep households: .80
+
+filter <- data_clean_column %>% 
+  filter(county=="Region",
+         focus_type=="Youth_cat")
+
+# region youth households: .92	
+# region non-youth households: .94
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="POC_cat")
+# region poc: .90
+# region non-poc: .96
+
+# snohomish poc: .89
+# snohomish non-poc: .95
+
+# king poc: .90
+# king non-poc: .96
+
+# kitsap poc: .92
+# kitsap non-poc: .96
+
+# pierce poc: .89
+# pierce non-poc: .95
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="Disability_cat")
+# with disability has higher coverage across all counties/region
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="Income_cat",
+         vulnerability=="high vulnerability") %>% 
+  dplyr::arrange(desc(fact_value))
+
+```
+
+1. 15% points: As a region, health insurance coverage is 15% points lower for limited English proficiency households compared to English proficient households
+2. 9% points: As a region, coverage is 9% points lower for low income households compared to non-low income households
+3. 6% points: As a region, coverage is 6% points lower for people of color than white non-Hispanic people
+
+\
+
+#### Insights & Analysis
+
+* The smallest disparity in health care coverage between limited English proficiency and English proficient households is in Kitsap County
+* The smallest disparity in health care coverage between people of color and white non-Hispanic is in Kitsap County
+* The smallest disparity in health care coverage between low income and non-low income households is in Kitsap County
+
+
+\
+\
+
+
+## 3. Facet of trend data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r line facet - pums, include=FALSE}
+# Create Facet Line Chart
+
+# set variables
+df = data_clean
+x = "data_year" # different from variables for facet column
+fill = "focus_attribute_ord" # different from variables for facet column
+color = "purples"
+
+line_chart <- equity_tracker_line_facet(df = df,
+                                        geo = geo,
+                                        x = x,
+                                        y = y,
+                                        fill = fill,
+                                        facet = facet,
+                                        y_min = y_min,
+                                        y_max = y_max,
+                                        dec = dec,
+                                        esttype = esttype,
+                                        color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
+                                        width = '420px',
+                                        height = '380px')
+```
+
+```{r output final line chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a04-family-poverty-rate\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
+
+# set folder structure
+file_name <- 'a04-health-insurance-line'
+
+# Line Chart - html for interactive
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                fill = fill,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                source = source,
+                                subtitle = subtitle,
+                                width = '420px',
+                                height = '380px',
+                                charttype = "line"),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+
+# Line Chart - png for use in static file
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r line chart - pums, echo=FALSE}
+if (output_type == "html") {
+
+  line_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+# line_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r line facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="Income_cat")
+# 2021 low income: .86
+# 2021 non-low income: .95
+# .95-.86=.09
+# 2016 low income: .78
+# 2016 non-low income: .94
+# .94-.78=.16
+# ((.16-.09)/(.09))*100: 77.778% change
+
+
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="POC_cat")
+# 2021 poc: .90
+# 2021 non-poc: .93
+# 2016 poc: .84
+# 2016 non-poc: .96
+# 118053.44-102481.29=15572.15
+
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="Older_cat")
+
+
+filter <- data_clean %>%
+  filter(county != "Region",
+         focus_type=="Disability_cat")
+
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year=="2016" |
+           data_year=="2021")
+
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="Income_cat",
+         vulnerability=="low vulnerability",
+         data_year=="2016" |
+           data_year=="2021")
+
+```
+
+1. 7% point change: The gap between low-income and non-low income households in the region had reduced from a 16% point gap to a 9% point gap from 2016 and 2021
+2. 5% point change: The gap in health care coverage between limited English proficiency and English proficient households in the region had reduced from a 20% point gap to 15% point gap from 2016 and 2021
+3. 3% point change: The gap between people of color and white non-Hispanic people in the region had reduced from a 9% point gap to a 6% point gap from 2016 and 2021
+
+\
+
+#### Insights & Analysis
+
+* From 2016 and 2021, health insurance coverage is trending up for all groups
+* The largest disparity in health insurance coverage is consistently between limited English proficient and English proficient households
+* Households with older adults 65+ and people with disabilities see higher health insurance coverage due to programs like Medicare and Medicaid 
+
+
+\
+\
+
+
+# Transfer files
+## Copy files from Github > Y drive
+```{r to y drive, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(getwd())
+y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+
+# isolate files in Github
+list.of.files <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$")
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          y.drive.folder,
+          overwrite = T)
+
+# keep only .Rmd files in Github (cleaner)
+files.in.dir <- list.files(current_folder, 
+                            full.names = T)
+files.to.keep <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.Rmd$")
+files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
+                                                              files.in.dir, value=TRUE))])
+do.call(unlink, files.to.remove)
+```
+
+## Copy files from Y drive > website folder
+```{r to web dev folder, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+
+web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+new.folder <- file.path(web.base.folder,theme_dir)
+
+list.of.files <- list.files(current_folder, 
+                            full.names = T)
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          new.folder,
+          overwrite = T)
+```
+
+<a href="#top">Back to top of the page</a>
