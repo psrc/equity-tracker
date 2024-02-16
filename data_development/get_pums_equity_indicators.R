@@ -8,7 +8,7 @@ library(data.table)
 
 # PUMS variables desired at person level
 pvars <- c("AGEP",                   # used as condition >25yo
-           "DIS",                    # Disability
+           "DIS",                    # Disability - unavailable before 2012
            "LNGI",                   # Limited English speaking household
            "PRACE",                  # Individual race (PSRC categories)
            "POVPIP",                 # Income-to-poverty ratio (all household members share it)
@@ -16,7 +16,8 @@ pvars <- c("AGEP",                   # used as condition >25yo
            "PUBCOV",                 # Public health insurance coverage
            "R18",                    # Presence of persons under 18 years in household
            "R65",                    # Presence of persons over 65 years in household
-           "SCHL")                   # Educational attainment
+           "SCHL"                    # Educational attainment
+           )
 
 # PUMS variables desired at household level
 hvars <- c("ACCESSINET",             # Internet access
@@ -24,7 +25,7 @@ hvars <- c("ACCESSINET",             # Internet access
            "FS",                     # Supplemental Nutrition Assistance Program
            "GRPIP",                  # Gross rent as percentage of income
            "GRNTP",                  # Gross rent
-           "HDIS",                   # Any member of household disabled
+           "HDIS",                   # Any member of household disabled - unavailable before 2012
            "HINCP",                  # Household income
            "HRACE",                  # Household race (PSRC categories)
            "LNGI",                   # Limited English speaking household
@@ -36,11 +37,12 @@ hvars <- c("ACCESSINET",             # Internet access
            "SMOCP",                  # Homeowner costs
            "R18",                    # Presence of persons under 18 years in household
            "R65",                    # Presence of persons over 65 years in household
-           "TEN")                    # Housing tenure
+           "TEN"                     # Housing tenure
+           )
 
 # 2. Setup: List and define Equity Focus Area (EFA) variables -------
 
-efa_vars <- c("POC_cat", "Income_cat",  "Disability_cat", "Youth_cat", "Older_cat", "LEP_cat")
+efa_vars <- c("POC_cat", "Income_cat", "Disability_cat", "Youth_cat", "Older_cat", "LEP_cat")
 
 # Create the EFA variables from available PUMS variables
 add_efa_vars <- function(so){
@@ -147,7 +149,7 @@ efa_to_elmer <- function(efa_result){
 
 # Generate all indicators for a single survey
 pums_efa_singleyear <- function(dyear, span=5){
-  refyear <- 2020                                                                                  # Dollar year for inflation-adjusted comparisons
+  refyear <- 2021                                                                                  # Dollar year for inflation-adjusted comparisons
   pp_df <- get_psrc_pums(span, dyear, "p", pvars)                                                  # Retrieve persons data
   pp_df %<>% real_dollars(refyear) %>% add_efa_vars() %>% mutate(
                edu_simp = factor(case_when(AGEP<25                       ~ NA_character_,          # Define the educational attainment subject variable
@@ -197,12 +199,12 @@ pums_efa_singleyear <- function(dyear, span=5){
   deep_pocket      <- list()
   deep_pocket$"educational_attainment"  <- bulk_count_efa(pp_df, "edu_simp")
   deep_pocket$"healthcare_coverage"     <- bulk_count_efa(pp_df, "healthcov")
-  deep_pocket$"median_household_income" <- bulk_stat_efa(hh_df, "median", "HINCP2020")             # Notice dollar comparisons require inflation adjustment
+  deep_pocket$"median_household_income" <- bulk_stat_efa(hh_df, "median", paste0("HINCP",refyear)) # Notice dollar comparisons require inflation adjustment
   deep_pocket$"household_poverty"       <- bulk_count_efa(hh_df, "poverty")
   deep_pocket$"housing_cost_burden"     <- bulk_count_efa(hh_df, "housing_burden")
   deep_pocket$"tenure"                  <- bulk_count_efa(hh_df, "OWN_RENT")
   deep_pocket$"rent_burden"             <- bulk_count_efa(hh_df, "rent_burden")
-  deep_pocket$"median_gross_rent"       <- bulk_stat_efa(hh_df, "median", "GRNTP2020")
+  deep_pocket$"median_gross_rent"       <- bulk_stat_efa(hh_df, "median", paste0("GRNTP",refyear))
   deep_pocket$"renter_crowding"         <- bulk_count_efa(hh_df, "renter_crowding")                # i.e. persons per room for renters
   deep_pocket$"owner_crowding"          <- bulk_count_efa(hh_df, "owner_crowding")                 # i.e. persons per room for owners
   deep_pocket$"SNAP"                    <- bulk_count_efa(hh_df, "FS")                             # food stamp/SNAP
@@ -226,6 +228,7 @@ write_pums_efa <- function(efa_rs_list){
 }
 
 # Example 1: Generate indicators for a single year/span -------------
-# equity_2019_5 <- pums_efa_singleyear(2019, 5)                                                    # Returns all tables as separate items in a list
-# write_pums_efa(equity_2019_5)                                                                    # Write the tables to .csv
-# efa_to_elmer(equity_2019_5)
+# equity_2022_5 <- pums_efa_singleyear(2022, 5)                                                    # Returns all tables as separate items in a list
+# write_pums_efa(equity_2022_5)                                                                    # Write the tables to .csv
+# efa_to_elmer(equity_2022_5)
+

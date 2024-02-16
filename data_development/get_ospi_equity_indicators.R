@@ -127,6 +127,7 @@ get_k_readiness <- function(URL){
 # urlvector <- c("https://data.wa.gov/resource/vumg-9sgs.json",  # 2023-24
 #                "https://data.wa.gov/resource/3ji8-ykgj.json",  # 2022-23
 #                "https://data.wa.gov/resource/rzgf-vi75.json",  # 2021-22
+#                                                                # 2020-21 Not reported/collected
 #                "https://data.wa.gov/resource/26rj-f9wn.json",  # 2019-20
 #                "https://data.wa.gov/resource/p4sv-js2m.json",  # 2018-19
 #                "https://data.wa.gov/resource/huwq-t84x.json",  # 2017-18
