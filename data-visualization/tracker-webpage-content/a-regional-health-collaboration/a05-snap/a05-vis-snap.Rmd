@@ -4,13 +4,14 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
+  
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -57,7 +58,9 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Supplemental Nutrition Assistance Program (SNAP) provides low-income households with food benefits. This helps families supplement their food budget and access healthy food options.
+Supplemental Nutrition Assistance Program (SNAP) provides low-income households with food benefits. This helps families supplement their food budget and access healthy food options. 
+
+The Census Bureau question asks if an individual or household member has received SNAP benefits in the past 12 months.
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -214,17 +217,17 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = c(min(acs_data_tract$estimate,na.rm = TRUE),max_value, NA))
 
 # setting the legend/label variables
-var_name <- "SNAP" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "SNAP <br> Participation %" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
   paste("Tract value: ", 
-        prettyNum((round(acs_data_tract$estimate, digits=1))), " %"), 
+        prettyNum((round(acs_data_tract$estimate, digits=2))), " %"), 
   paste("Tract data reliability: ", acs_data_tract$reliability),
   paste("Region value: ",
-        prettyNum((round(acs_data_tract$reg_estimate, digits=1))), " %"), 
+        prettyNum((round(acs_data_tract$reg_estimate, digits=2))), " %"), 
   paste("County value: ",
-        prettyNum((round(acs_data_tract$cnty_estimate, digits=1))), " %"), 
+        prettyNum((round(acs_data_tract$cnty_estimate, digits=2))), " %"), 
   paste0("(",acs_data_tract$county_name," County)")) %>%
   lapply(htmltools::HTML)
 
@@ -302,24 +305,24 @@ data <- acs_data_tract %>%
 # calculate call out information
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# Highest percentage of SNAP eligibility is 53053940006 (east Tacoma where two low income housing complexes are - 55.2%), 53053061601 (downtown Tacoma - 41.1%), 53033029004 (southeast Des Moines - 39.7%), 53053063301 (east Tacoma just south of 53053940006 - 36.5%)
+# Highest percentage of SNAP participation is 53053940006 (east Tacoma where two low income housing complexes are - 55.2%), 53053061601 (downtown Tacoma - 41.1%), 53033029004 (southeast Des Moines - 39.7%), 53053063301 (east Tacoma just south of 53053940006 - 36.5%)
 
 sort <- data %>% 
   dplyr::arrange(estimate)
-# There are 40 census tracts with a 0% eligibility. 30 tracts in King County, 2 in Kitsap, 4 in Pierce, and 4 in Snohomish 
+# There are 40 census tracts with a 0% participation. 30 tracts in King County, 2 in Kitsap, 4 in Pierce, and 4 in Snohomish 
 ```
 
-1. 9.0%: The region's average SNAP eligibility
-2. 91.2%: The national average SNAP eligibility
-3. 75.9%: The lowest average health insurance coverage at census tract level in the region
+1. 9.0%: The region's average SNAP participation
+2. 11.5%: The national average SNAP participation
+3. 55.2%: The highest average SNAP participation at census tract level in the region
 
 \
 
 #### Insights & Analysis
 
-* King County has the lowest average for SNAP eligibility (8.0%), followed by Snohomish (8.8%), Kitsap (10.0%), and Pierce (11.7%)
-* There are 40 census tracts with a 0% eligibility with 30 tracts in King County, 2 in Kitsap, 4 in Pierce, and 4 in Snohomish 
-* The four census tracts with the highest eligibility, east Tacoma (55.2%), Downtown Tacoma (41.1%), southeast Des Moines (39.7%), and east Tacoma (36.5%)
+* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.8%), Kitsap (10.0%), and Pierce (11.7%)
+* There are 40 census tracts with a 0% participation with 30 tracts in King County, 2 in Kitsap, 4 in Pierce, and 4 in Snohomish 
+* The four census tracts with the highest participation, east Tacoma (55.2%), Downtown Tacoma (41.1%), southeast Des Moines (39.7%), and east Tacoma (36.5%)
 
 \
 \
@@ -350,10 +353,9 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r}
 
 #clean up
-data_clean <- data_clean 
-
-%>%
-    filter(fact_value != "NA")
+data_clean <- data_clean %>%
+    filter(indicator_attribute == "Yes") %>%
+    filter(fact_type == "share of population")
 
 #move the decimal point for estimate
 # acs_data_tract <- acs_data_tract %>%
@@ -374,13 +376,13 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 1
+y_max = .50
 dec = 0
 esttype = "percent"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
-title = "SNAP"
+title = "SNAP Participation"
 subtitle = ""
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
@@ -404,7 +406,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # set folder structure
-file_name <- 'a05-SNAP-column'
+file_name <- 'a05-snap-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -464,50 +466,50 @@ filter <- data_clean_column %>%
   filter(county=="Region",
          focus_type=="Income_cat")
 
-# region low income households: .86	
-# region non-low income households: .95
-# .86-.95=-.09
+# region low income households: .32	
+# region non-low income households: .04
+# .32-.04=.28
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
          county=="Region")
-# region lep households: .79	
-# region non-lep households: .94
-# .79-.94=-0.15
+# region lep households: .22	
+# region non-lep households: .09
+
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
          vulnerability=="high vulnerability")
 
-# region lep households: .79	
-# king lep households: .79
-# kitsap lep households: .83
-# pierce lep households: .77
-# snohomish lep households: .80
+# region lep households: .22	
+# king lep households: .23
+# kitsap lep households: .09
+# pierce lep households: .23
+# snohomish lep households: .19
 
 filter <- data_clean_column %>% 
   filter(county=="Region",
          focus_type=="Youth_cat")
 
-# region youth households: .92	
-# region non-youth households: .94
+# region youth households: .13	
+# region non-youth households: .08
 
 filter <- data_clean_column %>% 
   filter(focus_type=="POC_cat")
-# region poc: .90
-# region non-poc: .96
+# region poc: .13
+# region non-poc: .07
 
-# snohomish poc: .89
-# snohomish non-poc: .95
+# snohomish poc: .11
+# snohomish non-poc: .08
 
-# king poc: .90
-# king non-poc: .96
+# king poc: .13
+# king non-poc: .06
 
-# kitsap poc: .92
-# kitsap non-poc: .96
+# kitsap poc: .15
+# kitsap non-poc: .09
 
-# pierce poc: .89
-# pierce non-poc: .95
+# pierce poc: .17
+# pierce non-poc: .10
 
 filter <- data_clean_column %>% 
   filter(focus_type=="Disability_cat")
@@ -519,18 +521,19 @@ filter <- data_clean_column %>%
   dplyr::arrange(desc(fact_value))
 
 ```
+As a region:
 
-1. 15% points: As a region, health insurance coverage is 15% points lower for limited English proficiency households compared to English proficient households
-2. 9% points: As a region, coverage is 9% points lower for low income households compared to non-low income households
-3. 6% points: As a region, coverage is 6% points lower for people of color than white non-Hispanic people
+1. 3.5X: People with a disability are 3.5 times more likely to participate in SNAP 
+2. 2X: Limited English proficiency households are twice as likely to participate in SNAP
+3. 2X: People of color are twice as likely to participate in SNAP
 
 \
 
 #### Insights & Analysis
 
-* The smallest disparity in health care coverage between limited English proficiency and English proficient households is in Kitsap County
-* The smallest disparity in health care coverage between people of color and white non-Hispanic is in Kitsap County
-* The smallest disparity in health care coverage between low income and non-low income households is in Kitsap County
+* In King County, limited English proficiency households are three times as likely to participate in SNAP
+* As a region, 32% of low income households participate in SNAP participation leaving room for increased participation 
+* As a region, 4% of non-low income households participate in SNAP which likely due to the broad question asked if an individual or household member participated in SNAP in the past 12 months
 
 
 \
@@ -637,14 +640,14 @@ if (output_type == "html") {
 filter <- data_clean %>%
   filter(county=="Region",
          focus_type=="Income_cat")
-# 2021 low income: .86
-# 2021 non-low income: .95
-# .95-.86=.09
-# 2016 low income: .78
-# 2016 non-low income: .94
-# .94-.78=.16
-# ((.16-.09)/(.09))*100: 77.778% change
+# 2021 low income: .32
+# 2021 non-low income: .04
 
+# 2016 low income: .37
+# 2016 non-low income: .04
+
+# 2011 low income: .32
+# 2011 non-low income: .03
 
 filter <- data_clean %>%
   filter(county=="Region",
@@ -681,17 +684,17 @@ filter <- data_clean %>%
 
 ```
 
-1. 7% point change: The gap between low-income and non-low income households in the region had reduced from a 16% point gap to a 9% point gap from 2016 and 2021
-2. 5% point change: The gap in health care coverage between limited English proficiency and English proficient households in the region had reduced from a 20% point gap to 15% point gap from 2016 and 2021
-3. 3% point change: The gap between people of color and white non-Hispanic people in the region had reduced from a 9% point gap to a 6% point gap from 2016 and 2021
+1. 3.5X: In 2021, people with a disability were 3.5 times more like to participate in SNAP than people without a disability - an increase in disparity since 2016
+2. 2X: People of color have consistently been twice as likely to participate in SNAP compared to the white non-Hispanic population
+3. 5% point change: From 2016 to 2021, there was a 5% point decrease in SNAP participation for low income families across the region
 
 \
 
 #### Insights & Analysis
 
-* From 2016 and 2021, health insurance coverage is trending up for all groups
-* The largest disparity in health insurance coverage is consistently between limited English proficient and English proficient households
-* Households with older adults 65+ and people with disabilities see higher health insurance coverage due to programs like Medicare and Medicaid 
+* As a region from 2011 to 2021, there was a switch of households with older adults 65+ having higher SNAP participation compared to those without older adults 65+
+* From 2011 to 2021, Snohomish County saw the largest decline in disparity for people of color
+* As a region, 2016 was a high point for SNAP participation
 
 
 \
