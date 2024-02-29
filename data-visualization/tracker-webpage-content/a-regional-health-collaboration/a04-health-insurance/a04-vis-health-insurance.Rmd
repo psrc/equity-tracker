@@ -4,13 +4,14 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
+    
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -47,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -521,17 +522,19 @@ filter <- data_clean_column %>%
 
 ```
 
-1. 15%: As a region, health insurance coverage is 15% percentage points lower for limited English proficiency households compared to English proficient households
-2. 9%: As a region, coverage is 9% percentage points lower for low income households compared to non-low income households
-3. 6%: As a region, coverage is 6% percentage points lower for people of color than white non-Hispanic people
+As a region:
+
+1. 15% points: Health insurance coverage is 15% percentage points lower for limited English proficiency households compared to English proficient households
+2. 9% points: Coverage is 9% percentage points lower for lower income households compared to non-lower income households
+3. 6% points: Coverage is 6% percentage points lower for people of color than white non-Hispanic people
 
 \
 
 #### Insights & Analysis
 
-* The smallest disparity in health care coverage between limited English proficiency and English proficient households is in Kitsap County
-* The smallest disparity in health care coverage between people of color and white non-Hispanic is in Kitsap County
-* The smallest disparity in health care coverage between low income and non-low income households is in Kitsap County
+* Kitsap County has the smallest disparity in health care coverage between limited English proficiency and English proficient households
+* Kitsap County has the smallest disparity in coverage between people of color and the white non-Hispanic population
+* Kitsap County has the smallest disparity in coverage between lower income and non-lower income households
 
 
 \
@@ -682,16 +685,16 @@ filter <- data_clean %>%
 
 ```
 
-1. 7% point change: The gap between low-income and non-low income households in the region had reduced from a 16% point gap to a 9% point gap from 2016 and 2021
-2. 5% point change: The gap in health care coverage between limited English proficiency and English proficient households in the region had reduced from a 20% point gap to 15% point gap from 2016 and 2021
-3. 3% point change: The gap between people of color and white non-Hispanic people in the region had reduced from a 9% point gap to a 6% point gap from 2016 and 2021
+1. 7% point change: The gap in health care coverage between lower income and non-lower income households in the region had reduced from a 16% point gap to a 9% point gap from 2016 and 2021
+2. 5% point change: The gap in coverage between limited English proficiency and English proficient households in the region reduced from a 20% point gap to 15% point gap from 2016 and 2021
+3. 3% point change: The gap in coverage between people of color and the white non-Hispanic population in the region had reduced from a 9% point gap to a 6% point gap from 2016 and 2021
 
 \
 
 #### Insights & Analysis
 
 * From 2016 and 2021, health insurance coverage is trending up for all groups
-* The largest disparity in health insurance coverage is consistently between limited English proficient and English proficient households
+* The largest disparity in health insurance coverage is consistently between limited English proficiency and English proficient households
 * Households with older adults 65+ and people with disabilities see higher health insurance coverage due to programs like Medicare and Medicaid 
 
 
