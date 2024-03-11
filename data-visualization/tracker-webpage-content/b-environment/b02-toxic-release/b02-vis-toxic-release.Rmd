@@ -64,7 +64,7 @@ To map data in this form, there should be a value corresponding to each census t
 ```{r map legend settings, include=FALSE}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
 addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 5, colors, 
+			    "topleft"), pal, values, na.label = "NA", bins = 4, colors, 
 		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
 		  title = NULL, className = "info legend", layerId = NULL, 
 		  group = NULL, data = getMapData(map), decreasing = FALSE) {
@@ -240,6 +240,7 @@ tract_map <- leaflet() %>%
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
+                       bins=2,
                        decreasing = TRUE,
                        # labFormat = labelFormat()) %>% #,
                        labFormat = labelFormat(
