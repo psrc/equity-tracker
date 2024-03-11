@@ -331,7 +331,7 @@ sort %>%
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
 source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R')
+# source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'g03-sidewalk-completeness-data.rda'
@@ -345,7 +345,7 @@ data_clean <- data_clean %>% dplyr::ungroup()
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean
-geo = "county"
+geo = "county_ord"
 x = "quintile_ord"
 y = "estimate"
 facet = "equity_group_ord"
