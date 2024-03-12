@@ -204,7 +204,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Renter Overcrowding: <br> % of Households <br> with >1.5 person(s) <br> per Room" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Renter Overcrowding: <br> % of Households <br> with >1.5 Person(s) <br> per Room" # the <br> could be adjusted depending on the length/spacing of the name
 
 labels <- sprintf(
   "County: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body>",
