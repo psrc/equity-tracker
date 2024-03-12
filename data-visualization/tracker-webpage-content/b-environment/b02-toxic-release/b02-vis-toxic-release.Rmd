@@ -269,7 +269,7 @@ Sources: U.S. Environmental Protection Agency (EPA) Toxic Release Inventory (TRI
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
 # set folder structure
-map_name <- 'b02-toxic-release-map-feb2024.html'
+map_name <- 'b02-toxic-release-map-mar2024.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(tract_map,
