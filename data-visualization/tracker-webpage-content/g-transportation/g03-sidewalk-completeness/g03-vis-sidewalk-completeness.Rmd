@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Grant Gibson"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -250,7 +250,7 @@ tract_map <- leaflet() %>%
                        group = var_name,
                        opacity = 0.7,
                        decreasing = TRUE,
-                       labFormat = labelFormat()) %>% 
+                       labFormat = labelFormat(suffix = "%")) %>% 
   
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
@@ -306,7 +306,7 @@ sort %>%
 
 1. 49%: The share of arterial road segments in the region with partial or complete sidewalks
 2. 31%: The share of tracts where all arterial segments have partial or complete sidewalks
-3. 
+3. 5%: The share of tracts where all arterial segments have no sidewalks
 
 \
 
@@ -330,8 +330,8 @@ sort %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-# source('equity-tracker-chart-functions.R')
+# source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'g03-sidewalk-completeness-data.rda'
@@ -358,8 +358,8 @@ color = "purples"
 num_colors = 5
 color_rev = FALSE
 title = "Sidewalk Completeness"
-subtitle = "Share of arterial road segments with partial or complete sidewalks"
-source = paste("Puget Sound Regional Council,", "Regional Bicycle and Pedestrian Facilities", sep="\n")
+subtitle = "Percent of arterial road segments with partial or complete sidewalks"
+source = paste("Puget Sound Regional Council,", "Regional Bicycle and Pedestrian Facilities", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -384,7 +384,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'g03-sidewalk-completeness-column'
 
 # column Chart - html for interactive
-rmarkdown::render("C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-creator.Rmd", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,

@@ -4,14 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-    word_document:
+    html_document: 
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-    html_document: 
-
+    word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -205,7 +204,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Average % of Tree Canopy <br> 2021"
+var_name <- "Average Tree Canopy <br> Coverage (2021)"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic
   paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=0))), " %"),
@@ -255,7 +254,7 @@ tract_map <- leaflet() %>%
                        group = var_name,
                        opacity = 0.7,
                        decreasing = TRUE,
-                       labFormat = labelFormat()) %>% 
+                       labFormat = labelFormat(suffix = "%")) %>% 
   
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
@@ -384,8 +383,8 @@ esttype = "percent"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Average % of Tree Canopy"
-subtitle = "Census Tract Level"
+title = "Average Tree Canopy Coverage"
+subtitle = "Percent of census tract"
 source = paste("MRLC, U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
