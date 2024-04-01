@@ -196,7 +196,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = acs_data_tract$estimate) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Homeownership <br> Rates" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Homeownership" # the <br> could be adjusted depending on the length/spacing of the name
 
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
@@ -352,7 +352,7 @@ esttype = "percent"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
-title = "Homeownership Rates"
+title = "Homeownership"
 subtitle = "Households living in owner-occupied housing units"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
