@@ -4,14 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-    word_document:
+  html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-    html_document: 
-
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -189,7 +188,7 @@ map.lon<- -122.257
 map.zoom<- 8.5
 
 # check maximum value of data
-summary(data_tract$estimate) # max is 72.60, so rounded up to 80 to keep in 10 point increments
+# summary(data_tract$estimate) # max is 72.60, so rounded up to 80 to keep in 10 point increments
 max_value <- 80 # this value will be the max value in the legend
 
 # set up palettes
@@ -205,7 +204,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Average % of Tree Canopy <br> 2021"
+var_name <- "Average Tree Canopy <br> Cover (2021)"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic
   paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=0))), " %"),
@@ -255,7 +254,7 @@ tract_map <- leaflet() %>%
                        group = var_name,
                        opacity = 0.7,
                        decreasing = TRUE,
-                       labFormat = labelFormat()) %>% 
+                       labFormat = labelFormat(suffix = "%")) %>% 
   
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
@@ -349,8 +348,8 @@ by_county <- data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-# source('equity-tracker-chart-functions.R')
+# source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'b01-tree-canopy-data.rda'
@@ -358,7 +357,7 @@ rda <- 'b01-tree-canopy-data.rda'
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
 
-```{r}
+```{r, data edit}
 
 data_clean <- data_clean %>%
    mutate(estimate = (estimate/100))
@@ -384,8 +383,8 @@ esttype = "percent"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Average % of Tree Canopy"
-subtitle = "Census Tract Level"
+title = "Tree Canopy Cover"
+subtitle = "Average percent of census tract"
 source = paste("MRLC, U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,

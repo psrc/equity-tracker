@@ -4,14 +4,14 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
-  always_allow_html: true
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  always_allow_html: true
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -334,7 +334,7 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 0.10
+y_max = 0.08
 dec = 0
 esttype = "percent"
 color = "purples"
