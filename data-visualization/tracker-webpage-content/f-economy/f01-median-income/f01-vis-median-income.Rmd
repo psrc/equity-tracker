@@ -255,7 +255,7 @@ Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimat
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
 # set folder structure
-map_name <- 'f01-median-income-map.html'
+map_name <- 'f01-median-income-map-2021.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
@@ -342,7 +342,7 @@ coutny_acs_data <- coutny_acs_data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('equity-tracker-chart-functions.R')
+source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') 
 
 # set folder structure
 rda <- 'f01-median-income-data.rda'
@@ -393,7 +393,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-column'
+file_name <- 'f01-median-income-column-2021'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD",
@@ -564,7 +564,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-line'
+file_name <- 'f01-median-income-line-2021'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD",
