@@ -193,7 +193,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = acs_data_plus_zero) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Median Household <br> Income (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Household Income <br> (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
@@ -255,7 +255,7 @@ Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimat
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
 # set folder structure
-map_name <- 'f01-median-income-map-2021.html'
+map_name <- 'f01-median-income-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
@@ -342,7 +342,8 @@ coutny_acs_data <- coutny_acs_data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') 
+# source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') 
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'f01-median-income-data.rda'
@@ -369,8 +370,8 @@ esttype = "currency"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
-title = "Median Household Income"
-subtitle = "Values are adjusted to 2021 dollars"
+title = "Household Income"
+subtitle = "Median values adjusted to 2021 dollars"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -393,7 +394,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-column-2021'
+file_name <- 'f01-median-income-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD",
@@ -564,7 +565,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
 # set folder structure
-file_name <- 'f01-median-income-line-2021'
+file_name <- 'f01-median-income-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD",
