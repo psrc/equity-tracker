@@ -4,14 +4,14 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
+  
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -48,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -183,7 +183,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
 
 
-```{r}
+```{r data format - map, include=FALSE}
 
 #move the decimal point for reg_estimate and cnty_estimate
 acs_data_tract <- acs_data_tract %>%
@@ -264,7 +264,7 @@ acs_map <- leaflet() %>%
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
-                       labFormat = labelFormat(),
+                       labFormat = labelFormat(suffix = "%"),
                        decreasing = TRUE) %>% #to get legend high-low with correct color order
   
   # set view extent
@@ -339,8 +339,8 @@ sort <- data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-#source('equity-tracker-chart-functions.R') 
+# source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'a05-snap-data.rda'
@@ -350,7 +350,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 
 
 
-```{r}
+```{r data format - column, include=FALSE}
 
 #clean up
 data_clean <- data_clean %>%
