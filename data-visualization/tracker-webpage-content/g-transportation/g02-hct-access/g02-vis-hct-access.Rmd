@@ -321,8 +321,8 @@ table(filter$county_name)
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-# source('equity-tracker-chart-functions.R')
+# source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'g02-hct-access-data.rda'
@@ -350,8 +350,8 @@ color = "purples"
 num_colors = 5
 color_rev = FALSE
 title = "Distance to High Capacity Transit"
-subtitle = "The weighted distance in miles to high capacity transit (HCT) stations in 2021"
-source = paste("GTFS (General Transit Feed Specification),", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+subtitle = "Distance in miles to high capacity transit (HCT) stations"
+source = paste("GTFS (General Transit Feed Specification) 2021 data,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,

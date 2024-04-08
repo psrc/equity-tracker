@@ -374,7 +374,7 @@ color = "purples"
 num_colors = 2
 color_rev = TRUE
 title = "Kindergarten Readiness"
-subtitle = "Percentage of students demonstrating readiness in 6 of 6 domains*"
+subtitle = "Percent of students demonstrating readiness in 6 of 6 domains*"
 source = "Washington Office of Superintendent of Public Instruction (OSPI) 2022-23 Washington Kindergarten Inventory of Developing Skills (WaKIDS) <br> No data available for students with limited English proficiency in Kitsap County <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
 
 column_chart <- equity_tracker_column_facet(df = df,

@@ -369,7 +369,7 @@ color = "purples"
 num_colors = 2
 color_rev = TRUE
 title = "Educational Attainment"
-subtitle = "Bachelor's degree or higher"
+subtitle = "Percent of individuals 25 years or older with a Bachelor's degree or higher"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,

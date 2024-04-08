@@ -365,8 +365,8 @@ by_county <- data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-# source('equity-tracker-chart-functions.R')
+# source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'g01-safety-data.rda'
@@ -393,8 +393,8 @@ esttype = "number"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Traffic Related Deaths and Serious Injuries per 100,000"
-subtitle = "Census Tract Level"
+title = "Traffic Related Deaths and Serious Injuries"
+subtitle = "Rate per 100,000 residents"
 source = paste("Washington Traffic Safety Commission", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,

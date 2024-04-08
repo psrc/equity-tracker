@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Mary Richards, Grant Gibson"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -173,7 +173,7 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 ```
 
 ### Create Visual
-```{r map .rda}
+```{r map .rda, include=FALSE}
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 theme_dir <- 'b-environment'
@@ -206,7 +206,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min_value_legend, max_value_legend, NA))# this is the value field
 
 # set the variable
-var_name <- "Toxic Site Release <br> (pounds per acre)*"
+var_name <- "Toxic Releases <br> (pounds per acre)*"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
   paste("Tract value: ", prettyNum((round(data_tract$map_estimate, digits=2)))),
@@ -327,7 +327,7 @@ data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+# source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
 source('equity-tracker-chart-functions.R')
 
 # set folder structure
@@ -357,8 +357,8 @@ esttype = "number"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Toxic Site Release"
-subtitle = "pounds per acre within a 2 mile buffer of on-site releases"
+title = "Toxic Releases"
+subtitle = "Pounds per acre within 2 miles of release sites"
 # source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 source = paste("U.S. Environmental Protection Agency (EPA) Toxics Release Inventory (TRI) 2021 data", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
@@ -385,7 +385,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'b02-toxic-release-column-feb2024'
 
 # column Chart - html for interactive
-rmarkdown::render("C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-creator.Rmd", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -545,7 +545,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 file_name <- 'b02-toxic-release-line-feb2024'
 
 # Line Chart - html for interactive
-rmarkdown::render("C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-creator.Rmd", 
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,

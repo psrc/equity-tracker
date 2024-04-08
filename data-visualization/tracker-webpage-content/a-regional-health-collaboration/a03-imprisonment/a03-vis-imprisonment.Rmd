@@ -359,8 +359,8 @@ by_county <- data %>%
   
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-#source('equity-tracker-chart-functions.R')
+# source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'a03-imprisonment-data.rda'
@@ -387,8 +387,8 @@ esttype = "number"
 color = "purples"
 num_colors = 5
 color_rev = FALSE
-title = "Imprisonment Rate"
-subtitle = "Per 100,000 People"
+title = "Imprisonment"
+subtitle = "Rate per 100,000 residents"
 source = paste("Prison Policy Initiative analyzing data provided by Washington State Department of Corrections, 2020", "U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
