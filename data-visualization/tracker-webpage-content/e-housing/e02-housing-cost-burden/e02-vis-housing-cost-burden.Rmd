@@ -414,7 +414,7 @@ color = "purples"
 num_colors = 2
 color_rev = TRUE
 title = "Renter Cost Burden"
-subtitle = "Renters who are paying more than 30% of their income on rent"
+subtitle = "Percent of renters paying more than 30% of income on housing"
 source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
 
 column_chart <- equity_tracker_column_facet(df = df,

@@ -353,7 +353,7 @@ color = "purples"
 num_colors = 2
 color_rev = TRUE
 title = "Homeownership"
-subtitle = "Households living in owner-occupied housing units"
+subtitle = "Percent of households living in owner-occupied housing units"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
