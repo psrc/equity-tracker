@@ -20,7 +20,8 @@ pvars <- c("AGEP",                   # used as condition >25yo
            )
 
 # PUMS variables desired at household level
-hvars <- c("ACCESSINET",             # Internet access
+hvars <- c(
+           "ACCESSINET",             # Internet access; "ACCESS" from 2017 5yr to 2019 5yr
            "RMSP",                   # Number of rooms
            "FS",                     # Supplemental Nutrition Assistance Program
            "GRPIP",                  # Gross rent as percentage of income
@@ -52,19 +53,22 @@ add_efa_vars <- function(so){
                          levels=c("POC","Non-POC")),
     Income_cat  = factor(case_when(POVPIP<200                    ~ "Low Income",
                             !is.na(POVPIP)                       ~ "Non-Low Income")),
-    Disability_cat=if("DIS" %in% colnames(so)){
-                       factor(case_when(grepl("^With ", DIS)     ~ "With disability",
-                                 grepl("^Without ", DIS)         ~ "Without disability"))
-                   }else if("HDIS" %in% colnames(so)){
-                       factor(case_when(grepl("^With ", HDIS)    ~ "With disability",
-                                 grepl("^Without ", HDIS)        ~ "Without disability"))
-                   },
     Youth_cat   = factor(case_when(grepl("^No ", R18)            ~ "Household without youth",
                             !is.na(R18)                          ~ "Household with youth")),
     Older_cat   = factor(case_when(grepl("^No ", R65)            ~ "Household without older adult",
                             !is.na(R65)                          ~ "Household with older adult")),
     LEP_cat     = factor(case_when(grepl("^No one", LNGI)        ~ "Limited English proficiency",
                             !is.na(LNGI)                         ~ "English proficient")))
+  if(so$DATA_YEAR > 2011){
+    so_plus <- mutate(so_plus,
+      Disability_cat=if("DIS" %in% colnames(so)){
+        factor(case_when(grepl("^With ", DIS)     ~ "With disability",
+                         grepl("^Without ", DIS)  ~ "Without disability"))
+      }else if("HDIS" %in% colnames(so)){
+        factor(case_when(grepl("^With ", HDIS)    ~ "With disability",
+                         grepl("^Without ", HDIS) ~ "Without disability"))
+      })
+  }
   return(so_plus)
 }
 
@@ -148,9 +152,11 @@ efa_to_elmer <- function(efa_result){
 #  -- but this could be separated into additional setup functions, if preferred
 
 # Generate all indicators for a single survey
-pums_efa_singleyear <- function(dyear, span=5){
-  refyear <- 2021                                                                                  # Dollar year for inflation-adjusted comparisons
-  pp_df <- get_psrc_pums(span, dyear, "p", pvars)                                                  # Retrieve persons data
+pums_efa_singleyear <- function(dyear){
+  refyear <- 2021  # Dollar year for inflation-adjusted comparisons
+  pums_rds <- "J:/Projects/Census/AmericanCommunitySurvey/Data/PUMS/pums_rds" # Network PUMS location
+
+  pp_df <- get_psrc_pums(span=5, dyear, "p", pvars)                                                # Retrieve persons data
   pp_df %<>% real_dollars(refyear) %>% add_efa_vars() %>% mutate(
                edu_simp = factor(case_when(AGEP<25                       ~ NA_character_,          # Define the educational attainment subject variable
                                     grepl("(Bach|Mast|Prof|Doct)", SCHL) ~ "Bachelor's degree or higher",
@@ -159,9 +165,14 @@ pums_efa_singleyear <- function(dyear, span=5){
                                     grepl("^With ", PRIVCOV)|grepl("^With ", PUBCOV) ~ "With health insurance",
                                     grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
 
-  if(dyear<2020){hvars %<>% replace(hvars=="ACCESSINET","ACCESS")}                                 # Variable changed names w/ 2020 data
-  if(dyear<2020){hvars %<>% replace(hvars=="ACCESSINET","ACCESS")}                                 # Variable changed names w/ 2020 data
-  hh_df <- get_psrc_pums(span, dyear, "h", hvars) %>% real_dollars(refyear)                        # Retrieve household data
+  if(dyear %in% 2017:2020){hvars <- replace(hvars, hvars=="ACCESSINET","ACCESS")                   # Variable changed names w/ 2020 data
+  }else if(dyear<2017){hvars[! hvars %in% "ACCESSINET"]}
+  if(dyear < 2012){
+    pvars %<>% .[! pvars %in% "DIS"]
+    hvars %<>% .[! hvars %in% "HDIS"]
+    efa_vars %<>% .[! efa_vars %in% "HDIS"]
+  }
+  hh_df <- get_psrc_pums(span=5, dyear, "h", hvars, dir=pums_rds) %>% real_dollars(refyear)        # Retrieve household data
   if("ACCESS" %in% colnames(hh_df)){hh_df %<>% rename("ACCESSINET"="ACCESS")}                      # Variable changed names w/ 2020 data
   hh_df %<>% add_efa_vars() %>% mutate(
                poverty=Income_cat,                                                                 # Identical to Income_cat
@@ -186,17 +197,22 @@ pums_efa_singleyear <- function(dyear, span=5){
                                  levels=c("More than 1.5 persons per room",
                                           "Between 1 and 1.5 person(s) per room",
                                           "One person per room or less")),
-             owner_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,          # Define the crowding subject variable
+               owner_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,          # Define the crowding subject variable
                                            NP/RMSP <= 1   & OWN_RENT=="Owned" ~ "One person per room or less",
                                            NP/RMSP <= 1.5 & OWN_RENT=="Owned" ~ "Between 1 and 1.5 person(s) per room",
                                            NP/RMSP  > 1.5 & OWN_RENT=="Owned" ~ "More than 1.5 persons per room"),
                                  levels=c("More than 1.5 persons per room",
                                           "Between 1 and 1.5 person(s) per room",
                                           "One person per room or less")),
-               internet = factor(case_when(grepl("^Yes", ACCESSINET)     ~ "With internet access", # Define the internet access subject variable; began in 2013
-                                         grepl("^No", ACCESSINET)        ~ "Without internet access")))
+               renter_median_hh_income = case_when(OWN_RENT=="Rented" ~ !!as.name(paste0("HINCP",refyear)),
+                                                   TRUE ~ NA_real_))
+  if(dyear<2017){
+    hh_df %<>% mutate(
+               internet = factor(case_when(grepl("^Yes", ACCESSINET) ~ "With internet access", # Define the internet access subject variable; began in 2013
+                                        grepl("^No", ACCESSINET)     ~ "Without internet access")))
+  }
 
-  deep_pocket      <- list()
+  deep_pocket <- list()
   deep_pocket$"educational_attainment"  <- bulk_count_efa(pp_df, "edu_simp")
   deep_pocket$"healthcare_coverage"     <- bulk_count_efa(pp_df, "healthcov")
   deep_pocket$"median_household_income" <- bulk_stat_efa(hh_df, "median", paste0("HINCP",refyear)) # Notice dollar comparisons require inflation adjustment
@@ -209,15 +225,16 @@ pums_efa_singleyear <- function(dyear, span=5){
   deep_pocket$"owner_crowding"          <- bulk_count_efa(hh_df, "owner_crowding")                 # i.e. persons per room for owners
   deep_pocket$"SNAP"                    <- bulk_count_efa(hh_df, "FS")                             # food stamp/SNAP
   deep_pocket$"internet_access"         <- bulk_count_efa(hh_df, "internet")
+  deep_pocket$"renter_median_hh_income" <- bulk_stat_efa(hh_df, "median", "renter_median_hh_income")
 
   return(deep_pocket)
 }
 
-# Generate trend data, i.e. all indicators across multiple years                                   # This can be problematic if variables change name, format, etc;
+# Generate trend data, i.e. all indicators across multiple years; returns a list                   # Problematic if variables aren't present in all requested years
 pums_efa_multiyear <- function(dyears){                                                            # -- verify in PUMS data dictionaries for each survey
   refyear <- max(dyears)
   rs_master <- lapply(dyears, pums_efa_singleyear) %>%
-    as.data.frame(do.call(rbind, lapply(., as.vector))) %>% setDT() %>% lapply(rbindlist)          # Combine matching indicator tables across years
+    as.data.frame(do.call(rbind, lapply(., as.vector))) %>% setDT() %>% rbindlist()                # Combine matching indicator tables across years
   return(rs_master)                                                                                # Return the object
 }
 
@@ -228,7 +245,6 @@ write_pums_efa <- function(efa_rs_list){
 }
 
 # Example 1: Generate indicators for a single year/span -------------
-# equity_2022_5 <- pums_efa_singleyear(2022, 5)                                                    # Returns all tables as separate items in a list
+# equity_2022_5 <- pums_efa_singleyear(2022)                                                       # Returns all tables as separate items in a list
 # write_pums_efa(equity_2022_5)                                                                    # Write the tables to .csv
 # efa_to_elmer(equity_2022_5)
-
