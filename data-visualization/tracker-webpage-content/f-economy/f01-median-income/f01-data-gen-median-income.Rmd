@@ -87,7 +87,7 @@ unique(pums_ospi_elmer$data_year)
 
 ```{r indicator specific information, include=FALSE}
 # set indicator information
-indicator_measure <- 'median_household_income'
+indicator_measure <- 'median_household_income_2021_dollars'
 indicator_title <- 'Median household income'
 ```
 

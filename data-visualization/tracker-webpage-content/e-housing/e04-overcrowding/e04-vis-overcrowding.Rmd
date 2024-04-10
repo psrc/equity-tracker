@@ -4,14 +4,14 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
-  always_allow_html: true
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  always_allow_html: true
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -204,7 +204,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Renter Overcrowding: <br> % of Households <br> with >1.5 person(s) <br> per Room" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Renter <br> Overcrowding" # the <br> could be adjusted depending on the length/spacing of the name
 
 labels <- sprintf(
   "County: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body>",
@@ -334,14 +334,14 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 0.10
+y_max = 0.08
 dec = 0
 esttype = "percent"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
 title = "Renter Overcrowding"
-subtitle = "More than 1.5 person(s) per room"
+subtitle = "Percent of households with more than 1.5 person(s) per room"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,

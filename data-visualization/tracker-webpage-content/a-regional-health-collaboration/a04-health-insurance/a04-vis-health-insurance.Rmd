@@ -5,6 +5,7 @@ author: "Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
+    
     keep_md: yes
     df_print: paged
     toc: yes
@@ -47,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-#output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -57,7 +58,9 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-According to the CDC, "without health insurance, people are less likely to have a regular health care provider and more likely to skip routine health care. This puts them at increased risk for serious health problems." Accessing regular health care can help address health disparities.
+According to the CDC, "without health insurance, people are less likely to have a regular health care provider and more likely to skip routine health care. This puts them at increased risk for serious health problems." It is helpful to know where communities are located that have lower access to health insurance to help address health disparities.
+
+The majority of households in all places have health insurance. Therefore, the scale for the map starts at 70% and the axes for the charts have been adjusted to start at 60%.
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -180,7 +183,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
 
 
-```{r}
+```{r, adjust number format}
 
 #move the decimal point for reg_estimate and cnty_estimate
 acs_data_tract <- acs_data_tract %>%
@@ -261,7 +264,7 @@ acs_map <- leaflet() %>%
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
-                       labFormat = labelFormat(),
+                       labFormat = labelFormat(suffix = "%"),
                        decreasing = TRUE) %>% #to get legend high-low with correct color order
   
   # set view extent
@@ -284,7 +287,7 @@ Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimat
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a04-health-insurance\webpage-html-outputs
 
 # set folder structure
-map_name <- 'a04-heath-insurance-map.html'
+map_name <- 'a04-health-insurance-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
@@ -319,7 +322,7 @@ sort <- data %>%
 
 * Kitsap County has the highest average for health insurance coverage (95.3%), followed by King (94.6%), Pierce (93.9%), and Snohomish (93.9%)
 * There are 17 census tracts with 100% health insurance coverage which 13 are located in King County, two are in Kitsap, one in Pierce, and one in Snohomish
-* The five census tracts with the lowest health insurance coverage, Lynnwood (75.9%), Snohomish County/Everett (76.3%), Federal Way (76.5%), Edmonds (77.6%), and, again, Federal Way (77.7%)
+* The four census tracts with the lowest health insurance coverage, Lynnwood (75.9%), Snohomish County/Everett (76.3%), Federal Way (76.5%), and Edmonds (77.6%)
 
 \
 \
@@ -336,8 +339,8 @@ sort <- data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-#source('equity-tracker-chart-functions.R') 
+# source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'a04-health-insurance-data.rda'
@@ -347,7 +350,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 
 
 
-```{r}
+```{r, filter data}
 
 #clean up
 data_clean <- data_clean %>%
@@ -372,7 +375,7 @@ x = "focus_attribute_ord"
 y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
-y_min = 0
+y_min = .60
 y_max = 1
 dec = 0
 esttype = "percent"
@@ -519,17 +522,19 @@ filter <- data_clean_column %>%
 
 ```
 
-1. 15% points: As a region, health insurance coverage is 15% points lower for limited English proficiency households compared to English proficient households
-2. 9% points: As a region, coverage is 9% points lower for low income households compared to non-low income households
-3. 6% points: As a region, coverage is 6% points lower for people of color than white non-Hispanic people
+As a region:
+
+1. 15% points: Health insurance coverage is 15% percentage points lower for limited English proficiency households compared to English proficient households
+2. 9% points: Coverage is 9% percentage points lower for lower income households compared to non-lower income households
+3. 6% points: Coverage is 6% percentage points lower for people of color than white non-Hispanic people
 
 \
 
 #### Insights & Analysis
 
-* The smallest disparity in health care coverage between limited English proficiency and English proficient households is in Kitsap County
-* The smallest disparity in health care coverage between people of color and white non-Hispanic is in Kitsap County
-* The smallest disparity in health care coverage between low income and non-low income households is in Kitsap County
+* Kitsap County has the smallest disparity in health care coverage between limited English proficiency and English proficient households
+* Kitsap County has the smallest disparity in coverage between people of color and the white non-Hispanic population
+* Kitsap County has the smallest disparity in coverage between lower income and non-lower income households
 
 
 \
@@ -680,16 +685,16 @@ filter <- data_clean %>%
 
 ```
 
-1. 7% point change: The gap between low-income and non-low income households in the region had reduced from a 16% point gap to a 9% point gap from 2016 and 2021
-2. 5% point change: The gap in health care coverage between limited English proficiency and English proficient households in the region had reduced from a 20% point gap to 15% point gap from 2016 and 2021
-3. 3% point change: The gap between people of color and white non-Hispanic people in the region had reduced from a 9% point gap to a 6% point gap from 2016 and 2021
+1. 7% point change: The gap in health care coverage between lower income and non-lower income households in the region had reduced from a 16% point gap to a 9% point gap from 2016 and 2021
+2. 5% point change: The gap in coverage between limited English proficiency and English proficient households in the region reduced from a 20% point gap to 15% point gap from 2016 and 2021
+3. 3% point change: The gap in coverage between people of color and the white non-Hispanic population in the region had reduced from a 9% point gap to a 6% point gap from 2016 and 2021
 
 \
 
 #### Insights & Analysis
 
 * From 2016 and 2021, health insurance coverage is trending up for all groups
-* The largest disparity in health insurance coverage is consistently between limited English proficient and English proficient households
+* The largest disparity in health insurance coverage is consistently between limited English proficiency and English proficient households
 * Households with older adults 65+ and people with disabilities see higher health insurance coverage due to programs like Medicare and Medicaid 
 
 

@@ -357,8 +357,8 @@ by_county <- data %>%
   
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-#source('equity-tracker-chart-functions.R')
+# source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'c01-flood-data.rda'
@@ -386,7 +386,7 @@ color = "purples"
 num_colors = 5
 color_rev = FALSE
 title = "Flood Risk"
-subtitle = "For 2022-2052"
+subtitle = "Projected likelihood of flooding in next 30 years, score out of 10"
 source = paste("First Street Foundation Flood Model, 2022", "U.S. Census Bureau, 2016-2022 American Community Survey 5-Year Estimates, Table B01003", "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,

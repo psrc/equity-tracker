@@ -92,5 +92,5 @@ if (params$charttype == "line") {
 chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-Source: `r params$source`
+Source(s): `r params$source`
 </p> 
