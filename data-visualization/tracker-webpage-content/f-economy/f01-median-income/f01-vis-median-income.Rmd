@@ -250,7 +250,7 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 # printing map
 acs_map
 ```
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Table B19013; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
@@ -373,7 +373,7 @@ num_colors = 2
 color_rev = TRUE
 title = "Household Income by Community"
 subtitle = "Median values adjusted to 2021 dollars"
-source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
+source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -545,6 +545,7 @@ fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
 title = "Household Income Trend by Community"
 subtitle = "Median values adjusted to 2021 dollars, in 5-year spans between 2011 and 2021"
+source = "U.S. Census Bureau, 2007-2011, 2011-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample (PUMS)"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
