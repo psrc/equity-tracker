@@ -373,7 +373,7 @@ num_colors = 2
 color_rev = TRUE
 title = "Household Income by Community"
 subtitle = "Median values adjusted to 2021 dollars"
-source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample (PUMS)"
+source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -545,7 +545,7 @@ fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
 title = "Household Income Trend by Community"
 subtitle = "Median values adjusted to 2021 dollars, in 5-year spans between 2011 and 2021"
-source = "U.S. Census Bureau, 2007-2011, 2011-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample (PUMS)"
+source = "U.S. Census Bureau, 2007-2011, 2011-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
