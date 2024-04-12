@@ -609,8 +609,8 @@ data_tract <- merge(data_tract, county_reg_data,
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 theme_dir <- 'b-environment'
 ind_dir <- 'b02-toxic-release'
-# file_name <- 'b02-toxic-release-map-data'
-file_name <- 'b02-toxic-release-map-data-feb2024'
+file_name <- 'b02-toxic-release-map-data'
+# file_name <- 'b02-toxic-release-map-data-feb2024'
 
 # save final data set as .rda
 save(data_tract, file = file.path(base_dir,
@@ -865,8 +865,8 @@ data_clean <- data_clean %>%
 Save final data set for charts (.rda)
 ```{r}
 # set folder structure
-# file_name <- 'b02-toxic-release-data'
-file_name <- 'b02-toxic-release-data-feb2024'
+file_name <- 'b02-toxic-release-data'
+# file_name <- 'b02-toxic-release-data-feb2024'
 
 # save final data set as .rda
 save(data_clean, file = file.path(base_dir,

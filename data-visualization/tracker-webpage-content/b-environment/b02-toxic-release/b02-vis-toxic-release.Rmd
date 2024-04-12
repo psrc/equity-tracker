@@ -47,8 +47,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
@@ -178,7 +178,7 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 theme_dir <- 'b-environment'
 ind_dir <- 'b02-toxic-release'
-rda <- 'b02-toxic-release-map-data-feb2024.rda'
+rda <- 'b02-toxic-release-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 
@@ -206,7 +206,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min_value_legend, max_value_legend, NA))# this is the value field
 
 # set the variable
-var_name <- "Toxic Releases <br> (pounds per acre)*"
+var_name <- "Toxic <br> Releases*"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
   paste("Tract value: ", prettyNum((round(data_tract$map_estimate, digits=2)))),
@@ -261,15 +261,15 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: U.S. Environmental Protection Agency (EPA) Toxic Release Inventory (TRI) 2021 data; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): U.S. Environmental Protection Agency, Toxics Release Inventory Program, 2021; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 \
-* Note: color ramp uses log scale
+* Note: The color ramp uses log scale to accommodate a wide range of values
 
 ```{r generate tract map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
 # set folder structure
-map_name <- 'b02-toxic-release-map-mar2024.html'
+map_name <- 'b02-toxic-release-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(tract_map,
@@ -327,11 +327,12 @@ data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
 # source('C:/Users/GGibson/GitHub/PSRC/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
 source('equity-tracker-chart-functions.R')
 
 # set folder structure
-rda <- 'b02-toxic-release-data-feb2024.rda'
+rda <- 'b02-toxic-release-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -354,13 +355,12 @@ y_min = 0
 y_max = 15
 dec = 1
 esttype = "number"
-color = "purples"
+color = "oranges"
 num_colors = 5
 color_rev = FALSE
-title = "Toxic Releases"
+title = "Toxic Releases by Community"
 subtitle = "Pounds per acre within 2 miles of release sites"
-# source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
-source = paste("U.S. Environmental Protection Agency (EPA) Toxics Release Inventory (TRI) 2021 data", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+source = "U.S. Environmental Protection Agency, Toxics Release Inventory Program, 2021; U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -382,7 +382,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # set folder structure
-file_name <- 'b02-toxic-release-column-feb2024'
+file_name <- 'b02-toxic-release-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -508,17 +508,66 @@ filter <- data_clean_column %>%
 }
 </style>
 
+```{r insert nulls for line chart, include=FALSE}
+
+# insert null records ----
+standard_base_year <- 2011
+
+## main table
+df_base <- data_clean %>% 
+  mutate(data_year_num = as.numeric(data_year))
+
+## set-up columns to identify missing years by the unique categories/geography
+d <- df_base %>% 
+  group_by(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord) %>% 
+  summarise(avail_years = list(unique(as.numeric(data_year))),
+            num_unique_years = length(unique(data_year)),
+            start_year = as.numeric(min(unique(data_year))),
+            end_year = as.numeric(max(unique(data_year)))) %>% 
+  mutate(base_year = standard_base_year)
+
+## create list-column, a vector of missing years in a cell
+d_calc <- d %>% 
+  rowwise() %>% 
+  mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
+
+## create list-column, a vector of missing years in a cell
+d_calc <- d %>% 
+  rowwise() %>% 
+  mutate(missing_years = list(setdiff(seq(base_year, end_year), avail_years)))
+
+## unpack so each missing year is a row of its own
+d_unnest <- d_calc %>% 
+  unnest(missing_years) 
+
+## create table with null records for chart
+df_nulls <- d_unnest %>% 
+  dplyr::select(county, equity_group, quintile, county_ord, equity_group_ord, quintile_ord, data_year_num = missing_years) %>% 
+  mutate(wt_Avg_Per = NA, estimate = NA) #, data_year = as.character(data_year_num))
+
+## assemble main table  
+df <- bind_rows(df_base, df_nulls) %>% 
+  arrange(county_ord, equity_group_ord, quintile_ord, data_year_num)
+
+# filter for relevant years
+df2 <- df %>% 
+  filter(data_year_num %in% c(2011, 2016, 2021))
+```
+
 ```{r line facet - tract, include=FALSE}
 # Create Facet Line Chart
-data_clean$data_year_c <- as.character(data_clean$data_year)  # for x-axis to plot correctly
+df2$data_year_c <- as.character(df2$data_year_num)  # for x-axis to plot correctly
 
 # set variables
-df = data_clean
+df = df2
 x = "data_year_c" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0 
 y_max = 30 #28.34
-color = "purples"
+color = "blues"
+title = "Toxic Releases Trend by Community"
+subtitle = "Pounds per acre within 2 miles of release sites, in 5-year spans between 2011 and 2021"
+source = "U.S. Environmental Protection Agency, Toxics Release Inventory Program, 2011, 2016, 2021; U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -542,7 +591,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # set folder structure
-file_name <- 'b02-toxic-release-line-feb2024'
+file_name <- 'b02-toxic-release-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -649,8 +698,6 @@ filter <- data_clean %>%
 filter <- data_clean %>% 
   filter(county=="Kitsap",
          quintile=="High")
-
-
 
 ```
 
