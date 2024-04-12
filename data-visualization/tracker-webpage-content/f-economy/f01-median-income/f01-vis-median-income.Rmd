@@ -193,7 +193,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = acs_data_plus_zero) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Household Income <br> (2021 USD)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Household Income" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
