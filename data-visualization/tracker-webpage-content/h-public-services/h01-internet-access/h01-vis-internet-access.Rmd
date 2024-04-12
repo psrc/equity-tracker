@@ -262,7 +262,7 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 # printing map
 acs_map
 ```
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Table S2801; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-acs_mapcontent\f-economy\f01-median-income\webpage-html-outputs
 
@@ -348,12 +348,12 @@ y_min = 0
 y_max = 1
 dec = 0
 esttype = "percent"
-color = "purples"
+color = "oranges"
 num_colors = 2
 color_rev = TRUE
-title = "Internet Access"
+title = "Internet Access by Community"
 subtitle = "Percent of households with access to internet"
-source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
+source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -494,7 +494,10 @@ Although the chart contains accurate information, data is only available for the
 df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
-color = "purples"
+color = "blues"
+title = "Internet Access Trend by Community"
+subtitle = "Percent of households with access to internet, in 5-year spans between 2011 and 2021"
+source = "U.S. Census Bureau, 2007-2011, 2011-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
