@@ -279,7 +279,8 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: Prison Policy Initiative analyzing data provided by Washington State Department of Corrections, 2020; U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): Prison Policy Initiative, Number of People in Prison in 2020 from Each Washington Census Tract; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+
 * Note: color ramp uses log scale
 
 ```{r generate tract map html, include=FALSE}
@@ -384,12 +385,12 @@ y_min = 0
 y_max = 800
 dec = 1
 esttype = "number"
-color = "purples"
+color = "oranges"
 num_colors = 5
 color_rev = FALSE
-title = "Imprisonment"
+title = "Imprisonment by Community"
 subtitle = "Rate per 100,000 residents"
-source = paste("Prison Policy Initiative analyzing data provided by Washington State Department of Corrections, 2020", "U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Table B01003", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+source = paste("Prison Policy Initiative, Number of People in Prison in 2020 from Each Washington Census Tract;", "U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -557,6 +558,8 @@ This dataset first became available in 2020 due to a change in Washington State 
 </style>
   
 ```{r line facet - tract, include=FALSE}
+### Placeholder language for future use/updating when multiple years are available 
+
 # Create Facet Line Chart
 
 # set variables
@@ -565,7 +568,11 @@ x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0
 y_max = 800
-color = "purples"
+color = "blues"
+title = "Imprisonment Trend by Community"
+subtitle = "Rate per 100,000 residents, in 5-year spans between 2010 and 2020"
+source = paste("Prison Policy Initiative, Number of People in Prison in 2020 from Each Washington Census Tract;", "U.S. Census Bureau, 2006-2010, 2011-2015, 2016-2020 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002", sep="\n")
+
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,

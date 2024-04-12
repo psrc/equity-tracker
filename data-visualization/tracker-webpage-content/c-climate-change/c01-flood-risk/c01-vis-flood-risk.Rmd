@@ -209,7 +209,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = acs_data_plus_zero)
 
 # set the variable
-var_name <- "Flood Risk"
+var_name <- "Flood Risk <br> Score"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
   paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " score"),
@@ -277,7 +277,7 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: First Street Foundation Flood Model, 2022; U.S. Census Bureau, 2016-2022 American Community Survey 5-Year Estimates, Table B01003; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Sources: First Street Foundation Flood Model, 2022; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 
 
 ```{r generate tract map html, include=FALSE}
@@ -382,12 +382,12 @@ y_min = 0
 y_max = 3
 dec = 1
 esttype = "number"
-color = "purples"
+color = "oranges"
 num_colors = 5
 color_rev = FALSE
-title = "Flood Risk"
+title = "Flood Risk by Community"
 subtitle = "Projected likelihood of flooding in next 30 years, score out of 10"
-source = paste("First Street Foundation Flood Model, 2022", "U.S. Census Bureau, 2016-2022 American Community Survey 5-Year Estimates, Table B01003", "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+source = paste("First Street Foundation Flood Model, 2022;", "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -409,7 +409,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\c-climate-change\static-images
 
 # set folder structure
-file_name <- 'c01-climate-change-column'
+file_name <- 'c01-flood-risk-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -549,6 +549,8 @@ filter <- data_clean_column %>%
 </style>
   
 ```{r line facet - tract, include=FALSE}
+### Placeholder language for future use/updating when multiple years are available 
+
 # Create Facet Line Chart
 
 # set variables
@@ -557,7 +559,10 @@ x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0
 y_max = 3
-color = "purples"
+color = "blues"
+title = "Flood Risk Trend by Community"
+subtitle = "Projected likelihood of flooding in next 30 years, score out of 10, in 5-year spans between 2010 and 2020"
+source = paste("First Street Foundation Flood Model, 2022;", "U.S. Census Bureau, 2006-2010, 2011-2015, 2016-2020 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002", sep="\n")
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -581,7 +586,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\c-climate-change\static-images
 
 # set folder structure
-file_name <- 'c01-climate-change-line'
+file_name <- 'c01-flood-risk-line'
 
 # Line Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
