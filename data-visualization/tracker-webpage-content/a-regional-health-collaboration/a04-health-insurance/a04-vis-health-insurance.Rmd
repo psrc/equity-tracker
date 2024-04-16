@@ -48,8 +48,8 @@ library(webshot2) #static image creation
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+#output_type <- "word"
+output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -282,7 +282,7 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 # printing map
 acs_map
 ```
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Table S2701; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a04-health-insurance\webpage-html-outputs
 
@@ -379,12 +379,12 @@ y_min = .60
 y_max = 1
 dec = 0
 esttype = "percent"
-color = "purples"
+color = "oranges"
 num_colors = 2
 color_rev = TRUE
 title = "Health Insurance Coverage"
-subtitle = ""
-source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
+subtitle = "Percent of persons with health insurance coverage"
+source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -557,7 +557,10 @@ As a region:
 df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
-color = "purples"
+color = "blues"
+title = "Health Insurance Coverage"
+subtitle = "Percent of persons with health insurance coverage, in 5-year spans between 2016 and 2021"
+source = "U.S. Census Bureau, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
