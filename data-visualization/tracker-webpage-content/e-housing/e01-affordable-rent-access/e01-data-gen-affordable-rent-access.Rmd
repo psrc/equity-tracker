@@ -88,7 +88,7 @@ unique(pums_ospi_elmer$data_year)
 
 ```{r indicator specific information, include=FALSE}
 # set indicator information
-indicator_measure <- 'median_household_income'
+indicator_measure <- 'renter_median_hh_income'
 indicator_title <- 'Access to Affordable Rent'
 ```
 
@@ -401,19 +401,19 @@ qplot(focus_type_ord, fact_value,
       colour = county, shape = vulnerability, 
       data = data_clean11, 
       main = paste0(indicator_title, ": 2011")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(21000, 250000)
+                                                        axis.title.y = element_blank()) + ylim(0, 150000)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
       data = data_clean16,
       main = paste0(indicator_title, ": 2016")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(21000, 250000)
+                                                        axis.title.y = element_blank()) + ylim(0, 150000)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
       data = data_clean21, 
       main = paste0(indicator_title, ": 2021")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(21000, 250000)
+                                                        axis.title.y = element_blank()) + ylim(0, 150000)
 ```
 
 ## 3. Calculate affordability with median gross rent

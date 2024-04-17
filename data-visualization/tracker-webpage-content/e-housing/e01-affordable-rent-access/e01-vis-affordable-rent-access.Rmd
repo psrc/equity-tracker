@@ -202,7 +202,7 @@ psrc_palette <- leaflet::colorFactor(palette=psrc_colors$purples_inc,
                                       domain = acs_data_tract$affordability)
 
 # setting the legend/label variables
-var_name <- "Access to <br> Affordable Rent" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Affordability" # the <br> could be adjusted depending on the length/spacing of the name
 
 # labels <- sprintf(
 #   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
@@ -279,7 +279,7 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 acs_map
 ```
 
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): U.S. Census Bureau, 2017-2021 American Community Survey (ACS) 5-Year Estimates, Table B25064; U.S. Census Bureau, 2017-2021 ACS 5-Year Public Use Microdata Sample; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 \
 * The regional affordability threshold is defined as 30% of the regional monthly median household income
 
@@ -369,12 +369,12 @@ y_min = 0
 y_max = 1
 dec = 0
 esttype = "percent"
-color = "purples"
+color = "oranges"
 num_colors = 2
 color_rev = TRUE
-title = "Access to Affordable Rent"
-subtitle = "Number of census tracts that are affordable based on median gross rent and median household income"
-source = "U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles"
+title = "Access to Affordable Rent by Community"
+subtitle = "Percent of census tracts that are affordable"
+source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -413,7 +413,7 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                source = source,
+                                # source = source,
                                 subtitle = subtitle),
                   output_file = paste0(file_name, '.html'),
                   output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
@@ -463,16 +463,16 @@ filter <- data_clean_column %>%
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
          county=="Region")
-# region lep households: 0.2340195	
-# region non-lep households: 0.9404117
-# 0.9404117-0.2340195=0.7063922
+# region lep households: 0.02491874	
+# region non-lep households: 0.65438787
+# 0.65438787-0.02491874=0.6294691
 
 filter <- data_clean_column %>% 
   filter(focus_type=="Older_cat",
          county=="Region")
-# region older households: 0.7573131	
-# region non-older households: 0.9501625
-# 0.9501625-0.7573131=0.1928494
+# region older households: 0.02491874	
+# region non-older households: 0.70964247
+# 0.70964247-0.02491874=0.1928494
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
@@ -489,25 +489,25 @@ filter <- data_clean_column %>%
 
 filter <- data_clean_column %>% 
   filter(focus_type=="Older_cat",
-         county=="Snohomish")
-# King non-older-older households: 0.9575758-0.7474747=	0.2101011
-# Kitsap non-older-older households: 0.95-0.90=	0.05
-# Pierce non-older-older households: 0.9740933-0.8963731=	0.0777202
-# Snohomish non-older-older households: 0.9200000-0.7028571=	0.2171429
+         county=="King")
+# King non-older-older households: 0.76363636-0.01212121=	0.7515152
+# Kitsap non-older-older households: 0.6833333-0.1333333=	0.55
+# Pierce non-older-older households: 0.6165803-0.1036269=	0.5129534
+# Snohomish non-older-older households: 0.54857143-0.01714286=	0.5314286
 ```
 
-1. 3/4: Three out of every four census tracts in the region are affordable for people with a disability
-2. 23%: Share of affordable tracts for households with limited English proficiency, a 71 percentage point difference compared to English-proficient households
-3. 19%: Difference in the share of affordable tracts between households with older adults and other households
+1. 7%: Renters with a disability have access to affordable rent in 7% of the region's census tracts  
+2. 25%: Share of affordable tracts for renting households with limited English proficiency, a 63 percentage point difference compared to English-proficient renting households
+3. 69%: Difference in the share of affordable tracts between renting households with older adults (2%) and other renting households (71%)
 
 \
 
 #### Insights & Analysis
 
-* People of color have slightly lower access to affordable rent in all counties compared to white non-Hispanic, except in Snohomish County where both groups are able to afford rent in 91% of the census tracts
-* This small difference between the people of color and white non-Hispanic groups is in part driven by the high median household incomes for certain Asian households. More information about the way in which the Asian subgroup differs in housing opportunities from other racial subgroups is available in the [Regional Housing Strategy: 2023 Monitoring Report](https://www.psrc.org/media/8253). Within the Asian racial group, there is also great diversity and disparities experienced by different Asian subgroups, as described in a [PSRC blog post](https://www.psrc.org/about-us/media-hub/diversity-asian-and-pacific-islander-experiences) from 2022
+* Renters of color in King County have access to affordable rent in 50% of the census tracts, while white non-Hispanic renters may find 75% of the tracts to be affordable, the largest difference among the counties
+* While the renter affordability gap between people of color and white non-Hispanic people is notable, it is likely even bigger for some racial subgroups (more information about the way in which housing opportunities are different among racial subgroups is available in the [Regional Housing Strategy: 2023 Monitoring Report](https://www.psrc.org/media/8253)
 * For households living below 200% of poverty level, Pierce County is the only county where there is one affordable tract (out of 193, or 1%)
-* The disparity in access to affordable rent between households with older adults and other households is greatest in Snohomish County (22%) and King (21%), and much smaller in Pierce (8%) and Kitsap (5%)
+* The disparity in access to affordable rent between households with older adults and other households is greatest in King County (75%), followed by Kitsap (55%), Snohomish (53%), and Pierce (51%)
 
 \
 \
@@ -529,7 +529,10 @@ filter <- data_clean_column %>%
 df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
-color = "purples"
+color = "blues"
+title = "Access to Affordable Rent Trend by Community"
+subtitle = "Percent of census tracts that are affordable, in 5-year spans between 2011 and 2021"
+source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -571,7 +574,7 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                source = source,
+                                # source = source,
                                 subtitle = subtitle,
                                 width = '420px',
                                 height = '380px',
@@ -612,25 +615,22 @@ if (output_type == "html") {
 # calculate call out information
 filter <- data_clean %>%
   filter(county=="Region",
-         focus_type=="Income_cat",
+         focus_type=="POC_cat",
          data_year!="2016")
-# 2021 low income: 0.001083424
-# 2021 non-low income: 0.956663055
-# 0.956663055-0.001083424=0.9555796
-# 2011 low income: 0.011597938
-# 2011 non-low income: 0.992268041
-# 0.992268041-0.011597938=0.9806701
-# ((0.9555796-0.9806701)/(0.9806701))*100: -2.558506% change
-# low income: 0.011597938-0.001083424=0.01051451
-# non-low income: 0.992268041-0.956663055=0.03560499
-
+# 2011 non-poc-poc: 0.8311856-0.7164948=0.1146908
+# 2021: 0.6673889-0.4875406=0.1798483
 
 filter <- data_clean %>%
   filter(county=="Region",
-         focus_type=="POC_cat",
+         focus_type=="Income_cat",
          data_year!="2016")
-# 2011 non-poc-poc: 0.9922680-0.9626289=0.0296391
-# 2021: 0.9404117-0.9122427=0.028169
+# 2021 low income: 0.0000000
+# 2021 non-low income: 0.9046587
+# 0.9046587-0.0000000=0.9046587
+# 2011 low income: 0.0128866
+# 2011 non-low income: 0.9716495
+# 0.9716495-0.0128866=0.9587629
+# ((0.9046587-0.9587629)/(0.9587629))*100: -5.643126% change
 
 filter <- data_clean %>%
   filter(county=="Region",
@@ -690,8 +690,8 @@ filter <- data_clean %>%
 # Snohomish 2011-2021: 0.8675497-0.7028571=0.1646926
 ```
 
-1. 3%: The share of tracts with affordable rent decreased 3% for both people of color and white non-Hispanic individuals between 2011 and 2021
-2. 1%: Regional access to affordable rent decreased 1% for households in the region living below 200% of federal poverty between 2011 and 2021, from 9 census tracts to 1
+1. 2%: The share of tracts with affordable rent decreased 2% for renters of color, twice as much as for white non-Hispanic renters between 2011 and 2021
+2. 6%: Regional access to affordable rent decreased 6% for households in the region living below 200% of federal poverty between 2011 and 2021, from 10 census tracts to 0
 3. 2x: The disparity in access to affordable rent between households with limited English proficiency and English proficient households doubled (increased 104%) between 2011 and 2021
 
 

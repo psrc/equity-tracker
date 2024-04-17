@@ -202,7 +202,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(tract_data_plus_zero,na.rm = TRUE),90, NA))
 
 # setting the legend/label variables
-var_name <- "Kindergarten <br> Readiness <br> (2022-23)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Kindergarten <br> Readiness" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "School District: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>",
   ospi_data_tract$lea_name, # the code in <> makes the district italic
@@ -256,7 +256,7 @@ ospi_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML c
 # printing map
 ospi_map
 ```
-Sources: Washington Office of Superintendent of Public Instruction (OSPI) 2022-23 Washington Kindergarten Inventory of Developing Skills (WaKIDS); U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): Washington Office of Superintendent of Public Instruction, Report Card WaKids 2022-23 School Year, Washington Kindergarten Inventory of Developing Skills; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
@@ -370,12 +370,12 @@ y_min = 0
 y_max = 1
 dec = 0
 esttype = "percent"
-color = "purples"
+color = "oranges"
 num_colors = 2
 color_rev = TRUE
-title = "Kindergarten Readiness"
+title = "Kindergarten Readiness by Community"
 subtitle = "Percent of students demonstrating readiness in 6 of 6 domains*"
-source = "Washington Office of Superintendent of Public Instruction (OSPI) 2022-23 Washington Kindergarten Inventory of Developing Skills (WaKIDS) <br> No data available for students with limited English proficiency in Kitsap County <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
+source = "Washington Office of Superintendent of Public Instruction, Report Card WaKids 2010-23 School Year, Washington Kindergarten Inventory of Developing Skills <br> No data available for students with limited English proficiency in Kitsap County <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -533,8 +533,10 @@ filter <- data_clean22 %>%
 df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
-color = "purples"
-source = "Washington Office of Superintendent of Public Instruction (OSPI) 2021-23 Washington Kindergarten Inventory of Developing Skills (WaKIDS) <br> Limited data available for students with limited English proficiency in Kitsap County <br> No data available for school year 2020-21 <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
+color = "blues"
+title = "Kindergarten Readiness Trend by Community"
+subtitle = "Percent of students demonstrating readiness in 6 of 6 domains*, in 1-year spans between 2010 and 2022"
+source = "Washington Office of Superintendent of Public Instruction, Report Card WaKids 2010-23 School Year, Washington Kindergarten Inventory of Developing Skills <br> Limited data available for students in Kitsap County <br> No data available for school year 2020-21 <br> *Social-Emotional, Physical, Language, Cognitive, Literacy, and Math"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
