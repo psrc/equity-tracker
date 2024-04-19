@@ -267,7 +267,7 @@ tract_map %<>% htmlwidgets::prependContent(html_fix)
 # print map
 tract_map
 ```
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): Washington State Department of Health, 2016-2020 Washington Tracking Network, Life Expectancy at Birth; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate tract map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\a01-life-expectancy\webpage-html-outputs
 
@@ -347,12 +347,12 @@ y_min = 0
 y_max = 95
 dec = 1
 esttype = "number"
-color = "purples"
+color = "oranges"
 num_colors = 5
 color_rev = FALSE
-title = "Life Expectancy"
+title = "Life Expectancy by Community"
 subtitle = "Number of years a newborn can be expected to live based on current conditions"
-source = paste("Washington Tracking Network, Washington State Department of Health,", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+source = "Washington State Department of Health, 2016-2020 Washington Tracking Network, Life Expectancy at Birth; U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -391,7 +391,7 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                source = source,
+                                # source = source,
                                 subtitle = subtitle),
                   output_file = paste0(file_name, '.html'),
                   output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
@@ -559,7 +559,10 @@ x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 50
 y_max = 95
-color = "purples"
+color = "blues"
+title = "Life Expectancy Trend by Community"
+subtitle = "Number of years a newborn can be expected to live based on current conditions, in 5-year spans between 2010 and 2020"
+source = "Washington State Department of Health, 2006-2010, 2011-2015, 2016-2020 Washington Tracking Network, Life Expectancy at Birth; U.S. Census Bureau, 2006-2010, 2011-2015, 2016-2020 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -601,7 +604,7 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                source = source,
+                                # source = source,
                                 subtitle = subtitle,
                                 width = '420px',
                                 height = '380px',
