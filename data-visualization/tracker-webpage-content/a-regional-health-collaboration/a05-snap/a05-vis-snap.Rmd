@@ -382,7 +382,7 @@ esttype = "percent"
 color = "purples"
 num_colors = 2
 color_rev = TRUE
-title = "SNAP Participation"
+title = "SNAP Participation by Community"
 subtitle = "Percent of households participating in SNAP"
 #source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
@@ -557,7 +557,7 @@ df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
-title = "SNAP Participation"
+title = "SNAP Participation Trend by Community"
 subtitle = "Percent of households participating in SNAP, in 5-year spans between 2011 and 2021"
 #source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 

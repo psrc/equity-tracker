@@ -382,7 +382,7 @@ esttype = "percent"
 color = "oranges"
 num_colors = 2
 color_rev = TRUE
-title = "Health Insurance Coverage"
+title = "Health Insurance by Community"
 subtitle = "Percent of persons with health insurance coverage"
 #source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
@@ -406,7 +406,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
 
 # set folder structure
-file_name <- 'a04-health-insurance-rate-column'
+file_name <- 'a04-health-insurance-column'
 
 # column Chart - html for interactive
 rmarkdown::render("equity-tracker-chart-creator.RMD", 
@@ -558,7 +558,7 @@ df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
-title = "Health Insurance Coverage"
+title = "Health Insurance Trend by Community"
 subtitle = "Percent of persons with health insurance coverage, in 5-year spans between 2016 and 2021"
 #source = "U.S. Census Bureau, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 

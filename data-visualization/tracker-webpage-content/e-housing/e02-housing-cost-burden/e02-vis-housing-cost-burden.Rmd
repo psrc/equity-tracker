@@ -385,7 +385,7 @@ quartile_burden <- calc %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+#source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
 source('equity-tracker-chart-functions.R')
 
 # set folder structure
@@ -415,7 +415,7 @@ num_colors = 2
 color_rev = TRUE
 title = "Renter Cost Burden by Community"
 subtitle = "Percent of renters paying more than 30% of income on housing"
-source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+#source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -454,7 +454,7 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                source = source,
+                                #source = source,
                                 subtitle = subtitle),
                   output_file = paste0(file_name, '.html'),
                   output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
@@ -487,7 +487,7 @@ if (output_type == "html") {
 # column_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
+
 </p> 
 
 #### Data call outs
@@ -579,7 +579,7 @@ fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
 title = "Renter Cost Burden Trend by Community"
 subtitle = "Percent of renters paying more than 30% of income on housing, in 5-year spans between 2011 and 2021"
-source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+#source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -621,7 +621,7 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                source = source,
+                                #source = source,
                                 subtitle = subtitle,
                                 width = '420px',
                                 height = '380px',
@@ -654,7 +654,7 @@ if (output_type == "html") {
 # line_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
+
 </p> 
 
 #### Data call outs
