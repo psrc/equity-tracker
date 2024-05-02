@@ -6,7 +6,7 @@ library(data.table)
 # Functions ----------------------------------------------
 
 # ACS variables
-vars <- c("B02001_001","B02001_002",                                                               # POC / race
+vars <- c("B03002_001","B03002_003",                                                               # POC / race
           "C17002_001","C17002_008",                                                               # income
           "B22010_001","B22010_004","B22010_007",                                                  # disability
           "B11005_001","B11005_002",                                                               # presence of youth in household
@@ -24,18 +24,18 @@ label_quintile <- function(var){
   return(rv)
 }
 
-get_psrc_equity_shares <- function(dyear, entirety){                                                # dyear - last year of 5yr ACS;
-  equity_dims   <- c("poc","income","disability",                                                   # entirety - either "region" or "county"
+get_psrc_equity_shares <- function(dyear, entirety){                                               # dyear - last year of 5yr ACS;
+  equity_dims   <- c("poc","income","disability",                                                  # entirety - either "region" or "county"
                      "youth","older","lep"
                      )
   share_vars <- paste0(equity_dims,"_share")
   quintile_vars <- paste0(equity_dims,"_quintile")
 
-  shares <- get_acs(geography="tract", variables=vars, state=53,                                    # Retrieves the data
+  shares <- get_acs(geography="tract", variables=vars, state=53,                                   # Retrieves the data
                     county=cty_codes$fips, year=dyear, survey="acs5") %>%
     setDT %>% dcast(GEOID ~ variable, value.var="estimate") %>%
-    .[B02001_001 > 0,`:=`(Year=..dyear, county=stringr::str_sub(GEOID,3,5),
-                          poc_share= (B02001_001 - B02001_002) / B02001_001,                       # Calculate share per block group
+    .[B03002_001 > 0,`:=`(Year=..dyear, county=stringr::str_sub(GEOID,3,5),
+                          poc_share= (B03002_001 - B03002_003) / B03002_001,                       # Calculate share per block group
                           income_share= (C17002_001 - C17002_008) / C17002_001,
                           disability_share= (B22010_001-B22010_004-B22010_007) / B22010_001,
                           youth_share= B11005_002 / B11005_001,
@@ -45,28 +45,27 @@ get_psrc_equity_shares <- function(dyear, entirety){                            
     .[, which(grepl("\\d$", colnames(.))):=NULL] %>%
     .[, lapply(.SD, function(x) replace(x, is.nan(x), NA))] %>% .[!is.na(Year)]                    # Replace NaN
   if(entirety=="county"){
-    shares[county=='033', (quintile_vars):=lapply(.SD, label_quintile), .SDcols=share_vars]         # Add county-level quintile value
+    shares[county=='033', (quintile_vars):=lapply(.SD, label_quintile), .SDcols=share_vars]        # Add county-level quintile value
     shares[county=='035', (quintile_vars):=lapply(.SD, label_quintile), .SDcols=share_vars]
     shares[county=='053', (quintile_vars):=lapply(.SD, label_quintile), .SDcols=share_vars]
     shares[county=='061', (quintile_vars):=lapply(.SD, label_quintile), .SDcols=share_vars]
+    shares %<>% .[cty_codes, county:=county, on =.(county=fips)]
   }else if(entirety=="region"){
     shares[, (quintile_vars):=lapply(.SD, label_quintile), .SDcols=share_vars]                     # Add regional quintile value
+    shares[, county:="region"]
   }
   shares %<>% setnames(old=c("GEOID","Year"), new=c("geoid", "data_year")) %>%
-    .[cty_codes, county:=county, on =.(county=fips)]
   return(shares)
 }
 
-write_shares_to_elmer <- function(dyear, entirety){
-  rs <- get_psrc_equity_shares(dyear, entirety)
-
+write_shares_to_elmer <- function(df){
   merge_sql <- paste("MERGE INTO equity.tract_shares WITH (HOLDLOCK) AS target",                   # Create the merge SQL syntax
                      "USING stg.tract_shares AS source",
                      "ON target.data_year = source.data_year AND target.geoid = source.geoid AND target.county = source.county",
-                     "WHEN NOT MATCHED BY TARGET THEN INSERT (", paste0(colnames(rs), collapse=", "),")",
-                     "VALUES (", paste0("source.", colnames(rs), collapse=", "), ");")
+                     "WHEN NOT MATCHED BY TARGET THEN INSERT (", paste0(colnames(tract_shares), collapse=", "),")",
+                     "VALUES (", paste0("source.", colnames(tract_shares), collapse=", "), ");")
 
-  psrcelmer::stage_table(rs, "tract_shares")                                                       # Stage table first
+  psrcelmer::stage_table(df, "tract_shares")                                                       # Stage table first
   psrcelmer::sql_execute(sql=merge_sql)                                                            # -- then merge
   psrcelmer::sql_execute(sql=paste("DROP TABLE stg.tract_shares"))                                 # Clean up
   return(invisible(NULL))                                                                          # No return object for this action
@@ -80,4 +79,7 @@ write_shares_to_elmer <- function(dyear, entirety){
 # fwrite(equity_shares, filename)
 
 # Write to Elmer
-write_shares_to_elmer(2019, "region")
+args <- expand.grid(years= c(2022), entirety=c("county","region"))
+tract_shares <- list()
+tract_shares <- mapply(get_psrc_equity_shares, args$years, args$entirety, SIMPLIFY = FALSE) %>% data.table::rbindlist()
+write_shares_to_elmer(tract_shares)
