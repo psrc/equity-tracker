@@ -62,6 +62,9 @@ write_shares_to_elmer <- function(df){
   merge_sql <- paste("MERGE INTO equity.tract_shares WITH (HOLDLOCK) AS target",                   # Create the merge SQL syntax
                      "USING stg.tract_shares AS source",
                      "ON target.data_year = source.data_year AND target.geoid = source.geoid AND target.county = source.county",
+                     "WHEN MATCHED THEN UPDATE SET",
+                     paste0(paste0(share_vars,"=source.", share_vars, collapse=", "), ", ",
+                            paste0(quintile_vars,"=source.", quintile_vars, collapse=", ")),
                      "WHEN NOT MATCHED BY TARGET THEN INSERT (", paste0(colnames(tract_shares), collapse=", "),")",
                      "VALUES (", paste0("source.", colnames(tract_shares), collapse=", "), ");")
 
