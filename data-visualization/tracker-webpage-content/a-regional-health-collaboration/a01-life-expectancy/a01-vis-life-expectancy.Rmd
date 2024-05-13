@@ -330,8 +330,8 @@ by_county <- data %>%
 
 ```{r load rda for chart, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R')
+#source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R')
 
 # set folder structure
 rda <- 'a01-life-expectancy-data.rda'
