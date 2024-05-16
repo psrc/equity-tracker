@@ -390,12 +390,12 @@ y_min = 0
 y_max = 100
 dec = 1
 esttype = "number"
-color = "purples"
+color = "oranges"
 num_colors = 5
 color_rev = FALSE
 title = "Traffic Related Deaths and Serious Injuries"
 subtitle = "Rate per 100,000 residents"
-source = paste("Washington Traffic Safety Commission", "U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Public Use Microdata Sample (PUMS)", sep="\n")
+#source = paste("Washington Traffic Safety Commission; U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002", sep="\n")
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -435,7 +435,7 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                source = source,
+                                #source = source,
                                 subtitle = subtitle),
                   output_file = paste0(file_name, '.html'),
                   output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
@@ -468,7 +468,7 @@ if (output_type == "html") {
 # column_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
+
 </p> 
 
 ```{r column facet calculations - tract, include=FALSE, eval=FALSE}
@@ -635,7 +635,10 @@ x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0
 y_max = 100
-color = "purples"
+color = "blues"
+title = "Traffic Related Deaths and Serious Injuries"
+subtitle = "Rate per 100,000 residents, in 5-year spans between 2011 and 2021"
+#source = "Washington Traffic Safety Commission; U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -677,7 +680,7 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                source = source,
+                                #source = source,
                                 subtitle = subtitle,
                                 width = '420px',
                                 height = '380px',
@@ -710,7 +713,7 @@ if (output_type == "html") {
 # line_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-`r source`
+
 </p> 
 
 ```{r line facet calculations - tract, include=FALSE, eval=FALSE}
