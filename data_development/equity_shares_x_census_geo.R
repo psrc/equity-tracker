@@ -70,7 +70,7 @@ get_psrc_equity_shares <- function(dyear, entirety){                            
     shares %<>% .[cty_codes, county:=county, on =.(county=fips)]
   }else if(entirety=="region"){
     shares[, (dimvar_df$quintile_vars):=lapply(.SD, label_quintile), .SDcols=dimvar_df$share_vars] # Add regional quintile value
-    shares[, county:="region"]
+    shares[, county:="Region"]
   }
   shares %<>% setnames(old=c("GEOID","Year"), new=c("geoid", "data_year")) %>%
   return(shares)
