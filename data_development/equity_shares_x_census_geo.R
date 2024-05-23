@@ -36,8 +36,8 @@ cty_codes <- data.table( fips=c("033","035","053","061"),
 
 label_quintile <- function(var){
   breakpoints <- unique(quantile(var, probs=0:5/5, na.rm=TRUE))                                    # Unique so all-zero quintiles act as one bin
-  rv <- cut(var, breaks=unique(breakpoints), labels=1:(length(breakpoints)-1),
-    include.lowest=TRUE, right=TRUE)
+  rv <- cut(var, breaks=unique(breakpoints), labels=(6 - length(breakpoints)):5,                   # -- labels anchor the higher quintiles for consistency
+    include.lowest=TRUE, right=TRUE)                                                               # -- i.e. when 1 & 2 are combined, labels will be 2:5
   return(rv)
 }
 
