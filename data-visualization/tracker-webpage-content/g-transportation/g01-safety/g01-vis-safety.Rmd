@@ -627,7 +627,7 @@ df2 <- df %>%
 # Create Facet Line Chart
 
 # set variables
-df = dplyr::filter(df2)
+df = df2
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0
