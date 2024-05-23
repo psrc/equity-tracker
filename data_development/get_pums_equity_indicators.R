@@ -109,7 +109,7 @@ format_for_elmer <- function(x,y){
   if(TRUE %in% grepl("median",colnames(dt))){                                                       # Either median or share (count is dropped)
     dt[,`:=`(fact_type="median")]
   }else if(TRUE %in% grepl("count",colnames(dt))){
-    dt[, fact_type:="share"]
+    dt[, fact_type:="share of population"]
     dt[, grep("^count$|^count_moe$", colnames(dt)):=NULL]
   }
   setnames(dt, c("var_name","var_value"), c("focus_type","focus_attribute"))
@@ -180,7 +180,10 @@ pums_efa_singleyear <- function(dyear){
 
   hh_df <- get_psrc_pums(span=5, dyear, "h", hvars, dir=pums_rds)                                  # Retrieve household data
   if("ACCESS" %in% colnames(hh_df)){hh_df %<>% rename("ACCESSINET"="ACCESS")}                      # Variable changed names w/ 2020 data
-  if("RMS" %in% colnames(hh_df)){hh_df %<>% rename("RMSP"="RMS")}                                  # Variable changed names w/ 2012 data
+  if("RMS" %in% colnames(hh_df)){
+    hh_df %<>% mutate(RMS=as.integer(stringr::str_extract(as.character(RMS),"^\\d+")))             # Convert from factor to value
+    hh_df %<>% rename("RMSP"="RMS")                                                                # Variable changed names w/ 2012 data
+    }
   hh_df %<>% real_dollars(refyear) %>% add_efa_vars() %>% mutate(
                poverty=Income_cat,                                                                 # Identical to Income_cat
                housing_burden=factor(case_when(                                                    # Define the housing cost burden subject variable
