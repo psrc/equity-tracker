@@ -216,7 +216,7 @@ data_tract<-data_tract%>%
                 log10(1+data_tract$estimate)))
 
 # set the variable
-var_name <- "Traffic Related Deaths and <br> Serious Injury <br> Rate per 100,000 - 2021*"
+var_name <- "Traffic Related Deaths and <br> Serious Injury (per 100,000)*"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
   paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=1))), " rate"),
