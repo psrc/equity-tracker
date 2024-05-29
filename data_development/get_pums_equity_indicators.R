@@ -43,7 +43,11 @@ hvars <- c(
 
 # 2. Setup: List and define Equity Focus Area (EFA) variables -------
 
-efa_vars <- c("POC_cat", "Income_cat", "Disability_cat", "Youth_cat", "Older_cat", "LEP_cat")
+which_efa_vars <- function(dyear){
+  efa_vars <- c("POC_cat", "Income_cat", "Disability_cat", "Youth_cat", "Older_cat", "LEP_cat")
+  efa_vars %<>% .[! efa_vars %in% "Disability_cat"]
+  return(efa_vars)
+}
 
 # Create the EFA variables from available PUMS variables
 add_efa_vars <- function(so){
@@ -80,6 +84,7 @@ add_efa_vars <- function(so){
 
 # Specific to counts--subject variable is a categorical variable (i.e. group_var)
 bulk_count_efa <- function(so, analysis_var){
+  efa_vars <- which_efa_vars(unique(so[[7]]$DATA_YEAR))
   reglist <- efa_vars %>% lapply(FUN=function(x) c(x, analysis_var))
   ctylist <- efa_vars %>% lapply(FUN=function(x) c(x, "COUNTY", analysis_var))
   rs      <- list()
@@ -94,6 +99,7 @@ bulk_count_efa <- function(so, analysis_var){
 
 # For sums, medians or means--statistic is summarizing the subject variable (i.e. stat_var)
 bulk_stat_efa <- function(so, stat_type, analysis_var){
+  efa_vars <- which_efa_vars(unique(so[[7]]$DATA_YEAR))
   ctylist  <- efa_vars %>% lapply(FUN=function(x) c(x, "COUNTY"))
   rs       <- list()
   rs[[1]]  <- pums_bulk_stat(so, stat_type, analysis_var, efa_vars, incl_na=FALSE)                 # incl_na=FALSE option for accurate within-subgroup shares
@@ -163,19 +169,18 @@ pums_efa_singleyear <- function(dyear){
   if(dyear < 2012){
     pvars %<>% .[! pvars %in% c("DIS", "PRIVCOV", "PUBCOV")]
     hvars %<>% .[! hvars %in% "HDIS"]
-    efa_vars %<>% .[! efa_vars %in% "Disability_cat"]
   }
 
   pp_df <- get_psrc_pums(span=5, dyear, "p", pvars, dir=pums_rds)                                  # Retrieve persons data
   pp_df %<>% add_efa_vars() %>% mutate(
                edu_simp = factor(case_when(AGEP<25                       ~ NA_character_,          # Define the educational attainment subject variable
-                                    grepl("(Bach|Mast|Prof|Doct)", SCHL) ~ "Bachelor's degree or higher",
-                                    !is.na(SCHL)                         ~ "Less than a Bachelor's degree")))
+                  grepl("(Bach|Mast|Prof|Doct)", SCHL) ~ "Bachelor's degree or higher",
+                  !is.na(SCHL)                         ~ "Less than a Bachelor's degree")))
   if(dyear > 2011){
     pp_df %<>% mutate(
                healthcov = factor(case_when(AGEP<25                      ~ NA_character_,          # Define the health insurance coverage subject variable
-                                    grepl("^With ", PRIVCOV)|grepl("^With ", PUBCOV) ~ "With health insurance",
-                                    grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
+                  grepl("^With ", PRIVCOV)|grepl("^With ", PUBCOV) ~ "With health insurance",
+                  grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
   }
 
   hh_df <- get_psrc_pums(span=5, dyear, "h", hvars, dir=pums_rds)                                  # Retrieve household data
@@ -202,20 +207,17 @@ pums_efa_singleyear <- function(dyear){
                                              "Less than 30 percent")),
                renter_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,          # Define the crowding subject variable
                                            NP/RMSP <= 1   & OWN_RENT=="Rented" ~ "One person per room or less",
-                                           NP/RMSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per room",
-                                           NP/RMSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per room"),
-                                 levels=c("More than 1.5 persons per room",
-                                          "Between 1 and 1.5 person(s) per room",
+                                           NP/RMSP  > 1 & OWN_RENT=="Rented" ~ "More than 1 person per room"),
+                                 levels=c("More than 1 person per room",
                                           "One person per room or less")),
                owner_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,          # Define the crowding subject variable
                                            NP/RMSP <= 1   & OWN_RENT=="Owned" ~ "One person per room or less",
-                                           NP/RMSP <= 1.5 & OWN_RENT=="Owned" ~ "Between 1 and 1.5 person(s) per room",
-                                           NP/RMSP  > 1.5 & OWN_RENT=="Owned" ~ "More than 1.5 persons per room"),
-                                 levels=c("More than 1.5 persons per room",
-                                          "Between 1 and 1.5 person(s) per room",
+                                           NP/RMSP  > 1 & OWN_RENT=="Owned" ~ "More than 1 person per room"),
+                                 levels=c("More than 1 person per room",
                                           "One person per room or less")),
                renter_median_hh_income = case_when(OWN_RENT=="Rented" ~ !!as.name(paste0("HINCP",refyear)),
-                                                   TRUE ~ NA_real_))
+                                                   TRUE ~ NA_real_)
+  )
   if(dyear > 2016){
     hh_df %<>% mutate(
                internet = factor(case_when(grepl("^Yes", ACCESSINET) ~ "With internet access", # Define the internet access subject variable; began in 2013
@@ -248,7 +250,7 @@ pums_efa_singleyear <- function(dyear){
 pums_efa_multiyear <- function(dyears){                                                            # -- verify in PUMS data dictionaries for each survey
   refyear <- max(dyears)
   rs_master <- lapply(dyears, pums_efa_singleyear) %>%
-    as.data.frame(do.call(rbind, lapply(., as.vector))) %>% setDT() %>% rbindlist()                # Combine matching indicator tables across years
+    as.data.frame(do.call(rbind, lapply(., as.vector)))                                            # Combine matching indicator tables across years
   return(rs_master)                                                                                # Return the object
 }
 
