@@ -192,7 +192,7 @@ map.zoom<- 8.5
 
 # check maximum value of data
 # summary(acs_data$estimate) # max is 95.39, so rounding to 100 makes sense
-max_value <- 3.5 # this value will be the max value in the legend
+max_value <- 8 # this value will be the max value in the legend
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
@@ -337,14 +337,14 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 0.08
+y_max = 0.25
 dec = 0
 esttype = "percent"
 color = "oranges"
 num_colors = 2
 color_rev = TRUE
 title = "Renter Overcrowding by Community"
-subtitle = "Percent of households with more than 1.5 person(s) per room"
+subtitle = "Percent of households with more than 1 person per room"
 source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -473,7 +473,7 @@ x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
 title = "Renter Overcrowding Trend by Community"
-subtitle = "Percent of households with more than 1.5 person(s) per room, in 5-year spans between 2011 and 2021"
+subtitle = "Percent of households with more than 1 person per room, in 5-year spans between 2011 and 2021"
 source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,

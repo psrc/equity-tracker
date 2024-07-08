@@ -88,7 +88,7 @@ unique(pums_ospi_elmer$data_year)
 ```{r indicator specific information, include=FALSE}
 # set indicator information
 indicator_measure <- 'renter_crowding'
-indicator_title <- 'Renter Overcrowding (>1 person/bedroom)'
+indicator_title <- 'Renter Overcrowding (>1 person/room)'
 ```
 
 ## 1. Explore data
@@ -303,7 +303,8 @@ data_clean <- data_clean %>%
 # indicator specific re-ordering - median income is N/A so this step is unnecessary
 data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
                                     levels = c("One person per room or less",
-                                               "More than 1 person per room"))
+                                               "Between 1 and 1.5 person(s) per room",
+                                               "More than 1.5 persons per room"))
 
 # data_clean2 <- data_clean %>% 
 #   filter(indicator_attribute=="Between 1 and 1.5 person(s) per room" |
@@ -425,7 +426,7 @@ head(data_clean) # make sure this is the correct data set
 
 # make any additional edits 
 data_clean <- data_clean %>% 
-  filter(indicator_attribute=="More than 1 person per room") %>% 
+  filter(indicator_attribute=="More than 1.5 persons per room") %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
   mutate(fact_value=round(fact_value, digits=2)) #round percentage to whole percentage - retain consistent name
 ```
@@ -537,42 +538,6 @@ acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
   rename(estimate_dec='estimate_perc_overcrowding_rent') %>%
   mutate(estimate=estimate_dec*100) %>% 
   dplyr::select(GEOID,estimate,reliability)
-
-# ----------------
-# # for combined owners and renters
-# # use the moe_sum function from tidycensus
-# acs_data_group <- acs_data_filter %>% 
-#   dplyr::group_by(GEOID, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
-#   dplyr::summarise(estimate=sum(estimate), 
-#                    moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-#   dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
-# 
-# # pivot data to calculate percentage by census tract
-# acs_data_pivot<- acs_data_group %>%   
-#   pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-# 
-# # calculating percentage/share of population per tract instead of integer
-# acs_data_calc <- acs_data_pivot %>%
-#   mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total))
-# 
-# # calculate moes
-# acs_data_moes <- acs_data_calc %>%
-#   rowwise() %>% 
-#   dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
-#                                              moe = moe_Overcrowding))
-# acs_data_final<- acs_data_moes %>% 
-#   dplyr::filter(!is.na(estimate_Overcrowding))
-# 
-# # calculate reliability values
-# acs_data_reliability <- reliability_calcs(acs_data_final,
-#                                           estimate='estimate_Overcrowding',
-#                                           moe='moe_Overcrowding')
-# 
-# # rename and simplify
-# acs_data <- acs_data_reliability %>% #just interested in renters for now
-#   rename(estimate_dec='estimate_perc_overcrowding') %>%
-#   mutate(estimate=estimate_dec*100) %>% 
-#   dplyr::select(GEOID,estimate,reliability)
 ```
 
 ```{r acs data - place level, include=FALSE, eval=FALSE}
@@ -591,8 +556,8 @@ acs_data_filter <- acs_data %>%
   mutate(per_room = factor(
     case_when(variable == "B25014_002" ~ "Total",
               variable == "B25014_008" ~ "Total",
-              grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", label) ~ "Less than or equal to 1.5 persons per bedroom",
-              grepl("1.51 to 2.00|2.01 or more", label) ~ "Overcrowding",
+              grepl("0.50 or less|0.51 to 1.00", label) ~ "Less than or equal to 1 person per bedroom",
+              grepl("1.01 to 1.50|1.51 to 2.00|2.01 or more", label) ~ "Overcrowding",
               TRUE ~ as.character(label)))) %>%
   mutate(type = factor(
     case_when(grepl("B25014_002|B25014_003|B25014_004|B25014_005|B25014_006|B25014_007", variable) ~ "Owner",
@@ -608,7 +573,7 @@ acs_data_group <- acs_data_filter %>%
   dplyr::group_by(GEOID, per_room, type) %>% #add 'type' if want to distinguish b/t Owners and Renters
   dplyr::summarise(estimate=sum(estimate), 
                    moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-  dplyr::filter(per_room != "Less than or equal to 1.5 persons per bedroom")
+  dplyr::filter(per_room != "Less than or equal to 1 person per bedroom")
 
 # pivot data to calculate percentage by census tract
 acs_data_pivot<- acs_data_group %>%   
@@ -659,40 +624,40 @@ acs_data_place <- merge(places.lyr, acs_data,
 # write_xlsx(acs_data_place,"T:/2023November/Mary/EquityTracker/temp/overcrowding_renters_acs_place.xlsx")
 
 # ----------------
-# # for combined owners and renters
-# # use the moe_sum function from tidycensus
-# acs_data_group <- acs_data_filter %>% 
-#   dplyr::group_by(GEOID, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
-#   dplyr::summarise(estimate=sum(estimate), 
-#                    moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-#   dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
-# 
-# # pivot data to calculate percentage by census tract
-# acs_data_pivot<- acs_data_group %>%   
-#   pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-# 
-# # calculating percentage/share of population per tract instead of integer
-# acs_data_calc <- acs_data_pivot %>%
-#   mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total))
-# 
-# # calculate moes
-# acs_data_moes <- acs_data_calc %>%
-#   rowwise() %>% 
-#   dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
-#                                              moe = moe_Overcrowding))
-# acs_data_final<- acs_data_moes %>% 
-#   dplyr::filter(!is.na(estimate_Overcrowding))
-# 
-# # calculate reliability values
-# acs_data_reliability <- reliability_calcs(acs_data_final,
-#                                           estimate='estimate_Overcrowding',
-#                                           moe='moe_Overcrowding')
-# 
-# # rename and simplify
-# acs_data <- acs_data_reliability %>% #just interested in renters for now
-#   rename(estimate_dec='estimate_perc_overcrowding') %>%
-#   mutate(estimate=estimate_dec*100) %>% 
-#   dplyr::select(GEOID,estimate,reliability)
+# for combined owners and renters
+# use the moe_sum function from tidycensus
+acs_data_group <- acs_data_filter %>% 
+  dplyr::group_by(GEOID, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
+  dplyr::summarise(estimate=sum(estimate), 
+                   moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
+  dplyr::filter(per_bedroom != "Less than or equal to 1 person per bedroom")
+
+# pivot data to calculate percentage by census tract
+acs_data_pivot<- acs_data_group %>%   
+  pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
+
+# calculating percentage/share of population per tract instead of integer
+acs_data_calc <- acs_data_pivot %>%
+  mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total))
+
+# calculate moes
+acs_data_moes <- acs_data_calc %>%
+  rowwise() %>% 
+  dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
+                                             moe = moe_Overcrowding))
+acs_data_final<- acs_data_moes %>% 
+  dplyr::filter(!is.na(estimate_Overcrowding))
+
+# calculate reliability values
+acs_data_reliability <- reliability_calcs(acs_data_final,
+                                          estimate='estimate_Overcrowding',
+                                          moe='moe_Overcrowding')
+
+# rename and simplify
+acs_data <- acs_data_reliability %>% #just interested in renters for now
+  rename(estimate_dec='estimate_perc_overcrowding') %>%
+  mutate(estimate=estimate_dec*100) %>% 
+  dplyr::select(GEOID,estimate,reliability)
 ```
 
 ```{r acs data - county level}
@@ -760,9 +725,9 @@ acs_data_final<- acs_data_moes %>%
 acs_data_reliability_rent <- reliability_calcs(acs_data_final,
                                                estimate='estimate_Overcrowding_Renter',
                                                moe='moe_rent')
-acs_data_reliability_own <- reliability_calcs(acs_data_final,
-                                              estimate='estimate_Overcrowding_Owner',
-                                              moe='moe_own')
+# acs_data_reliability_own <- reliability_calcs(acs_data_final,
+#                                               estimate='estimate_Overcrowding_Owner',
+#                                               moe='moe_own')
 
 # rename and simplify
 acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
@@ -830,19 +795,19 @@ crowd_2021 <- get_psrc_pums(span = 5,
 
 # calculate NP/BDSP
 crowding <- crowd_2021 %>% 
-  dplyr::mutate(crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_, 
-                                            NP/RMSP <= 1 ~ "One person per room or less",
-                                            NP/RMSP <= 1.5 ~ "Between 1 and 1.5 person(s) per room",
-                                            NP/RMSP  > 1.5 ~ "More than 1.5 persons per room"),
-                                  levels=c("More than 1.5 persons per bedroom",
-                                           "Between 1 and 1.5 person(s) per bedroom",
-                                           "One person per bedroom or less")),
+  dplyr::mutate(#crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,
+                                  #           NP/RMSP <= 1 ~ "One person per room or less",
+                                  #           NP/RMSP <= 1.5 ~ "Between 1 and 1.5 person(s) per room",
+                                  #           NP/RMSP  > 1.5 ~ "More than 1.5 persons per room"),
+                                  # levels=c("More than 1.5 persons per bedroom",
+                                  #          "Between 1 and 1.5 person(s) per bedroom",
+                                  #          "One person per bedroom or less")),
                 rent_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_, 
                                                  NP/RMSP <= 1   & OWN_RENT=="Rented" ~ "One person per room or less",
-                                                 NP/RMSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per room",
-                                                 NP/RMSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per room"),
-                                       levels=c("More than 1.5 persons per room",
-                                                "Between 1 and 1.5 person(s) per room",
+                                                 # NP/RMSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per room",
+                                                 NP/RMSP  > 1 & OWN_RENT=="Rented" ~ "More than 1 person per room"),
+                                       levels=c("More than 1 person per room",
+                                                # "Between 1 and 1.5 person(s) per room",
                                                 "One person per room or less")))
 
 # calculate count statistics based on adjusted variables
@@ -861,7 +826,7 @@ totals <- dt_21 %>%
   dplyr::group_by(COUNTY) %>% 
   dplyr::mutate(geo_total_rent=sum(count),
                 share_rent=count/geo_total_rent) %>% 
-  dplyr::filter(rent_crowding=="More than 1.5 persons per room") %>% 
+  dplyr::filter(rent_crowding=="More than 1 person per room") %>% 
   dplyr::select(-reliability, - share, -share_moe)
 
 
@@ -958,8 +923,8 @@ acs_data_filter <- acs_data %>%
   mutate(per_bedroom = factor(
     case_when(variable == "B25014_002" ~ "Total",
               variable == "B25014_008" ~ "Total",
-              grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", label) ~ "Less than or equal to 1.5 persons per bedroom",
-              grepl("1.51 to 2.00|2.01 or more", label) ~ "Overcrowding",
+              grepl("0.50 or less|0.51 to 1.00", label) ~ "Less than or equal to 1 person per bedroom",
+              grepl("1.01 to 1.50|1.51 to 2.00|2.01 or more", label) ~ "Overcrowding",
               TRUE ~ as.character(label)))) %>%
   mutate(type = factor(
     case_when(grepl("B25014_002|B25014_003|B25014_004|B25014_005|B25014_006|B25014_007", variable) ~ "Owner",
