@@ -69,6 +69,21 @@ ospi_efa_to_elmer <- function(rs_kready){
   return(invisible(NULL))                                                                          # (Return object unapplicable)
 }
 
+# Identify URL  -----------------------------------------------------
+
+get_wadata_ospi_url <- function(year){
+  schoolyr_txt <- paste0(year-1, "-",year %% 100)
+  wadata_search_url <- paste0("https://data.wa.gov/browse?q=Report%20Card%20WaKids%20",
+                              schoolyr_txt,
+                              "%20School%20Year&sortBy=relevance&limitTo=datasets")
+  return_term <- paste0("https://data.wa.gov/education/Report-Card-WaKids-", schoolyr_txt,"-School-Year/")
+  # Get first search result
+  fetched <- read_html(wadata_search_url)
+  links <- fetched %>% html_elements("a") %>% html_attr("href")
+  singleyear_code <- grep("https://data.wa.gov/education/Report-Card-WaKids-", links, value=TRUE)[1] %>% stringr::str_replace(return_term,"")
+  api_url <- paste0("https://data.wa.gov/resource", singleyear_code, ".json")
+  return(api_url)
+}
 
 # Main function -----------------------------------------------------
 
@@ -120,10 +135,10 @@ get_k_readiness <- function(URL){
 
 # Example -----------------------------------------------------------
 ## Single year
-# url <- "https://data.wa.gov/resource/vumg-9sgs.json"
+# url <- get_wadata_ospi_url(2024)
 # kready <- get_k_readiness(url)
 
-# All years
+## All years
 # urlvector <- c("https://data.wa.gov/resource/vumg-9sgs.json",  # 2023-24
 #                "https://data.wa.gov/resource/3ji8-ykgj.json",  # 2022-23
 #                "https://data.wa.gov/resource/rzgf-vi75.json",  # 2021-22
@@ -139,4 +154,6 @@ get_k_readiness <- function(URL){
 #                "https://data.wa.gov/resource/59cw-kpf6.json")  # 2011-12 first year available via API)
 # kready <- list()
 # kready <- lapply(urlvector, get_k_readiness) %>% rbindlist(use.names=TRUE)
+
+## Merge to Elmer
 # ospi_efa_to_elmer(kready)
