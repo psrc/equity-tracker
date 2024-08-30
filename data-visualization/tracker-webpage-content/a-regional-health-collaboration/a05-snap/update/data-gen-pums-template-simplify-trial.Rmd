@@ -351,53 +351,53 @@ These charts also help to confirm that the shares add up to 100% - only relevant
 \
 ```{r}
 # the years below reflect the years that are available from unique(data_year)
-just_region_11 <- data_clean %>% 
+just_region_12 <- data_clean %>% 
   dplyr::filter(county %in% "Region") %>%
   dplyr::filter(data_year=="2012") %>% 
   dplyr::arrange(focus_attribute_ord)
-just_region_16 <- data_clean %>% 
+just_region_17 <- data_clean %>% 
   dplyr::filter(county %in% "Region") %>% 
   dplyr::filter(data_year=="2017")%>% 
   dplyr::arrange(focus_attribute_ord)
-just_region_21 <- data_clean %>% 
+just_region_22 <- data_clean %>% 
   dplyr::filter(county %in% "Region") %>% 
   dplyr::filter(data_year=="2022")%>% 
   dplyr::arrange(focus_attribute_ord)
 
 # check est type - make sure it corresponds to your indicator (percent, currency, or number)
-facet_chart <- static_facet_column_chart(t=just_region_11,
+facet_chart <- static_facet_column_chart(t=just_region_12,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
-                                         title = paste0(indicator_title, ": Region (2011)"),
+                                         title = paste0(indicator_title, ": Region (2012)"),
                                          subtitle = "by equity focus group",
                                          source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
 
 facet_chart
 
-facet_chart <- static_facet_column_chart(t=just_region_16,
+facet_chart <- static_facet_column_chart(t=just_region_17,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
-                                         title = paste0(indicator_title, ": Region (2016)"),
+                                         title = paste0(indicator_title, ": Region (2017)"),
                                          subtitle = "by equity focus group",
                                          source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
 facet_chart
 
-facet_chart <- static_facet_column_chart(t=just_region_21,
+facet_chart <- static_facet_column_chart(t=just_region_22,
                                          x="data_year", y="fact_value",
                                          fill="vulnerability", facet="focus_type_ord",
-                                         est = "currency",
+                                         est = "percent",
                                          scales= "fixed",
                                          color = "psrc_pairs", 
                                          ncol=3,
-                                         title = paste0(indicator_title, ": Region (2021)"),
+                                         title = paste0(indicator_title, ": Region (2022)"),
                                          subtitle = "by equity focus group",
                                          source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
 
@@ -419,33 +419,33 @@ This section isn't relevant for this specific indicator because there aren't uni
 #### By Year
 ```{r}
 # separating by year ----
-data_clean11 <- data_clean %>% 
-  filter(data_year==2011)
-data_clean16 <- data_clean %>% 
-  filter(data_year==2016)
-data_clean21 <- data_clean %>% 
-  filter(data_year==2021)
+data_clean12 <- data_clean %>% 
+  filter(data_year==2012)
+data_clean17 <- data_clean %>% 
+  filter(data_year==2017)
+data_clean22 <- data_clean %>% 
+  filter(data_year==2022)
 ```
 
 ```{r}
 # plot data, adjust y limits based on data set
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
-      data = data_clean11, 
-      main = paste0(indicator_title, ": 2011")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+      data = data_clean12, 
+      main = paste0(indicator_title, ": 2012")) + theme(axis.title.x = element_blank(),
+                                                        axis.title.y = element_blank()) + ylim(0, 0.5)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
-      data = data_clean16,
-      main = paste0(indicator_title, ": 2016")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+      data = data_clean17,
+      main = paste0(indicator_title, ": 2017")) + theme(axis.title.x = element_blank(),
+                                                        axis.title.y = element_blank()) + ylim(0, 0.5)
 
 qplot(focus_type_ord, fact_value, 
       colour = county, shape = vulnerability, 
-      data = data_clean21, 
-      main = paste0(indicator_title, ": 2021")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 150000)
+      data = data_clean22, 
+      main = paste0(indicator_title, ": 2022")) + theme(axis.title.x = element_blank(),
+                                                        axis.title.y = element_blank()) + ylim(0, 0.5)
 ```
 
 # **CHART .rda**
@@ -455,7 +455,7 @@ head(data_clean) # make sure this is the correct data set
 # make any additional edits 
 data_clean <- data_clean %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=-2)) #round median income value to hundreds and set retain consistent name - if you are not working with $ you will need to change this to the correct number of digits you would like to round to (for example, if using decimals, you may want to set digits=2 or if you using whole numbers you may want to set digits=0)
+  mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds and set retain consistent name - if you are not working with $ you will need to change this to the correct number of digits you would like to round to (for example, if using decimals, you may want to set digits=2 or if you using whole numbers you may want to set digits=0)
 
 data_clean #check to make sure the rounding worked for your indicator - if not will need to go back to generate data set in chunk around line 245
 ```
