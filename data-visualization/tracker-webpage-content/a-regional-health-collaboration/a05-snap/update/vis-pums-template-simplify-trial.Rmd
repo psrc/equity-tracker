@@ -336,77 +336,51 @@ if (output_type == "html") {
 ```{r column facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
+  filter(focus_type=="Disability_cat")
+# Region: 0.21 vs. 0.06
+# with disability has higher coverage across all counties/region
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="LEP_cat")
+# King lep households: .22	
+# King non-lep households: .07
+
+filter <- data_clean_column %>% 
   filter(county=="Region",
          focus_type=="Income_cat")
-
 # region low income households: .32	
 # region non-low income households: .04
 # .32-.04=.28
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         county=="Region")
-# region lep households: .22	
-# region non-lep households: .09
-
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         vulnerability=="high vulnerability")
-
-# region lep households: .22	
-# king lep households: .23
-# kitsap lep households: .09
-# pierce lep households: .23
-# snohomish lep households: .19
+  filter(county=="Region",
+         focus_type=="LEP_cat")
+# region non-lep:0.09
+# region lep: 0.21
+# 0.21/0.09=1.857143
 
 filter <- data_clean_column %>% 
   filter(county=="Region",
-         focus_type=="Youth_cat")
-
-# region youth households: .13	
-# region non-youth households: .08
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="POC_cat")
-# region poc: .13
-# region non-poc: .07
-
-# snohomish poc: .11
-# snohomish non-poc: .08
-
-# king poc: .13
-# king non-poc: .06
-
-# kitsap poc: .15
-# kitsap non-poc: .09
-
-# pierce poc: .17
-# pierce non-poc: .10
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="Disability_cat")
-# with disability has higher coverage across all counties/region
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="Income_cat",
-         vulnerability=="high vulnerability") %>% 
-  dplyr::arrange(desc(fact_value))
-
+         focus_type=="POC_cat")
+# region non-poc:0.07
+# region poc: 0.13
+# 0.13/0.07=2.3333
 ```
 As a region:
 
 1. 3.5X: People with a disability are 3.5 times more likely to participate in SNAP 
-2. 2X: Limited English proficiency households are twice as likely to participate in SNAP
-3. 2X: People of color are twice as likely to participate in SNAP
 
 \
 
 #### Insights & Analysis
 
-* In King County, limited English proficiency households are three times as likely to participate in SNAP
-* As a region, 32% of low income households participate in SNAP participation leaving room for increased participation 
-* As a region, 4% of non-low income households participate in SNAP which likely due to the broad question asked if an individual or household member participated in SNAP in the past 12 months
+* In King County, households with limited English proficiency are more than three times as likely to participate in SNAP.
+* As a region, 32% of households with lower income participate in SNAP, leaving room for increased participation. 
+* SNAP uses an income threshold of 200% of the federal poverty level for qualification, the same definition used here to identify households with lower income.
+* 4% of non-lower income households in the region reported participating in SNAP, which is likely a data anomaly due to how the Census Bureau asks about household income.
+* Households with limited English proficiency are over twice as likely to participate in SNAP.
+* People of color are almost twice as likely to participate in SNAP.
+
 
 \
 \
@@ -513,34 +487,63 @@ if (output_type == "html") {
 ```{r line facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="Income_cat")
-# 2021 low income: .32
-# 2021 non-low income: .04
-
-# 2016 low income: .37
-# 2016 non-low income: .04
-
-# 2011 low income: .32
-# 2011 non-low income: .03
-
-filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="POC_cat")
-# 2021 poc: .90
-# 2021 non-poc: .93
-# 2016 poc: .84
-# 2016 non-poc: .96
-# 118053.44-102481.29=15572.15
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year!="2017")
+# king 2012: 0.17-0.07=0.10
+# king 2022: 0.12-0.06=0.06
+# kitsap 2012: 0.19-0.10=0.09
+# kitsap 2022:0.14-0.08=0.06
+# pierce 2012: 0.19-0.10=0.09
+# pierce 2022:0.17-0.10=0.07
+# snohomish 2012: 0.16-0.10=0.06
+# snohomish 2022: 0.11-0.08=0.03
 
 filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="Older_cat")
+  filter(county=="Snohomish",
+         focus_type=="LEP_cat",
+         vulnerability=="high vulnerability",
+         data_year!="2017")
+# king 2022-2012: 0.22-0.24=-0.02
+# kitsap 2022-2012: 0.13-0.18=-0.05
+# pierce 2022-2012: 0.23-0.21=0.02
+# snohomish 2022-2012: 0.18-0.26=-0.08
+
+filter <- data_clean %>%
+  filter(county!="Region",
+         focus_type=="Disability_cat",
+         vulnerability=="high vulnerability",
+         data_year!="2017")
+# King 2022-2012: 0.21-0.22=-0.01
+# Kitsap 2022-2012: 0.20-0.20=0
+# Pierce 2022-2012: 0.22-0.22=0
+# Snohomish: 0.19-0.23=-0.04
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year!="2017")
+# King 2012 poc-non poc: 0.17-0.07=0.10
+# King 2022: 0.12-0.06=0.06
+# King: ((0.06-0.10)/(0.10))*100: -40% change
+# Kitsap 2012: 0.19-0.10=0.09
+# Kitsap 2022: 0.14-0.08=0.06
+# Kitsap: ((0.06-0.09)/(0.09))*100: -33% change
+# Pierce 2012:0.19-0.10=0.09
+# Pierce 2022: 0.17-0.10=0.07
+# Pierce: ((0.07-0.09)/(0.09))*100: -22% change
+# Snohomish 2012: 0.16-0.10=0.06
+# Snohomish 2022: 0.11-0.08=0.03 
+# Snohomish: ((0.03-0.06)/(0.06))*100: -50% change
 
 
 filter <- data_clean %>%
-  filter(county != "Region",
-         focus_type=="Disability_cat")
+  filter(county == "Region",
+         focus_type=="Income_cat",
+         vulnerability=="high vulnerability",
+         data_year!="2017")
+# 2012: 0.35
+# 2022: 0.32
 
 
 filter <- data_clean %>%
@@ -558,18 +561,14 @@ filter <- data_clean %>%
            data_year=="2021")
 
 ```
-
-1. 3.5X: In 2021, people with a disability were 3.5 times more like to participate in SNAP than people without a disability - an increase in disparity since 2016
-2. 2X: People of color have consistently been twice as likely to participate in SNAP compared to the white non-Hispanic population
-3. 5% point change: From 2016 to 2021, there was a 5% point decrease in SNAP participation for low income families across the region
-
 \
 
 #### Insights & Analysis
 
-* As a region from 2011 to 2021, there was a switch of households with older adults 65+ having higher SNAP participation compared to those without older adults 65+
-* From 2011 to 2021, Snohomish County saw the largest decline in disparity for people of color
-* As a region, 2016 was a high point for SNAP participation
+* Regionally, people of color have consistently been almost twice as likely to participate in SNAP compared to the white non-Hispanic population; however, the disparity between these two groups decreased in all counties - Snohomish (-50%), King (-40%), Kitsap (-33%), Pierce (-22%).
+* SNAP participation decreased in all counties for households with limited English proficiency between 2012 and 2022, except for Pierce County where participation for the same group increased from 21% in 2012 to 23% in 2022.
+* SNAP participation among people with disabilities in the region either stayed the same (Kitsap and Pierce counties) or decreased (King and Snohomish counties) from 2012 to 2022.
+* The share of participating lower income households reached 40% in 2017, the highest for any group in the past decade; however, between 2012 and 2022, there was a three percentage point decrease in SNAP participation for households with lower income across the region
 
 
 \
