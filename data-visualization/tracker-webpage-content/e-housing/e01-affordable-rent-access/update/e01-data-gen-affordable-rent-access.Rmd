@@ -140,7 +140,7 @@ transform_data_labels <- function(table) {
 The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
 ```{r, include=FALSE}
 # pums_ospi_year <- "2021"
-# years <- c("2011", "2016", "2021")
+# years <- c("2011", "2016", "2021") # these years are no longer available
 
 pums_ospi_year <- "2022"
 years <- c("2012", "2017", "2022")
@@ -457,7 +457,7 @@ walk(data_clean_plots, ~print(.x))
 head(data_clean)
 
 data_clean_affordability <- data_clean |>  
-  mutate(income_per_month = fact_value/12,
+  mutate(income_per_month = fact_value / 12,
          income_30perc = income_per_month * 0.3)
 
 data_clean_affordability
