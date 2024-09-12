@@ -59,6 +59,9 @@ library(showtextdb) #required for showtext
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
 source("../../../../addLegend-dec.R")
 
+# function to create affordability table
+source("e01-table-gen-affordability.R")
+
 ```
 
 ```{r variables setup}
@@ -140,13 +143,13 @@ transform_data_labels <- function(table) {
 The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
 ```{r, include=FALSE}
 # pums_ospi_year <- "2021"
-# years <- c("2011", "2016", "2021") # these years are no longer available
+# years <- c("2011", "2016", "2021") # these years are no longer available/reproducible
 
 pums_ospi_year <- "2022"
 years <- c("2012", "2017", "2022")
 
 # PUMS/OSPI data set
-pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
+pums_ospi_elmer <- get_table(schema = "equity", tbl_name = "v_tracker_indicators")
 ```
 \
 This data set was compiled from PUMS data.
@@ -186,7 +189,7 @@ data_full <- pums_ospi_elmer %>%
 * There should be 5 geographies - the 4 counties and the Region. 
 * There should be 6 equity focus categories - POC, income, disability, youth, older adult, and LEP
     + 2 sub-groups in each of the 6 equity focus group (e.g. people of color, non-people of color)
-```{r}
+```{r check data fields}
 
 check_data_fields <- function(column) {
   l <- length(unique(column))
@@ -489,10 +492,10 @@ acs_data <- base_acs_data %>%
 ### Calculate number of affordable tracts
 Christy helped to script a process to iterate through the Elmer equity group data for each year and combine it with the median gross rent to understand how many tracts are affordable for each year, equity group, and geography. It is saved within the GitHub folder (GitHub/equity-tracker/data-visualization/tracker-webpage-content/e-housing/e01-affordable-rent-access/e01-iteration-data.R)
 ```{r}
-# The following is commented out because the code chunks above generate the necessary data tables - the iteration-data.R script that is saved within the 'e01-affordable-rent-access' folder replicates the order of steps that get the two data inputs (Elmer median household income equity data and ACS tract-level median gross rent data) to this stage
-
-# setwd("C:\\Users\\mrichards\\Documents\\GitHub\\equity-tracker\\data-visualization\\tracker-webpage-content\\e-housing\\e01-affordable-rent-access\\")
-source("../e01-iteration.R")
+final_df <- create_affordability_table(acs_data = acs_data, 
+                                       geographies = as.character(unique(data_clean$county)), 
+                                       equity_groups = unique(data_clean$focus_attribute), 
+                                       years_of_interest = years)
 
 head(final_df)
 ```
@@ -509,18 +512,20 @@ head(data_clean) # make sure this is the correct data set
 
 # make any additional edits 
 data_clean <- data_clean %>% 
-  mutate(fact_value_notrounded=share_aff_tracts) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value_notrounded, digits=2)) #round value to percentage - retain consistent name
+  mutate(fact_value_notrounded = share_aff_tracts) %>% #create column to retain full median income values
+  mutate(fact_value = round(fact_value_notrounded, digits=2)) #round value to percentage - retain consistent name
 ```
 
 Save final data set (.rda) for charts
 ```{r save rda charts, eval=FALSE}
 
-# # save final data set as .rda
-# save(data_clean, file = file.path(file_names$base_dir,
-#                                   file_names$theme_dir,
-#                                   file_names$ind_dir, "rda-data",
-#                                   paste0(file_names$chart,'.rda')))
+# save final data set as .rda
+save(data_clean, file = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir, 
+                                  "update",
+                                  "rda-data",
+                                  paste0(file_names$chart,'.rda')))
 ```
 
 
@@ -530,8 +535,11 @@ Save final data set (.rda) for charts
 for mapping most recent data
 ```{r census tract spatial data - for tract data, include=FALSE}
 # Connecting to ElmerGeo for census geographies through Portal----
-tracts20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
-tracts10.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+
+arc_service <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services"
+
+tracts20.url <- file.path(arc_service, "Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
+tracts10.url <- file.path(arc_service, "Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
 
 tracts20.lyr <- st_read(tracts20.url)
 tracts10.lyr <- st_read(tracts10.url)
@@ -692,11 +700,13 @@ Save final data set (.rda) for map
 ```{r save rda map, eval=FALSE}
 # This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
 
-# # save final data set as .rda
-# save(acs_data_tract, file = file.path(file_names$base_dir,
-#                                       file_names$theme_dir,
-#                                       file_names$ind_dir, "rda-data",
-#                                       paste0(file_names$map,'.rda')))
+# save final data set as .rda
+save(acs_data_tract, file = file.path(file_names$base_dir,
+                                      file_names$theme_dir,
+                                      file_names$ind_dir, 
+                                      "update",
+                                      "rda-data",
+                                      paste0(file_names$map,'.rda')))
 ```
 
 <a href="#top">Back to top of the page</a>
