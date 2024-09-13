@@ -1,0 +1,625 @@
+---
+title: "SNAP"
+subtitle: "Visuals for Equity Tracker (PUMS data)"
+author: "Mary Richards"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  word_document:
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+
+# to reference chart functions in Github
+# knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+library(psrcplot)
+library(tidyverse)
+library(magrittr)
+
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+
+library(echarts4r)
+# remotes::install_github("JohnCoene/echarts4r",
+#                         force=TRUE)
+
+library(webshot2) #static image creation
+library(here)
+```
+
+```{r, choose output type}
+# output_type <- "word"
+output_type <- "html"
+```
+# 3 visuals for webpage
+This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
+\
+\
+**If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+
+## Indicator Explanation
+[Please include the following for a general, layperson audience: 1-2 sentences explaining what your indicator is/measures, what it says about people's life outcomes; 1 sentence describing why it is useful/relevant in the indicator's theme]
+
+## 1. Map of most recent data
+To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
+
+### Create Visual
+```{r map .rda}
+# load map .rda
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'a-regional-health-collaboration'
+ind_dir <- 'a05-snap/update'
+rda <- 'a05-snap-map-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+``` 
+
+```{r data format - map, include=FALSE}
+# move the decimal point for reg_estimate and cnty_estimate
+acs_data_tract <- acs_data_tract %>%
+   mutate(reg_estimate = (reg_estimate*100)) %>%
+   mutate(cnty_estimate = (cnty_estimate*100))
+```
+
+
+```{r acs map}
+# reference addLegend_decreasing function
+source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
+
+# check maximum value of data
+# summary(acs_data_tract$estimate) # max is 250001, so rounding to 260000 makes sense
+max_value <- 60 # this value will be the max value in the legend
+
+# setting color palette
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = acs_data_plus_zero) # this is the value field
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
+
+# setting the legend/label variables
+var_name <- "SNAP" # the <br> could be adjusted depending on the length/spacing of the name
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
+  paste("Tract value: ", 
+        prettyNum((round(acs_data_tract$estimate, digits=2))), " %"), 
+  paste("Tract data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ",
+        prettyNum((round(acs_data_tract$reg_estimate, digits=2))), " %"), 
+  paste("County value: ",
+        prettyNum((round(acs_data_tract$cnty_estimate, digits=2))), " %"), 
+  paste0("(",acs_data_tract$county_name," County)")) %>%
+  lapply(htmltools::HTML)
+
+# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
+#               big.mark = ","), #this wouldn't be necessary to include for %s    
+#         '%')) %>%
+#   lapply(htmltools::HTML)
+
+
+# map settings
+acs_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=acs_data_tract,
+              fillColor = psrc_palette(acs_data_plus_zero),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = labels) %>% 
+
+  # legend
+  addLegend_decreasing(pal = psrc_palette,
+                       values = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA),
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       labFormat = labelFormat(suffix = "%"),
+                       decreasing = TRUE) %>% #to get legend high-low with correct color order
+  
+  # set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)  
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fixing the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix) # Convert CSS to HTML
+acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML code
+
+# printing map
+acs_map
+```
+Source(s): U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Estimates, Table S2201; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+```{r generate acs map html, include=FALSE}
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+
+# set folder structure
+map_name <- 'a05-snap-map.html'
+  
+# interactive webpage output process
+htmlwidgets::saveWidget(acs_map,
+                        file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
+```
+\
+\
+
+```{r map calculations - pums, include=FALSE, eval=FALSE}
+# simplify data set
+data <- acs_data_tract %>%
+  st_drop_geometry()
+
+# calculate call out information
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# Highest percentage of SNAP participation is 53053940006 (east Tacoma where two low income housing complexes are - 49.4%), 53053061601 (downtown Tacoma - 44.1%), 53033029004 (southeast Des Moines - 39.3%), 53033029604 (southeast Kent - 35.8%), 53053063301 (east Tacoma just south of 53053940006 - 35.0%)
+
+# national average
+# acs table: S2201, https://data.census.gov/table/ACSST5Y2022.S2201?q=S2201
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+
+filter <- data %>% 
+  filter(estimate==0)
+# There are 38 census tracts with a 0% participation. 
+table(filter$county_name)
+# 30 tracts in King County, 2 in Kitsap, 2 in Pierce, and 4 in Snohomish 
+```
+
+1. 9.0%: The region’s average SNAP participation
+2. 49.4%: The highest average SNAP participation at the census tract level in the region
+
+\
+
+#### Insights & Analysis
+
+* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.8%), Kitsap (10.0%), and Pierce (11.7%).
+* There are 38 census tracts with no SNAP participation with 30 tracts in King County, two in Kitsap, two in Pierce, and four in Snohomish.
+* The four census tracts with the highest participation include one tract in the Eastside neighborhood of Tacoma (49.4%), Downtown Tacoma (44.1%), southeast Des Moines (39.3%), and southeast Kent (35.8%).
+* The national average SNAP participation is 11.5%.
+
+\
+\
+
+
+## 2. Facet of most recent data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r data setup, include=FALSE}
+# load visualization functions for charts
+source(here::here('data-visualization/equity-tracker-chart-functions.R'))
+
+# set folder structure
+rda <- 'a05-snap-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+```
+
+```{r column facet - pums}
+# Create Facet Column Chart
+data_clean_column <- data_clean %>% 
+  dplyr::filter(data_year=="2022") #filter on most recent year
+
+# set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
+df = data_clean_column
+geo = "county"
+x = "focus_attribute_ord"
+y = "fact_value"
+facet = "focus_type_ord"
+fill = "focus_attribute_ord"
+y_min = 0
+y_max = 0.5
+dec = 0
+esttype = "percent"
+color = "oranges"
+num_colors = 2
+color_rev = TRUE
+title = "SNAP Participation by Community"
+subtitle = "Percent of households participating in SNAP"
+source = "U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
+
+column_chart <- equity_tracker_column_facet(df = df,
+                                            geo = geo,
+                                            x = x,
+                                            y = y,
+                                            facet = facet,
+                                            title = title,
+                                            y_min = y_min,
+                                            y_max = y_max,
+                                            dec = dec,
+                                            esttype = esttype,
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
+```
+
+```{r output final column chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
+
+# set folder structure
+file_name <- 'a05-snap-column'
+
+# column Chart - html for interactive
+rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                # source = source,
+                                subtitle = subtitle),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+
+# Column Chart - png for use in static file
+# need to create a 'static-images' sub-folder in theme sub-folder if not already existing
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r column chart output - pums, echo=FALSE}
+
+if (output_type == "html") {
+
+  column_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+
+# column_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r column facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean_column %>% 
+  filter(focus_type=="Disability_cat")
+# Region: 0.21 vs. 0.06
+# with disability has higher coverage across all counties/region
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="LEP_cat")
+# King lep households: .22	
+# King non-lep households: .07
+
+filter <- data_clean_column %>% 
+  filter(county=="Region",
+         focus_type=="Income_cat")
+# region low income households: .32	
+# region non-low income households: .04
+# .32-.04=.28
+
+filter <- data_clean_column %>% 
+  filter(county=="Region",
+         focus_type=="LEP_cat")
+# region non-lep:0.09
+# region lep: 0.21
+# 0.21/0.09=1.857143
+
+filter <- data_clean_column %>% 
+  filter(county=="Region",
+         focus_type=="POC_cat")
+# region non-poc:0.07
+# region poc: 0.13
+# 0.13/0.07=2.3333
+```
+As a region:
+
+1. 3.5X: People with a disability are 3.5 times more likely to participate in SNAP 
+
+\
+
+#### Insights & Analysis
+
+* In King County, households with limited English proficiency are more than three times as likely to participate in SNAP.
+* As a region, 32% of households with lower income participate in SNAP, leaving room for increased participation. 
+* SNAP uses an income threshold of 200% of the federal poverty level for qualification, the same definition used here to identify households with lower income.
+* 4% of non-lower income households in the region reported participating in SNAP, which is likely a data anomaly due to how the Census Bureau asks about household income.
+* Households with limited English proficiency are over twice as likely to participate in SNAP.
+* People of color are almost twice as likely to participate in SNAP.
+
+
+\
+\
+
+
+## 3. Facet of trend data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r line facet - pums, include=FALSE}
+# Create Facet Line Chart
+
+# set variables
+df = data_clean
+x = "data_year" # different from variables for facet column
+fill = "focus_attribute_ord" # different from variables for facet column
+color = "blues"
+title = "SNAP Participation Trend by Community"
+subtitle = "Percent of households participating in SNAP"
+source = "U.S. Census Bureau, 2008-2012, 2013-2017, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
+
+line_chart <- equity_tracker_line_facet(df = df,
+                                        geo = geo,
+                                        x = x,
+                                        y = y,
+                                        fill = fill,
+                                        facet = facet,
+                                        y_min = y_min,
+                                        y_max = y_max,
+                                        dec = dec,
+                                        esttype = esttype,
+                                        color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
+                                        width = '420px',
+                                        height = '380px')
+```
+
+```{r output final line chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
+
+# set folder structure
+file_name <- 'a05-snap-line'
+
+# Line Chart - html for interactive
+rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                fill = fill,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                # source = source,
+                                subtitle = subtitle,
+                                width = '420px',
+                                height = '380px',
+                                charttype = "line"),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+
+# Line Chart - png for use in static file
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r line chart - pums, echo=FALSE}
+if (output_type == "html") {
+
+  line_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+# line_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r line facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year!="2017")
+# king 2012: 0.17-0.07=0.10
+# king 2022: 0.12-0.06=0.06
+# kitsap 2012: 0.19-0.10=0.09
+# kitsap 2022:0.14-0.08=0.06
+# pierce 2012: 0.19-0.10=0.09
+# pierce 2022:0.17-0.10=0.07
+# snohomish 2012: 0.16-0.10=0.06
+# snohomish 2022: 0.11-0.08=0.03
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="LEP_cat",
+         vulnerability=="high vulnerability",
+         data_year!="2017")
+# king 2022-2012: 0.22-0.24=-0.02
+# kitsap 2022-2012: 0.13-0.18=-0.05
+# pierce 2022-2012: 0.23-0.21=0.02
+# snohomish 2022-2012: 0.18-0.26=-0.08
+
+filter <- data_clean %>%
+  filter(county!="Region",
+         focus_type=="Disability_cat",
+         vulnerability=="high vulnerability",
+         data_year!="2017")
+# King 2022-2012: 0.21-0.22=-0.01
+# Kitsap 2022-2012: 0.20-0.20=0
+# Pierce 2022-2012: 0.22-0.22=0
+# Snohomish: 0.19-0.23=-0.04
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year!="2017")
+# King 2012 poc-non poc: 0.17-0.07=0.10
+# King 2022: 0.12-0.06=0.06
+# King: ((0.06-0.10)/(0.10))*100: -40% change
+# Kitsap 2012: 0.19-0.10=0.09
+# Kitsap 2022: 0.14-0.08=0.06
+# Kitsap: ((0.06-0.09)/(0.09))*100: -33% change
+# Pierce 2012:0.19-0.10=0.09
+# Pierce 2022: 0.17-0.10=0.07
+# Pierce: ((0.07-0.09)/(0.09))*100: -22% change
+# Snohomish 2012: 0.16-0.10=0.06
+# Snohomish 2022: 0.11-0.08=0.03 
+# Snohomish: ((0.03-0.06)/(0.06))*100: -50% change
+
+
+filter <- data_clean %>%
+  filter(county == "Region",
+         focus_type=="Income_cat",
+         vulnerability=="high vulnerability",
+         data_year!="2017")
+# 2012: 0.35
+# 2022: 0.32
+
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year=="2016" |
+           data_year=="2021")
+
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="Income_cat",
+         vulnerability=="low vulnerability",
+         data_year=="2016" |
+           data_year=="2021")
+
+```
+\
+
+#### Insights & Analysis
+
+* Regionally, people of color have consistently been almost twice as likely to participate in SNAP compared to the white non-Hispanic population; however, the disparity between these two groups decreased in all counties - Snohomish (-50%), King (-40%), Kitsap (-33%), Pierce (-22%).
+* SNAP participation decreased in all counties for households with limited English proficiency between 2012 and 2022, except for Pierce County where participation for the same group increased from 21% in 2012 to 23% in 2022.
+* SNAP participation among people with disabilities in the region either stayed the same (Kitsap and Pierce counties) or decreased (King and Snohomish counties) from 2012 to 2022.
+* The share of participating lower income households reached 40% in 2017, the highest for any group in the past decade; however, between 2012 and 2022, there was a three percentage point decrease in SNAP participation for households with lower income across the region
+
+
+\
+\
+
+
+# Transfer files
+## Copy files from Github > Y drive
+```{r to y drive, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(getwd())
+y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+
+# isolate files in Github
+list.of.files <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$")
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          y.drive.folder,
+          overwrite = T)
+
+# keep only .Rmd files in Github (cleaner)
+files.in.dir <- list.files(current_folder, 
+                            full.names = T)
+files.to.keep <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.Rmd$")
+files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
+                                                              files.in.dir, value=TRUE))])
+do.call(unlink, files.to.remove)
+```
+
+## Copy files from Y drive > website folder
+```{r to web dev folder, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+
+web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+new.folder <- file.path(web.base.folder,theme_dir)
+
+list.of.files <- list.files(current_folder, 
+                            full.names = T)
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          new.folder,
+          overwrite = T)
+```
+
+<a href="#top">Back to top of the page</a>

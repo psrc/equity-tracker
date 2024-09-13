@@ -1,0 +1,747 @@
+---
+title: "Educational Attainment"
+subtitle: "Visuals for Equity Tracker (PUMS data)"
+author: "Mary Richards"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  word_document:
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+
+# to reference chart functions in Github
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+library(psrcplot)
+library(tidyverse)
+library(magrittr)
+
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+
+library(echarts4r)
+# remotes::install_github("JohnCoene/echarts4r",
+#                         force=TRUE)
+
+library(webshot2) #static image creation
+```
+
+```{r, choose output type}
+# output_type <- "word"
+output_type <- "html"
+```
+# 3 visuals for webpage
+This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
+\
+\
+**If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+
+## Indicator Explanation
+Education is associated with a wide range of benefits to both individuals and society. People with higher levels of education are more likely to find employment, remain employed, learn new skills on the job, and earn more over their working life relative to those with lower levels of education. For this measure, we are defining educational attainment as adults 25 years and older who have a bachelor's degree or higher.
+
+## 1. Map of most recent data
+To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
+```{r map legend settings, include=FALSE}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
+addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
+			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
+		  title = NULL, className = "info legend", layerId = NULL, 
+		  group = NULL, data = getMapData(map), decreasing = FALSE) {
+	position <- match.arg(position)
+	type <- "unknown"
+	na.color <- NULL
+	extra <- NULL
+	if (!missing(pal)) {
+		if (!missing(colors)) 
+			stop("You must provide either 'pal' or 'colors' (not both)")
+		if (missing(title) && inherits(values, "formula")) 
+			title <- deparse(values[[2]])
+		values <- evalFormula(values, data)
+		type <- attr(pal, "colorType", exact = TRUE)
+		args <- attr(pal, "colorArgs", exact = TRUE)
+		na.color <- args$na.color
+		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
+		    0) {
+			na.color <- NULL
+		}
+		if (type != "numeric" && !missing(bins)) 
+			warning("'bins' is ignored because the palette type is not numeric")
+		if (type == "numeric") {
+			cuts <- if (length(bins) == 1) 
+				pretty(values, bins)
+			else bins	
+			
+			if (length(bins) > 2) 
+				if (!all(abs(diff(bins, differences = 2)) <= 
+				         sqrt(.Machine$double.eps))) 
+					stop("The vector of breaks 'bins' must be equally spaced")
+			n <- length(cuts)
+			r <- range(values, na.rm = TRUE)
+			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+			n <- length(cuts)
+			p <- (cuts - r[1])/(r[2] - r[1])
+			extra <- list(p_1 = p[1], p_n = p[n])
+			p <- c("", paste0(100 * p, "%"), "")
+			if (decreasing == TRUE){
+				colors <- pal(rev(c(r[1], cuts, r[2])))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}else{
+				colors <- pal(c(r[1], cuts, r[2]))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}
+			colors <- paste(colors, p, sep = " ", collapse = ", ")
+			
+		}
+		else if (type == "bin") {
+			cuts <- args$bins
+			n <- length(cuts)
+			mids <- (cuts[-1] + cuts[-n])/2
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "bin", cuts))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "bin", cuts)
+			}
+			
+		}
+		else if (type == "quantile") {
+			p <- args$probs
+			n <- length(p)
+			cuts <- quantile(values, probs = p, na.rm = TRUE)
+			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
+				 na.rm = TRUE)
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "quantile", cuts, p))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "quantile", cuts, p)
+			}
+		}
+		else if (type == "factor") {
+			v <- sort(unique(na.omit(values)))
+			colors <- pal(v)
+			labels <- labFormat(type = "factor", v)
+			if (decreasing == TRUE){
+				colors <- pal(rev(v))
+				labels <- rev(labFormat(type = "factor", v))
+			}else{
+				colors <- pal(v)
+				labels <- labFormat(type = "factor", v)
+			}
+		}
+		else stop("Palette function not supported")
+		if (!any(is.na(values))) 
+			na.color <- NULL
+	}
+	else {
+		if (length(colors) != length(labels)) 
+			stop("'colors' and 'labels' must be of the same length")
+	}
+	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
+	               na_color = na.color, na_label = na.label, opacity = opacity, 
+	               position = position, type = type, title = title, extra = extra, 
+	               layerId = layerId, className = className, group = group)
+	invokeMethod(map, data, "addLegend", legend)
+}
+```
+
+### Create Visual
+```{r map .rda}
+# load map .rda
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'f-economy'
+ind_dir <- 'f03-educational-attainment'
+rda <- 'f03-educational-attainment-map-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+``` 
+
+```{r transform data}
+# need to convert estimate from decimal to whole number % for map to show correct value
+acs_data_tract <- acs_data_tract %>% 
+  rename(estimate_dec=estimate) %>% 
+  dplyr::mutate(estimate=estimate_dec*100) %>% 
+  dplyr::mutate(reg_estimate=reg_estimate*100) %>% 
+  dplyr::mutate(cnty_estimate=cnty_estimate*100)
+```
+
+```{r acs map}
+# setting map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# check maximum value of data
+# summary(acs_data_tract$estimate) # max is 95.088, so rounding to 100 makes sense
+max_value <- 100 # this value will be the max value in the legend
+
+# setting color palette
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+
+# psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+#                                       domain = acs_data_plus_zero) # this is the value field
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) #replace 100 with appropriate max value for data set
+
+# setting the legend/label variables
+var_name <- "Educational <br> Attainment" # the <br> could be adjusted depending on the length/spacing of the name
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
+  paste("Tract value: ",
+        prettyNum(round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
+        '%'),
+  paste("Tract data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ",
+        prettyNum(round(acs_data_tract$reg_estimate, digits=0)),
+        '%'),
+  paste("County value: ",
+        prettyNum(round(acs_data_tract$cnty_estimate, digits=0)),
+        '%', paste0("(",acs_data_tract$county_name," County)"))) %>%
+  lapply(htmltools::HTML)
+
+# map settings
+acs_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=acs_data_tract,
+              fillColor = psrc_palette(acs_data_plus_zero),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = labels) %>% 
+
+  # legend
+  addLegend_decreasing(pal = psrc_palette,
+                       # values = acs_data_plus_zero,
+                       values = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA),
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       labFormat = labelFormat(suffix = "%"),
+                       decreasing = TRUE) %>% #to get legend high-low with correct color order
+  
+  # set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)  
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fixing the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix) # Convert CSS to HTML
+acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML code
+
+# printing map
+acs_map
+```
+Source(s): U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Table S1501; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+```{r generate acs map html, include=FALSE}
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+
+# set folder structure
+map_name <- 'f03-educational-attainment-map.html'
+  
+# interactive webpage output process
+htmlwidgets::saveWidget(acs_map,
+                        file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
+```
+\
+\
+
+#### Data call outs
+```{r map calculations - pums, include=FALSE, eval=FALSE}
+# simplify data set
+data <- acs_data_tract %>%
+  st_drop_geometry()
+
+# calculate call out information
+calc <- data %>%
+  dplyr::mutate(reg_bach = sum(bach_plus, na.rm=TRUE)/sum(pop_25_plus, na.rm=TRUE))
+# regional bach of 25+ pop: 0.4371736
+
+x<-rep(data$estimate,times=data$pop_25_plus)
+df1<-data.frame(x)
+summary(df1$x)
+median(df1$x, na.rm=TRUE)
+hist(df1$x)
+# regional median educational attainment: 39.379 
+
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# 53033004101 (Laurelhurst neighborhood in Seattle) - 95.087719%, 53033006701 (Westlake neighborhood in Seattle) - 92.924375%, [53033023702 (Bel-Red neighborhood in Bellevue) - 92.222222% - low population number in census tract (630 25+)] 53033005401 (Northlake neighborhood in Seattle) - 89.115143%
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+# 53061052211 (Monroe, Snohomish) - 4.941947%, 53053072000 (Tillicum and Joint Base Lewis–McChor, Pierce) - 5.639535%, 53053071416 (Spanaway and Loveland, Pierce) - 6.163435%
+
+by_county <- data %>%
+  dplyr::group_by(county_name) %>%
+  dplyr::summarise(cnt_bach = sum(bach_plus, na.rm=TRUE)/sum(pop_25_plus, na.rm=TRUE)) %>%
+  dplyr::arrange(desc(cnt_bach))
+# King (54%), Kitsap (35%), Snohomish (34%), Pierce (28%)
+```
+
+1. 44%: The region's educational attainment
+2. 95%: The region's highest educational attainment is in the Laurelhurst neighborhood
+3. 5%: The lowest educational attainment in the region is in a census tract in Monroe, Snohomish County
+
+\
+
+#### Insights & Analysis
+
+* King County has the highest educational attainment (54%), followed by Kitsap (35%), Snohomish (34%), and Pierce (28%)
+* The 50 census tracts with the highest educational attainment are in King County - the first four census tracts are in the Laurelhurst neighborhood (Seattle), Westlake neighborhood (Seattle), Bellevue, and Northlake neighborhood (Seattle)
+* The first census tract with the highest educational attainment not located in King County includes the Lynwood and Fletcher Bay neighborhoods on Bainbridge Island in Kitsap County (82%)
+
+\
+\
+
+
+## 2. Facet of most recent data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r data setup, include=FALSE}
+# load visualization functions for charts
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R') 
+
+# set folder structure
+rda <- 'f03-educational-attainment-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+```
+
+```{r column facet - pums}
+# Create Facet Column Chart
+data_clean_column <- data_clean %>% 
+  dplyr::filter(data_year=="2021") #filter on most recent year
+
+# set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
+df = data_clean_column
+geo = "county"
+x = "focus_attribute_ord"
+y = "fact_value"
+facet = "focus_type_ord"
+fill = "focus_attribute_ord"
+y_min = 0
+y_max = 1
+dec = 0
+esttype = "percent"
+color = "oranges"
+num_colors = 2
+color_rev = TRUE
+title = "Educational Attainment by Community"
+subtitle = "Percent of individuals 25 years or older with a Bachelor's degree or higher"
+source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+
+column_chart <- equity_tracker_column_facet(df = df,
+                                            geo = geo,
+                                            x = x,
+                                            y = y,
+                                            facet = facet,
+                                            title = title,
+                                            y_min = y_min,
+                                            y_max = y_max,
+                                            dec = dec,
+                                            esttype = esttype,
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
+
+```
+
+```{r output final column chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
+
+# set folder structure
+file_name <- 'f03-educational-attainment-column'
+
+# column Chart - html for interactive
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                source = source,
+                                subtitle = subtitle),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+
+# Column Chart - png for use in static file
+# need to create a 'static-images' sub-folder in theme sub-folder if not already existing
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r column chart output - pums, echo=FALSE}
+
+if (output_type == "html") {
+
+  column_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+
+# column_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r column facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean_column %>% 
+  filter(focus_type=="POC_cat",
+         county!="Region")
+# King no poc-poc: 0.5713854-0.4861901=0.0851953
+# Kitsap no poc-poc: 0.3655688-0.2784608=0.087108
+# Pierce no poc-poc: 0.3034835-0.2330582=0.0704253
+# Snohomish no poc-poc: 0.3320712-0.3706851=-0.0386139
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="LEP_cat",
+         county=="Region")
+# lep: 0.2935020
+# non lep: 0.4468569
+# 0.4468569-0.2935020=0.1533549
+
+filter <- data_clean_column %>% 
+  filter(county!="Region",
+         focus_type=="Income_cat")
+# King not low inc-low inc: 0.5888835-0.2776186=0.3112649
+# Kitsap not low inc-low inc: 0.3875144-0.1811566=0.2063578
+# Pierce not low inc-low inc: 0.3181438-0.1379590=0.1801848
+# Snohomish not low inc-low inc: 0.3793164-0.1703160=0.2090004
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="Disability_cat")
+# region dis: 0.2553356
+# region no dis: 0.4660190
+# 0.4660190-0.2553356=0.2106834
+# King no dis-dis: 0.5693938-0.3180987=0.2512951
+# Kitsap no dis-dis: 0.3772126-0.2192018=0.1580108
+# Pierce no dis-dis: 0.3014983-0.1903546=0.1111437
+# Snohomish no dis-dis: 0.3668158-0.2054530=0.1613628
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="LEP_cat",
+         county!="Region")
+# King: 0.5557650-0.3244048=0.2313602
+# Kitsap: 0.3518236-0.2574751=0.0943485
+# Pierce: 0.2885311-0.1582440=0.1302871
+# Snohomish 0.3499894-0.2690853=0.0809041
+```
+
+1. 9% The difference in educational attainment between people of color and white non-Hispanic in King and Kitsap Counties
+2. 26%: The educational attainment of those who are below 200% of the poverty level is 26% lower than those who are above 200% of the poverty level
+3. 29%: The percentage of Non-English proficient individuals who have a bachelor's degree or higher, 15% lower than English-proficient individuals
+
+\
+
+#### Insights & Analysis
+
+* Snohomish County is the only county where people of color (37%) have a higher educational attainment than white non-Hispanic people (33%)
+* The smallest difference in educational attainment between people below and above 200% of the poverty line is in Pierce County (18%), followed by Kitsap and Snohomish Counties (21%), and King County (31%)
+* When comparing the difference in educational attainment between people with and without disabilities, King County is the only county with a larger difference (25%) than the regional average (21%)
+* The largest difference in educational attainment between people with and without limited English proficiency is in King County (23%), while the smallest difference is in Snohomish County (8%)
+
+\
+\
+
+
+## 3. Facet of trend data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r line facet - pums, include=FALSE}
+# Create Facet Line Chart
+
+# set variables
+df = data_clean
+x = "data_year" # different from variables for facet column
+fill = "focus_attribute_ord" # different from variables for facet column
+color = "blues"
+title = "Educational Attainment Trend by Community"
+subtitle = "Percent of individuals 25 years or older with a Bachelor's degree or higher, in 5-year spans between 2011 and 2021"
+source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+
+line_chart <- equity_tracker_line_facet(df = df,
+                                        geo = geo,
+                                        x = x,
+                                        y = y,
+                                        fill = fill,
+                                        facet = facet,
+                                        y_min = y_min,
+                                        y_max = y_max,
+                                        dec = dec,
+                                        esttype = esttype,
+                                        color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
+                                        width = '420px',
+                                        height = '380px')
+```
+
+```{r output final line chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
+
+# set folder structure
+file_name <- 'f03-educational-attainment-line'
+
+# Line Chart - html for interactive
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                fill = fill,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                source = source,
+                                subtitle = subtitle,
+                                width = '420px',
+                                height = '380px',
+                                charttype = "line"),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+
+# Line Chart - png for use in static file
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r line chart - pums, echo=FALSE}
+if (output_type == "html") {
+
+  line_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+# line_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r line facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2011 non-poc-poc: 0.3208931-0.2869044=0.0339887
+# 2021 non-poc-poc: 0.4481251-0.4128432=0.0352819
+
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="Income_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2011 non-low inc-low inc: 0.3576682-0.1314919=0.2261763
+# 2021 non-low inc-low inc: 0.4820102-0.2180978=0.2639124
+# ((0.2639124-0.2261763)/(0.2261763))*100: 16.68437% change
+
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="LEP_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2011 no lep-lep: 0.3226593-0.1797292=0.1429301
+# 2021 no lep-lep: 0.4468569-0.2935020=0.1533549
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# king 2021-2011 poc: 0.4861901-0.1820523=0.3041378
+# king 2021-2011 non poc: 0.5713854-0.2375673=0.3338181
+# kitsap 2021-2011 poc: 0.2784608-0.3274597=-0.0489989
+# kitsap 2021-2011 non poc: 0.3655688-0.4000690=-0.0345002
+# pierce 2021-2011 poc: 0.2330582-0.2927964=-0.0597382
+# pierce 2021-2011 non poc: 0.3034835-0.2759653=0.0275182
+# snohomish 2021-2011 poc: 0.3706851-0.2231951=0.14749
+# snohomish 2021-2011 non poc: 0.3320712-0.3012554=0.0308158
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="Income_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2011 king non low inc-low inc:0.2614591-0.1036778=0.1577813
+# 2021 king non low inc-low inc:0.5888835-0.2776186=0.3112649
+# ((0.3112649-0.1577813)/(0.1577813))*100: 97.27617% change
+# 2011 kitsap non low inc-low inc:0.4290973-0.1512846=0.2778127
+# 2021 kitsap non low inc-low inc:0.3875144-0.1811566=0.2063578
+# ((0.2063578-0.2778127)/(0.2778127))*100: -25.72053% change
+# 2011 pierce non low inc-low inc:0.3180013-0.1264586=0.1915427
+# 2021 pierce non low inc-low inc:0.3181438-0.1379590=0.1801848
+# ((0.1801848-0.1915427)/(0.1915427))*100: -5.929696% change
+# 2011 snohomish non low inc-low inc:0.3328700-0.1273150=0.205555
+# 2021 snohomish non low inc-low inc:0.3793164-0.1703160=0.2090004
+# ((0.2090004-0.205555)/(0.205555))*100: 1.676145% change
+
+filter <- data_clean %>%
+  filter(county == "Snohomish",
+         focus_type=="Disability_cat",
+         data_year=="2016" |
+           data_year=="2021")
+# 2016 king no dis-dis: 0.5201209-0.2604894=0.2596315
+# 2021 king no dis-dis: 0.5693938-0.3180987=0.2512951
+# 2016 kitsap no dis-dis: 0.3486004-0.1825632=0.1660372
+# 2021 kitsap no dis-dis: 0.3772126-0.2192018=0.1580108
+# 2016 pierce no dis-dis: 0.2764090-0.1501056=0.1263034
+# 2021 pierce no dis-dis: 0.3014983-0.1903546=0.1111437
+# 2016 snohomish no dis-dis: 0.3336177-0.1731793=0.1604384
+# 2021 snohomish no dis-dis: 0.3668158-0.2054530=0.1613628
+```
+
+1. 41%: Regionally, educational attainment among people of color is slightly lower (41%) than white non-Hispanic individuals (44%), a gap which has remained relatively consistent in the last ten years
+2. 17%: In 2021, people in households making below 200% of the poverty line earned bachelor's degrees at lower rates (22%) than people in households making more than 200% of the poverty line (48%), a 17% larger difference than in 2011
+3. 15%: The difference in educational attainment between people with limited English proficiency and those who are English proficient has remained consistently around 15% between 2011 and 2021
+
+\
+
+#### Insights & Analysis
+
+* In Kitsap County, the percentage of individuals (25 years or older) with a bachelor's degree or higher has decreased for people of color (5%) and white non-Hispanic individuals (3%) over the past decade. There was also a decrease among people of color (6%) in Pierce County.
+* The difference in educational attainment between people in households above the 200% of the poverty line and and those above it has differed greatly over the past decade between counties: almost doubling in King County (+97%), decreasing in Kitsap County (-26%) and Pierce County (-6%), and only slightly increasing in Snohomish County (+2%)
+* The difference in educational attainment between people with a disability and those without a disability between 2016 and 2021 stayed consistent in all counties - between 1-2%
+
+
+\
+\
+
+
+# Transfer files
+## Copy files from Github > Y drive
+```{r to y drive, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(getwd())
+y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+
+# isolate files in Github
+list.of.files <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$")
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          y.drive.folder,
+          overwrite = T)
+
+# keep only .Rmd files in Github (cleaner)
+files.in.dir <- list.files(current_folder, 
+                            full.names = T)
+files.to.keep <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.Rmd$")
+files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
+                                                              files.in.dir, value=TRUE))])
+do.call(unlink, files.to.remove)
+```
+
+## Copy files from Y drive > website folder
+```{r to web dev folder, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+
+web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+new.folder <- file.path(web.base.folder,theme_dir)
+
+list.of.files <- list.files(current_folder, 
+                            full.names = T)
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          new.folder,
+          overwrite = T)
+```
+
+<a href="#top">Back to top of the page</a>

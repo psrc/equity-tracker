@@ -81,6 +81,7 @@ reg_df_na <- regional_df %>%
                values_to = "tracts") %>% 
   left_join(num_tracts_region, by = "year") 
 
+# are there instances where all tracts in a year are NA?
 reg_df_na_upd <- reg_df_na %>% 
   filter(tracts == tot_tracts) %>% 
   dplyr::select(-tot_tracts)
@@ -96,6 +97,7 @@ region_tally_a <- regional_df %>%
          county = 'Region')
 
 # if NA count equals total number of tracts, update region tally to NA instead of 0
+# tracts field is from reg_df_na_upd. A number in the tracts field indicates that all tracts are NA
 region_tally <- region_tally_a %>% 
   left_join(reg_df_na_upd, by = c('year', 'equity_group')) %>% 
   mutate(aff_tracts = ifelse(!is.na(tracts), NA, aff_tracts),

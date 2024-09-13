@@ -1,0 +1,712 @@
+---
+title: "Access to Affordable Rent" 
+subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
+author: "Mary Richards updated by Christy Lam"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  # word_document:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+```
+
+```{r library setup, include=FALSE}
+library(tidyverse)
+library(psrcelmer)
+library(psrccensus)
+library(psrcplot)
+library(psrctrends)
+library(rlang) #required for psrccensus
+library(emmeans) #required for rlang
+library(magrittr)
+
+library(summarytools) #freq
+library(vtable) #summary stats
+library(table1)  #nice descriptive summary table
+library(scales) #number formatting
+library(ggpubr) #graphing - ggarrange fx
+library(forcats) #for factor re-leveling
+library(plotly) #for interactive charts
+
+library(odbc) #connect to ElmerGeo
+library(DBI) #connect to ElmerGeo
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+library(ggspatial)
+library(lubridate) #year formatting
+library(reshape2) #formatting data
+library(readxl)
+library(gridExtra)
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+```
+
+```{r sources}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
+source("../../../../addLegend-dec.R")
+
+# function to create affordability table
+source("e01-table-gen-affordability.R")
+
+```
+
+```{r variables setup}
+
+file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
+                   theme_dir = 'e-housing',
+                   ind_dir = 'e01-affordable-rent-access',
+                   chart = 'e01-affordable-rent-access',
+                   map = 'e01-affordable-rent-access-map-data')
+
+county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
+
+focus_type_order <- c("People of Color", 
+                      "Households with Lower Income", 
+                      "People with a Disability", 
+                      "Households with Limited English Proficiency", 
+                      "Households with Youth <18", 
+                      "Households with Older Adults 65+")
+
+focus_attribute_order <- c("People of color",
+                           "White\nnon-Hispanic",
+                           "Households with\nlower income",
+                           "With a\ndisability",
+                           "Without a\ndisability",
+                           "Limited English\nproficiency",
+                           "English\nproficient",
+                           "Households with\nyouth",
+                           "Households with\nolder adults",
+                           "Other households")
+```
+
+```{r function: data clean}
+
+# transforming data labels ----
+
+transform_data_labels <- function(table) {
+  data_clean <- table |>  
+    mutate(county = factor(county, levels=county_order)) |>
+    mutate(focus_type_ord = case_when(
+      focus_type =="POC_cat"~"People of Color",
+      focus_type =="Disability_cat"~"People with a Disability",
+      focus_type =="LEP_cat"~"Households with Limited English Proficiency",
+      focus_type =="Income_cat"~"Households with Lower Income",
+      focus_type =="Youth_cat"~"Households with Youth <18",
+      focus_type =="Older_cat"~"Households with Older Adults 65+")) |>
+    mutate(focus_type_ord = factor(focus_type_ord, levels = focus_type_order)) |>
+    mutate(focus_attribute_ord = case_when(
+      focus_attribute == "POC"~ "People of color",
+      focus_attribute == "Non-POC"~ "White non-Hispanic",
+      focus_attribute == "Low Income"~ "Households with lower income",
+      focus_attribute == "Non-Low Income"~ "Other households",
+      focus_attribute == "With disability"~ "With a disability",
+      focus_attribute == "Without disability"~ "Without a disability",
+      focus_attribute == "Limited English proficiency"~ "Limited English proficiency",
+      focus_attribute == "English proficient"~ "English proficient",
+      focus_attribute == "Household with youth"~ "Households with youth",
+      focus_attribute == "Household without youth"~ "Other households",
+      focus_attribute == "Household with older adult"~ "Households with older adults",
+      focus_attribute == "Household without older adult"~ "Other households")) |> 
+    mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, width = 16)) |>
+    mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) 
+  
+  # echarts wants axis to be factors/characters so convert year to a character
+  data_clean$data_year <- as.character(data_clean$data_year)
+  
+  # Sort the data to ensure the charts work
+  data_clean <- data_clean |>
+    arrange(county, focus_type_ord, focus_attribute_ord, data_year)
+  
+  return(data_clean)
+}
+
+```
+
+**Median Gross Rent**
+
+# Download data 
+## Primary data 
+The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
+```{r, include=FALSE}
+# pums_ospi_year <- "2021"
+# years <- c("2011", "2016", "2021") # these years are no longer available/reproducible
+
+pums_ospi_year <- "2022"
+years <- c("2012", "2017", "2022")
+
+# PUMS/OSPI data set
+pums_ospi_elmer <- get_table(schema = "equity", tbl_name = "v_tracker_indicators")
+```
+\
+This data set was compiled from PUMS data.
+\
+Looking at the fields in the data set:
+```{r}
+# explore the data
+head(pums_ospi_elmer)
+
+# view the equity demographic groups, different indicators, and data years
+pums_ospi_cols <- c('focus_type', 'indicator_type', 'data_year') 
+walk(pums_ospi_cols, ~print(unique(pums_ospi_elmer[[.x]])))
+```
+
+```{r indicator specific information, include=FALSE}
+# set indicator information
+indicator_measure <- paste("renter_median_hh_income", pums_ospi_year, "dollars", sep = "_")
+indicator_title <- 'Access to Affordable Rent'
+```
+
+## 1. Explore data
+*In this section we make sure that the data set has the correct dimensions - year, geography, equity focus group, etc.*  
+```{r}
+# clean data set
+data_full <- pums_ospi_elmer %>% 
+  # distinct(indicator_fact_id, .keep_all = TRUE) %>% #this may be necessary depending on indicator
+  filter(indicator_type == indicator_measure) %>% 
+  filter(focus_type != "Total") %>% 
+  filter(focus_attribute != "Total") %>%
+  filter(indicator_attribute != "Total") %>%
+  mutate(data_year_yr = format(data_year,format="%Y"))
+```
+
+### Data fields
+#### *consistent base data*
+
+* There should be 5 geographies - the 4 counties and the Region. 
+* There should be 6 equity focus categories - POC, income, disability, youth, older adult, and LEP
+    + 2 sub-groups in each of the 6 equity focus group (e.g. people of color, non-people of color)
+```{r check data fields}
+
+check_data_fields <- function(column) {
+  l <- length(unique(column))
+  v <- unique(column)
+  return(list(length = l, values = v))
+}
+
+data_fields <- c("num_county" = "county", # geographies
+                 "num_group" = "focus_type", # equity focus groups
+                 "metric" = "fact_type", 
+                 "num_yr" = "data_year", 
+                 "num_indatt" = "indicator_attribute")
+
+data_fields_summary <- map(data_fields, ~check_data_fields(data_full[[.x]]))
+
+data_fields_summary
+
+# !!!renter_median_hh_income_2022_dollars data missing Disability category
+
+```
+\
+\
+
+#### *indicator-specific data*
+These fields will vary by indicator:
+
+* Type of metric - this will determine how the data are visualized *(est ="percent" or "currency" or "number")*
+* Number of years (5-year span) - this can vary depending on data availability
+* Number of indicator-specific categories - this can vary depending on the indicator of interest, ranging from N/A (*median income*) to multiple levels (*crowding, housing cost burden*)
+```{r}
+
+# calculate expected number of rows
+num_row <- data_fields_summary |> 
+  map(~pluck(.x, "length")) |> # isolate nums
+  discard_at("metric") |> # remove metric element
+  reduce(`*`) * 2 # multiply all numbers and by 2 for subgroups
+
+# !!!renter_median_hh_income_2022_dollars: 150, compared to 180 for 2021 dollars
+```
+
+There are **`r data_fields_summary$num_county$length`** geographies and **`r data_fields_summary$num_group$length`** equity focus groups (each with **2** subgroups). There are **`r data_fields_summary$num_yr$length`** years in the data set and the indicator specific field has **`r data_fields_summary$num_indatt$length`** attribute(s), which means there should be a total of **`r num_row`** rows.
+```{r}
+# count number of rows
+nrow(data_full) #150
+```
+<span style="color: #00A7A0">There are some missing data.</span> 
+\
+\
+
+#### *checking for missing data*
+```{r}
+check_missing_data <- function(vars, multiply_by_subgroups = FALSE) {
+  # This function will take keep the values associated with the variables and multiply them. Includes
+  # option to mulitply by number of subgroups
+  
+  num <- data_fields_summary |> 
+    map(~pluck(.x, "length")) |> 
+    keep_at(vars) |> 
+    reduce(`*`)
+  
+  if(multiply_by_subgroups == TRUE) {
+    num <- num * 2
+  }
+  
+  return(num)
+}
+```
+
+##### Year / geography
+```{r}
+num_yr_geo <- check_missing_data(vars = c("num_group", "num_indatt"),
+                                 multiply_by_subgroups = TRUE)
+
+#10 for 2022 dollars instead of 12 for 2021 dollars
+```
+If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
+```{r, include=FALSE, eval=FALSE}
+table(data_full$data_year,
+      data_full$county)
+```
+<span style="color: #00A7A0">
+
+</span> 
+\
+\
+
+##### Year / equity focus group
+```{r}
+num_yr_grp <- check_missing_data(vars = c("num_county", "num_indatt"),
+                                 multiply_by_subgroups = TRUE)
+
+
+#10 for 2022 dollars same as 2021 dollars
+```
+If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
+```{r}
+table(data_full$data_year,
+      data_full$focus_type)
+```
+<span style="color: #00A7A0">
+The disability category is missing across all years (2012, 2017, 2022).
+</span> 
+\
+\
+
+##### Year / equity focus sub-group
+```{r}
+num_yr_subgrp <- check_missing_data(vars = c("num_county", "num_indatt"))
+
+#5 for 2022 dollars same as with 2021 dollars
+```
+If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
+```{r}
+table(data_full$data_year,
+      data_full$focus_attribute)
+```
+\
+\
+
+##### Year / indicator attribute
+```{r}
+num_yr_ind <- check_missing_data(vars = c("num_county", "num_group"),
+                                 multiply_by_subgroups = TRUE)
+
+#50 instead of 60 with 2021 dollars
+```
+If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
+```{r}
+table(data_full$data_year,
+      data_full$indicator_attribute)
+```
+\
+\
+
+### Numeric data
+To check for *0*s and *NULL*s
+```{r}
+# checking for NULLs
+summary(data_full$fact_value)
+```
+<span style="color: #00A7A0">
+There are no 0s or nulls.
+</span> 
+\
+\
+
+To look at distribution of all data - not the most useful visual, but provides a sense of the range of values at a high level in one plot. 
+\
+```{r}
+qplot(data_year_yr, fact_value, 
+      colour = county, shape = focus_type, 
+      data = data_full, 
+      main = indicator_title) + theme(axis.title.x = element_blank(),
+                                               axis.title.y = element_blank())
+```
+\
+This table includes a lot of information about the data set and helps to show the different levels of each field. It provides another way to check if data are available for all counties and all years, or where there may be gaps in the data set. 
+```{r}
+data_refined <- data_full |> 
+  select(data_year_yr, county, vulnerability, focus_type, focus_attribute,
+        indicator_type, indicator_attribute, fact_value)
+
+sumtable(data_refined,
+         add.median = TRUE,
+         group = "county",
+         out = "return")
+```
+
+```{r wrap/order labels}
+
+data_clean <- transform_data_labels(data_full)
+```
+
+```{r}
+# indicator specific re-ordering - gross median rent is N/A so this step is unnecessary
+# data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
+#                                     levels = c("Less than a Bachelor's degree",
+#                                                "Bachelor's degree or higher"))
+```
+\
+
+### Data labels, shares
+These charts were generated to ensure the labels across years are consistent/make sense. There had been an issue with misassigned labels because `tidycensus::pums_variables`, i.e. the only digital data dictionary available to associate labels with codes, exists only from 2017 forward. Most variables have had consistent codes, but in cases where the codes have shifted over time, using the 2017 lookup winds up mischaracterizing categories.
+\
+\
+These charts also help to confirm that the shares add up to 100% - only relevant when *indicator_attribute* has more than one category. The *indicator_attribute* for median household income is NA.
+\
+\
+*The colors of the charts may not be consistent between the years depending on missing data.* 
+\
+```{r}
+check_region <- function(df, year) {
+  df |> 
+    filter(county == "Region") |> 
+    filter(data_year == year) |> 
+    arrange(focus_attribute_ord)
+}
+
+check_region_facet <- function(df, year) {
+  static_facet_column_chart(t = df,
+                            x = "data_year", 
+                            y = "fact_value",
+                            fill = "vulnerability", 
+                            facet = "focus_type_ord",
+                            est = "currency",
+                            scales = "fixed",
+                            color = "psrc_pairs", 
+                            ncol = 3,
+                            title = paste0(indicator_title, ": Region (", year, ")"),
+                            subtitle = paste(str_to_title(str_replace_all(indicator_measure, "_", " ")), "by Equity Focus Group"),
+                            source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+}
+
+# the years below reflect the years that are available from unique(data_year)
+just_region_dfs <- map(years, ~check_region(df = data_clean, year = .x)) |> 
+  set_names(paste0('r', years))
+
+# check est type - make sure it corresponds to your indicator (percent, currency, or number)
+check_region_facets <- map2(just_region_dfs, years, ~check_region_facet(df = .x, year = .y))
+
+walk(check_region_facets, ~print(.x))
+```
+
+## 2. Visually explore data
+### Scatter plots
+*In this section we start to explore the data visually - distribution by the different dimensions within the data set. These plots are helpful to check for outliers and get a higher level understanding of the data in one visual, before slicing the data by geography and equity focus group in the following sections.* 
+\
+\
+The following code will need to be adjusted to fit the fields specific to the data indicator. For educational attainment, we focus on those with a Bachelor's degree or higher. The following code establishes the data frame that the rest of the analysis uses. If there are fewer than 2 *indicator attributes*, this section can be skipped/commented out, but the code will need to be adjusted throughout. 
+\
+\
+
+#### By *indicator_attribute*
+This section isn't relevant for this specific indicator because there aren't unique indicator attributes. 
+
+#### By Year
+```{r}
+# separating by year ----
+
+data_clean_dfs <- map(years, ~data_clean |> filter(data_year == .x))
+```
+
+```{r}
+# plot data, adjust y limits based on data set
+data_clean_plot <- function(df, year) {
+  qplot(focus_type_ord, 
+        fact_value, 
+        colour = county, 
+        shape = vulnerability, 
+        data = df, 
+        main = paste0(indicator_title, ": ", year)) + 
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+    theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank()#,
+          # axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+          ) + 
+    ylim(0, 150000)
+}
+
+data_clean_plots <- map2(data_clean_dfs, years, ~data_clean_plot(.x, .y))
+
+walk(data_clean_plots, ~print(.x))
+```
+
+## 3. Calculate affordability with median gross rent
+### Monthly, 30% of income (equity group)
+```{r}
+head(data_clean)
+
+data_clean_affordability <- data_clean |>  
+  mutate(income_per_month = fact_value / 12,
+         income_30perc = income_per_month * 0.3)
+
+data_clean_affordability
+
+```
+
+### Median gross rent (tract level)
+```{r, message=FALSE, warning=FALSE}
+# set variable for same years as in PUMS dataset
+# years_of_interest <- c(as.numeric(unique(data_clean$data_year_yr))) # just use "years"
+years_of_interest <- years
+
+# getting median gross rent data by tract - ACS
+base_acs_data <- get_acs_recs(geography ='tract', 
+                              table.names = 'B25064',
+                              years = as.numeric(years),
+                              acs.type = 'acs5')
+
+acs_data <- base_acs_data %>% 
+  mutate(county_code=substr(GEOID, 3, 5), # add county to tract level data
+         county = case_when(county_code=="033" ~"King",
+                            county_code=="035" ~"Kitsap",
+                            county_code=="053" ~"Pierce",
+                            county_code=="061" ~"Snohomish")) %>% 
+  select(GEOID, estimate, year, county)
+
+```
+
+### Calculate number of affordable tracts
+Christy helped to script a process to iterate through the Elmer equity group data for each year and combine it with the median gross rent to understand how many tracts are affordable for each year, equity group, and geography. It is saved within the GitHub folder (GitHub/equity-tracker/data-visualization/tracker-webpage-content/e-housing/e01-affordable-rent-access/e01-iteration-data.R)
+```{r}
+final_df <- create_affordability_table(acs_data = acs_data, 
+                                       geographies = as.character(unique(data_clean$county)), 
+                                       equity_groups = unique(data_clean$focus_attribute), 
+                                       years_of_interest = years)
+
+head(final_df)
+```
+
+```{r}
+# need to re-set order so that the facet charts and radio buttons are in the correct order 
+data_clean <- transform_data_labels(final_df)
+
+```
+
+# **CHART .rda**
+```{r, include=FALSE}
+head(data_clean) # make sure this is the correct data set
+
+# make any additional edits 
+data_clean <- data_clean %>% 
+  mutate(fact_value_notrounded = share_aff_tracts) %>% #create column to retain full median income values
+  mutate(fact_value = round(fact_value_notrounded, digits=2)) #round value to percentage - retain consistent name
+```
+
+Save final data set (.rda) for charts
+```{r save rda charts, eval=FALSE}
+
+# save final data set as .rda
+save(data_clean, file = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir, 
+                                  "update",
+                                  "rda-data",
+                                  paste0(file_names$chart,'.rda')))
+```
+
+
+## Create data set for map .rda 
+### Additional data
+#### Tract spatial file
+for mapping most recent data
+```{r census tract spatial data - for tract data, include=FALSE}
+# Connecting to ElmerGeo for census geographies through Portal----
+
+arc_service <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services"
+
+tracts20.url <- file.path(arc_service, "Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
+tracts10.url <- file.path(arc_service, "Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
+
+tracts20.lyr <- st_read(tracts20.url)
+tracts10.lyr <- st_read(tracts10.url)
+
+nrow(tracts20.lyr) #919
+nrow(tracts10.lyr) #773
+```
+
+#### Corresponding ACS table
+```{r acs data, include=FALSE}
+# Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
+#x <- tidycensus::load_variables(2021,"acs5") %>% 
+ # dplyr::filter(grepl("median gross rent",
+  #                    concept, ignore.case=TRUE) & 
+   #               (geography=="tract"))
+
+# getting median gross rent data by tract - ACS
+base_acs_data <- get_acs_recs(geography ='tract', 
+                              table.names = 'B25064',
+                              years = c(2022),
+                              acs.type = 'acs5')
+
+# filter only fields of interest - census tract and estimate (gross_median_rent)
+acs_data <- base_acs_data %>% 
+  select(GEOID, estimate, reliability)%>%
+  filter(!is.na(estimate))
+
+# getting median household income by region - PUMS
+pums_data <- get_psrc_pums(span = 5,
+                           dyear = 2022,
+                           level = "h", # Unit of analysis == household
+                           vars = c("HINCP","OWN_RENT")) # household income
+
+# pums_data_income_county <- psrc_pums_median(pums_data, stat_var = "HINCP",
+#                                             group_vars = c("COUNTY", "OWN_RENT"),
+#                                             rr=TRUE)
+pums_data_income_region <- psrc_pums_median(pums_data, 
+                                            stat_var = "HINCP",
+                                            group_vars = "OWN_RENT",
+                                            rr = TRUE)
+
+pums_data_income_region_renters <- pums_data_income_region %>% 
+  filter(OWN_RENT == "Rented")
+
+# add regional income to rent data
+affordability <- acs_data %>% 
+  mutate(reg_med_income = pums_data_income_region_renters$HINCP_median,
+         reg_med_income_monthly = reg_med_income/12,
+         income_30perc = reg_med_income_monthly * 0.3,
+         affordability=case_when(estimate > income_30perc ~ "Not affordable",
+                                 estimate <= income_30perc ~ "Affordable"))
+
+# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher (done)
+```
+
+### Joining data
+```{r}
+# merge to 2020 census tract spatial file
+acs_data_tract_merge <- merge(tracts20.lyr, 
+                              affordability,
+                              by.x = "geoid20",
+                              by.y = "GEOID",
+                              all.x = TRUE)
+
+acs_data_tract <- acs_data_tract_merge
+
+# # getting data by county from acs 
+# county_acs_data <- get_acs_recs(geography ='county', 
+#                                 table.names = 'B25064',#'B25031', #subject table code
+#                                 years = c(2021),
+#                                 acs.type = 'acs5')
+# # county_acs_data_final <- county_acs_data %>% 
+# #   dplyr::select(year, name, estimate, moe, reliability)
+# 
+# county_data <- county_acs_data %>% 
+#   dplyr::filter(variable =='B25031_001') %>% 
+#   dplyr::select(name,estimate) %>% #to simplify table
+#   dplyr::rename(cnty_estimate=estimate) %>% #to distinguish between tract and county values
+#   mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
+# 
+# # getting data by region from PUMS
+# pums_data <- get_psrc_pums(span = 5,
+#                            dyear = 2021,
+#                            level = "h",
+#                            vars = "GRNTP")
+# reg_median <- psrc_pums_median(pums_data, stat_var = "GRNTP")
+# 
+# # add region median to county data
+# county_reg_data <- county_data %>% 
+#   mutate(reg_estimate=reg_median$GRNTP_median)
+# 
+# # merge tract, county, and region data into one data set 
+# acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
+#                         by.x="county_name",
+#                         by.y="county_name",
+#                         all.x=TRUE)
+```
+
+### Explore map/acs data
+
+```{r explore map}
+# set map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# set up palettes
+psrc_palette <- leaflet::colorFactor(palette=psrc_colors$purples_inc,
+                                      domain = acs_data_tract$affordability)
+
+# set the variable
+var_name <- "Median Gross Rent"
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=acs_data_tract,
+              fillColor = psrc_palette(acs_data_tract$affordability),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = round(acs_data_tract$estimate, digits=1)) %>%
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = acs_data_tract$affordability,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat()) %>% 
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+# **MAP .rda**
+Save final data set (.rda) for map
+```{r save rda map, eval=FALSE}
+# This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
+
+# save final data set as .rda
+save(acs_data_tract, file = file.path(file_names$base_dir,
+                                      file_names$theme_dir,
+                                      file_names$ind_dir, 
+                                      "update",
+                                      "rda-data",
+                                      paste0(file_names$map,'.rda')))
+```
+
+<a href="#top">Back to top of the page</a>
