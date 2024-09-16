@@ -53,11 +53,13 @@ install_psrc_fonts()
 library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
+
+library(here)
 ```
 
 ```{r sources}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
-source("../../../../addLegend-dec.R")
+source(here("data-visualization", "addLegend-dec.R"))
 
 # function to create affordability table
 source("e01-table-gen-affordability.R")
