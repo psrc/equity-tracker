@@ -4,7 +4,7 @@ subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Mary Richards updated by Christy Lam"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  # word_document:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
@@ -209,8 +209,6 @@ data_fields_summary <- map(data_fields, ~check_data_fields(data_full[[.x]]))
 
 data_fields_summary
 
-# !!!renter_median_hh_income_2022_dollars data missing Disability category
-
 ```
 \
 \
@@ -229,13 +227,13 @@ num_row <- data_fields_summary |>
   discard_at("metric") |> # remove metric element
   reduce(`*`) * 2 # multiply all numbers and by 2 for subgroups
 
-# !!!renter_median_hh_income_2022_dollars: 150, compared to 180 for 2021 dollars
+# renter_median_hh_income_2022_dollars: 180
 ```
 
 There are **`r data_fields_summary$num_county$length`** geographies and **`r data_fields_summary$num_group$length`** equity focus groups (each with **2** subgroups). There are **`r data_fields_summary$num_yr$length`** years in the data set and the indicator specific field has **`r data_fields_summary$num_indatt$length`** attribute(s), which means there should be a total of **`r num_row`** rows.
 ```{r}
 # count number of rows
-nrow(data_full) #150
+nrow(data_full) #180
 ```
 <span style="color: #00A7A0">There are some missing data.</span> 
 \
@@ -265,7 +263,7 @@ check_missing_data <- function(vars, multiply_by_subgroups = FALSE) {
 num_yr_geo <- check_missing_data(vars = c("num_group", "num_indatt"),
                                  multiply_by_subgroups = TRUE)
 
-#10 for 2022 dollars instead of 12 for 2021 dollars
+#12 for 2022 dollars
 ```
 If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
 ```{r, include=FALSE, eval=FALSE}
@@ -301,7 +299,7 @@ The disability category is missing across all years (2012, 2017, 2022).
 ```{r}
 num_yr_subgrp <- check_missing_data(vars = c("num_county", "num_indatt"))
 
-#5 for 2022 dollars same as with 2021 dollars
+#5 for 2022 dollars
 ```
 If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
 ```{r}
@@ -316,7 +314,7 @@ table(data_full$data_year,
 num_yr_ind <- check_missing_data(vars = c("num_county", "num_group"),
                                  multiply_by_subgroups = TRUE)
 
-#50 instead of 60 with 2021 dollars
+#60 with 2022 dollars
 ```
 If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
 ```{r}
@@ -473,7 +471,7 @@ data_clean_affordability
 ```{r, message=FALSE, warning=FALSE}
 # set variable for same years as in PUMS dataset
 # years_of_interest <- c(as.numeric(unique(data_clean$data_year_yr))) # just use "years"
-years_of_interest <- years
+# years_of_interest <- years
 
 # getting median gross rent data by tract - ACS
 base_acs_data <- get_acs_recs(geography ='tract', 
@@ -589,9 +587,9 @@ pums_data_income_region_renters <- pums_data_income_region %>%
 # add regional income to rent data
 affordability <- acs_data %>% 
   mutate(reg_med_income = pums_data_income_region_renters$HINCP_median,
-         reg_med_income_monthly = reg_med_income/12,
+         reg_med_income_monthly = reg_med_income / 12,
          income_30perc = reg_med_income_monthly * 0.3,
-         affordability=case_when(estimate > income_30perc ~ "Not affordable",
+         affordability = case_when(estimate > income_30perc ~ "Not affordable",
                                  estimate <= income_30perc ~ "Affordable"))
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher (done)
