@@ -3,6 +3,7 @@ library(dplyr)
 library(stringr)
 library(data.table)
 library(RSocrata)
+library(rvest)
 
 # Setup: List necessary variables and lookups -----------------------
 
@@ -72,15 +73,17 @@ ospi_efa_to_elmer <- function(rs_kready){
 # Identify URL  -----------------------------------------------------
 
 get_wadata_ospi_url <- function(year){
+  url_rgx <- "^https://data.wa.gov/education/Report-Card-WaKids-.*-School-Year"
   schoolyr_txt <- paste0(year-1, "-",year %% 100)
   wadata_search_url <- paste0("https://data.wa.gov/browse?q=Report%20Card%20WaKids%20",
                               schoolyr_txt,
                               "%20School%20Year&sortBy=relevance&limitTo=datasets")
   return_term <- paste0("https://data.wa.gov/education/Report-Card-WaKids-", schoolyr_txt,"-School-Year/")
   # Get first search result
-  fetched <- read_html(wadata_search_url)
+  fetched <- rvest::read_html(wadata_search_url)
   links <- fetched %>% html_elements("a") %>% html_attr("href")
-  singleyear_code <- grep("https://data.wa.gov/education/Report-Card-WaKids-", links, value=TRUE)[1] %>% stringr::str_replace(return_term,"")
+  singleyear_code <- grep(url_rgx, links, value=TRUE)[1] %>% 
+    stringr::str_replace(url_rgx,"")
   api_url <- paste0("https://data.wa.gov/resource", singleyear_code, ".json")
   return(api_url)
 }
@@ -135,11 +138,12 @@ get_k_readiness <- function(URL){
 
 # Example -----------------------------------------------------------
 ## Single year
-# url <- get_wadata_ospi_url(2024)
+# url <- get_wadata_ospi_url(2025)
 # kready <- get_k_readiness(url)
 
 ## All years
-# urlvector <- c("https://data.wa.gov/resource/vumg-9sgs.json",  # 2023-24
+# urlvector <- c("https://data.wa.gov/resource/3ji8-ykgj.json",  # 2024-25 
+#                "https://data.wa.gov/resource/vumg-9sgs.json",  # 2023-24
 #                "https://data.wa.gov/resource/3ji8-ykgj.json",  # 2022-23
 #                "https://data.wa.gov/resource/rzgf-vi75.json",  # 2021-22
 #                                                                # 2020-21 Not reported/collected
