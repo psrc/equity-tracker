@@ -4,13 +4,14 @@ subtitle: 'Visuals for Equity Tracker (PUMS data)'
 author: "Mary Richards updated by Christy Lam"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  # word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
+
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -229,7 +230,9 @@ sort <- data %>%
 
 ```
 
-Data callout 1. 42%: Share of tracts in the region where rent is affordable based on the regional median household income
+Data callout 1:
+
+42%: Share of tracts in the region where rent is affordable based on the regional median household income
 
 <!-- 1. 39%: Share of tracts in the region where rent is affordable based on the regional median household income -->
 
@@ -237,15 +240,19 @@ Data callout 1. 42%: Share of tracts in the region where rent is affordable base
 \
 
 #### Insights & Analysis
-*\$1,800: Regional affordability threshold for monthly rent, based on 30% of the regional median household income for renters ($71,910/year)
-* Access to affordable rent is highest in Pierce (65% of tracts), followed by Kitsap County (64%), Snohomish (43%), and King (31%)
-* # Ten census tracts tied with the highest median gross rent ($3,500) are all in King County (but relability measure is missing):
+
+1. \$1,800: Regional affordability threshold for monthly rent, based on 30% of the regional median household income for renters ($71,910/year)
+
+2. Access to affordable rent is highest in Pierce (65% of tracts), followed by Kitsap County (64%), Snohomish (43%), and King (31%)
+
+3. Ten census tracts tied with the highest median gross rent ($3,500) are all in King County:
   - 1 is in Seattle (Montlake, south of UW)
   - 2 are in Mercer Island, 
   - 2 are in Clyde Hill/Hunts Point/Medina/Yarrow Point, 
   - 4 are in Bellevue
   - 1 in Auburn (West Hill)
-* The highest median gross rent in Pierce, Kitsap, and Snohomish County are in: Tehaleh community south of Bonney Lake (\$3,090), the southeastern portion of Bainbridge Island (\$2,720), and the Edmonds/southern Mukilteo area (\$3,280), respectively  
+  
+4. The highest median gross rent in Pierce, Kitsap, and Snohomish County are in: Tehaleh community south of Bonney Lake (\$3,090), the southeastern portion of Bainbridge Island (\$2,720), and the Edmonds/southern Mukilteo area (\$3,280), respectively  
 
 <!-- 1. \$1,640: Regional affordability threshold for monthly rent, based on 30% of the regional median household income for renters ($65,600/year) -->  
 <!-- * Access to affordable rent is highest in Kitsap (69% of tracts), followed by Pierce County (60%), Snohomish (42%), and King (25%) -->
@@ -452,7 +459,9 @@ filter <- data_clean_column %>%
 ```
 
 
-Data callout 2. 1%: Regionally, 1% of census tracts are affordable to renter households with limited English proficiency, 46X less than the what is affordable to English-proficient renter households (46%)
+Data callout 2: 
+
+1%: Regionally, 1% of census tracts are affordable to renter households with limited English proficiency, 46X less than the what is affordable to English-proficient renter households (46%)
 
 <!-- 2. 2%: Regionally, 2% of census tracts are affordable to renter households with limited English proficiency, 33X less than the 65% affordable to English-proficient renter households -->
 
@@ -679,7 +688,9 @@ filter <- data_clean %>%
 # Snohomish 2011-2021: 0.07947020-0.01714286=0.06232734
 ```
 
-Data callout 3. 2.5X: The share of tracts with affordable rent decreased 45% for renters of color between 2012 and 2022, about 2.5 times more than the decrease for white non-Hispanic renters (38%)
+Data callout 3: 
+
+2.5X: The share of tracts with affordable rent decreased 45% for renters of color between 2012 and 2022, about 2.5 times more than the decrease for white non-Hispanic renters (38%)
 
 
 <!-- 3. 1.7X: The share of tracts with affordable rent decreased 32% for renters of color between 2011 and 2021, about 1.7 times more than the decrease for white non-Hispanic renters (20%) -->
@@ -719,47 +730,48 @@ Data callout 3. 2.5X: The share of tracts with affordable rent decreased 45% for
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
 # current_folder <- file.path(getwd()) # maybe use dirname(rstudioapi::getSourceEditorContext()$path)
+# y.drive.folder <- file.path(file_names$base_dir, file_names$theme_dir, file_names$ind_dir)
 current_folder <- dirname(rstudioapi::getSourceEditorContext()$path)
-y.drive.folder <- file.path(file_names$base_dir, file_names$theme_dir, file_names$ind_dir)
+y.drive.folder <- file.path(file_names$base_dir, file_names$theme_dir, file_names$ind_dir, "update") # to update folder
 
 # isolate files in Github
-list.of.files <- list.files(current_folder, 
+list.of.files <- list.files(current_folder,
                             full.names = T,
                             pattern = "\\.(html|docx)$")
-# list.of.files
+list.of.files
 
-# copy the files to the new folder
-file.copy(list.of.files,
-          y.drive.folder,
-          overwrite = T)
-
-# keep only .Rmd files in Github (cleaner)
-files.in.dir <- list.files(current_folder, 
-                            full.names = T)
-files.to.keep <- list.files(current_folder, 
-                            full.names = T,
-                            pattern = "\\.Rmd$")
-files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
-                                                              files.in.dir, value=TRUE))])
-do.call(unlink, files.to.remove)
+# # copy the files to the new folder
+# file.copy(list.of.files,
+#           y.drive.folder,
+#           overwrite = T)
+# 
+# # keep only .Rmd files in Github (cleaner)
+# files.in.dir <- list.files(current_folder, 
+#                             full.names = T)
+# files.to.keep <- list.files(current_folder, 
+#                             full.names = T,
+#                             pattern = "\\.Rmd$")
+# files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
+#                                                               files.in.dir, value=TRUE))])
+# do.call(unlink, files.to.remove)
 ```
 
 ## Copy files from Y drive > website folder
 ```{r to web dev folder, include=FALSE, eval=FALSE}
-# set folder structure
-current_folder <- file.path(file_names$base_dir, file_names$theme_dir, file_names$ind_dir,'webpage-html-outputs')
-
-web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-new.folder <- file.path(web.base.folder, file_names$theme_dir)
-
-list.of.files <- list.files(current_folder, 
-                            full.names = T)
-# list.of.files
-
-# copy the files to the new folder
-file.copy(list.of.files,
-          new.folder,
-          overwrite = T)
+# # set folder structure
+# current_folder <- file.path(file_names$base_dir, file_names$theme_dir, file_names$ind_dir,'webpage-html-outputs')
+# 
+# web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+# new.folder <- file.path(web.base.folder, file_names$theme_dir)
+# 
+# list.of.files <- list.files(current_folder, 
+#                             full.names = T)
+# # list.of.files
+# 
+# # copy the files to the new folder
+# file.copy(list.of.files,
+#           new.folder,
+#           overwrite = T)
 ```
 
 <a href="#top">Back to top of the page</a>
