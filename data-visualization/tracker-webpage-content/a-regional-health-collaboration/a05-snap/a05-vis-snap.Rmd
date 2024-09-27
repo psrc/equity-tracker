@@ -184,7 +184,6 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 
 
 ```{r data format - map, include=FALSE}
-
 #move the decimal point for reg_estimate and cnty_estimate
 acs_data_tract <- acs_data_tract %>%
    mutate(reg_estimate = (reg_estimate*100)) %>%
