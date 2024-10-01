@@ -1,4 +1,8 @@
-# This script is meant to streamline the data-gen and data-vis scripts for each indicator. This script will include the common/repetitive code that is used across the indicators
+# This script is meant to streamline the data-gen and data-vis scripts for each indicator. 
+# This script will include the common/repetitive code that is used across the indicators
+
+# LIBRARIES
+library(tidyverse)
 
 # FORMATTING --------
 # wrap/order labels ----
@@ -22,34 +26,47 @@ focus_attribute_order <- c("People of color",
                            "Households with\nolder adults",
                            "Other households")
 
-# wrap/order labels ----
-equity_tracker_label_formatting <- function(input_df) {
-  ouput_df <- input_df %>% 
-    mutate(county = factor(county, levels=county_order)) %>%
+
+# transforming data labels ----
+
+transform_data_labels <- function(table) {
+  data_clean <- table |>  
+    mutate(county = factor(county, levels=county_order)) |>
     mutate(focus_type_ord = case_when(
-      focus_type=="POC_cat"~"People of Color",
-      focus_type=="Disability_cat"~"People with a Disability",
-      focus_type=="LEP_cat"~"Households with Limited English Proficiency",
-      focus_type=="Income_cat"~"Households with Lower Income",
-      focus_type=="Youth_cat"~"Households with Youth <18",
-      focus_type=="Older_cat"~"Households with Older Adults 65+")) %>%
-    mutate(focus_type_ord = factor(focus_type_ord, levels = focus_type_order)) %>%
+      focus_type =="POC_cat"~"People of Color",
+      focus_type =="Disability_cat"~"People with a Disability",
+      focus_type =="LEP_cat"~"Households with Limited English Proficiency",
+      focus_type =="Income_cat"~"Households with Lower Income",
+      focus_type =="Youth_cat"~"Households with Youth <18",
+      focus_type =="Older_cat"~"Households with Older Adults 65+")) |>
+    mutate(focus_type_ord = factor(focus_type_ord, levels = focus_type_order)) |>
     mutate(focus_attribute_ord = case_when(
-      focus_attribute== "POC"~ "People of color",
-      focus_attribute== "Non-POC"~ "White non-Hispanic",
-      focus_attribute== "Low Income"~ "Households with lower income",
-      focus_attribute== "Non-Low Income"~ "Other households",
-      focus_attribute== "With disability"~ "With a disability",
-      focus_attribute== "Without disability"~ "Without a disability",
-      focus_attribute== "Limited English proficiency"~ "Limited English proficiency",
-      focus_attribute== "English proficient"~ "English proficient",
-      focus_attribute== "Household with youth"~ "Households with youth",
-      focus_attribute== "Household without youth"~ "Other households",
-      focus_attribute== "Household with older adult"~ "Households with older adults",
-      focus_attribute== "Household without older adult"~ "Other households")) %>% 
-    mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, width=16)) %>%
-    mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order))
+      focus_attribute == "POC"~ "People of color",
+      focus_attribute == "Non-POC"~ "White non-Hispanic",
+      focus_attribute == "Low Income"~ "Households with lower income",
+      focus_attribute == "Non-Low Income"~ "Other households",
+      focus_attribute == "With disability"~ "With a disability",
+      focus_attribute == "Without disability"~ "Without a disability",
+      focus_attribute == "Limited English proficiency"~ "Limited English proficiency",
+      focus_attribute == "English proficient"~ "English proficient",
+      focus_attribute == "Household with youth"~ "Households with youth",
+      focus_attribute == "Household without youth"~ "Other households",
+      focus_attribute == "Household with older adult"~ "Households with older adults",
+      focus_attribute == "Household without older adult"~ "Other households")) |> 
+    mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, width = 16)) |>
+    mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) 
+  
+  # echarts wants axis to be factors/characters so convert year to a character
+  data_clean$data_year <- as.character(data_clean$data_year)
+  
+  # Sort the data to ensure the charts work
+  data_clean <- data_clean |>
+    arrange(county, focus_type_ord, focus_attribute_ord, data_year)
+  
+  return(data_clean)
 }
+
+
 
 # MAP SETTINGS --------
 ## This code helps to set up the legend so that it is arranged high-low with correct color order (https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend) 
