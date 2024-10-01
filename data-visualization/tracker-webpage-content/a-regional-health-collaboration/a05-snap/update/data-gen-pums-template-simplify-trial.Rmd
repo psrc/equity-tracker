@@ -60,10 +60,10 @@ source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 ```{r variables setup}
 
 file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
-                   theme_dir = 'e-housing',
-                   ind_dir = 'e01-affordable-rent-access',
-                   chart = 'e01-affordable-rent-access',
-                   map = 'e01-affordable-rent-access-map-data')
+                   theme_dir = 'a-regional-health-collaboration',
+                   ind_dir = 'a-regional-health-collaboration',
+                   chart = 'a05-snap',
+                   map = 'a05-snap-map-data')
 ```
 
 **Median Income**
@@ -310,22 +310,22 @@ num_yr_grp <- check_missing_data(vars = c("num_yr", "num_group"),
 
 If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
 ```{r}
-table(data_full_nona$data_year,
-      data_full_nona$focus_type)
+table(data_full$data_year,
+      data_full$focus_type)
 ```
 
 
 ##### Year / equity focus sub-group
 ```{r}
-num_yr_subgrp <- check_missing_data(vars = c("num_county", "num_sub_group"),
+num_yr_subgrp <- check_missing_data(vars = c("num_yr", "num_sub_group"),
                                     multiply_by_subgroups = FALSE)
 
 #5
 ```
 If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
 ```{r}
-table(data_full_nona$data_year,
-      data_full_nona$focus_attribute)
+table(data_full$data_year,
+      data_full$focus_attribute)
 ```
 \
 \
@@ -338,8 +338,8 @@ num_yr_ind <- check_missing_data(vars = c("num_county", "num_group"),
 ```
 If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
 ```{r}
-table(data_full_nona$data_year,
-      data_full_nona$indicator_attribute)
+table(data_full$data_year,
+      data_full$indicator_attribute)
 ```
 \
 \
