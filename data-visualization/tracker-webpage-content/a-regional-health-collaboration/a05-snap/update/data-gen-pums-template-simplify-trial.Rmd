@@ -20,6 +20,10 @@ knitr::opts_chunk$set(echo=FALSE,
 ```
 
 ```{r library setup, include=FALSE}
+# install.packages("devtools")
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+
 library(tidyverse)
 library(psrcelmer)
 library(psrccensus)
@@ -51,7 +55,7 @@ library(here)
 
 ```{r sources}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
-source(here("data-visualization", "addLegend-dec.R"))
+# source(here("data-visualization", "addLegend-dec.R"))
 
 # reference supplemental script with supporting settings/functions
 source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
@@ -378,6 +382,7 @@ sumtable(data_refined,
 ```{r}
 # wrap/order labels ----
 # variable ordering and label function in equity-tracker-supplemental-script.R
+# data_clean <- equity_tracker_label_formatting(data_full)
 data_clean <- transform_data_labels(data_full)
 ```
 
@@ -432,6 +437,7 @@ check_region_facets <- map2(just_region_dfs,
                             ~check_region_facet(df = .x, year = .y))
 
 walk(check_region_facets, ~print(.x))
+
 ```
 
 ## 2. Visually explore data
