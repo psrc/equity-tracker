@@ -1,9 +1,6 @@
 # This script is meant to streamline the data-gen and data-vis scripts for each indicator. 
 # This script will include the common/repetitive code that is used across the indicators
 
-# LIBRARIES
-library(tidyverse)
-
 # FORMATTING --------
 # wrap/order labels ----
 county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
