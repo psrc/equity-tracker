@@ -25,7 +25,6 @@ focus_attribute_order <- c("People of color",
 
 
 # transforming data labels ----
-
 transform_data_labels <- function(table) {
   data_clean <- table |>  
     mutate(county = factor(county, levels=county_order)) |>
@@ -63,7 +62,33 @@ transform_data_labels <- function(table) {
   return(data_clean)
 }
 
-
+equity_tracker_label_formatting <- function(input_df) {
+  ouput_df <- input_df %>% 
+    mutate(county = factor(county, levels=county_order)) %>%
+    mutate(focus_type_ord = case_when(
+      focus_type=="POC_cat"~"People of Color",
+      focus_type=="Disability_cat"~"People with a Disability",
+      focus_type=="LEP_cat"~"Households with Limited English Proficiency",
+      focus_type=="Income_cat"~"Households with Lower Income",
+      focus_type=="Youth_cat"~"Households with Youth <18",
+      focus_type=="Older_cat"~"Households with Older Adults 65+")) %>%
+    mutate(focus_type_ord = factor(focus_type_ord, levels = focus_type_order)) %>%
+    mutate(focus_attribute_ord = case_when(
+      focus_attribute== "POC"~ "People of color",
+      focus_attribute== "Non-POC"~ "White non-Hispanic",
+      focus_attribute== "Low Income"~ "Households with lower income",
+      focus_attribute== "Non-Low Income"~ "Other households",
+      focus_attribute== "With disability"~ "With a disability",
+      focus_attribute== "Without disability"~ "Without a disability",
+      focus_attribute== "Limited English proficiency"~ "Limited English proficiency",
+      focus_attribute== "English proficient"~ "English proficient",
+      focus_attribute== "Household with youth"~ "Households with youth",
+      focus_attribute== "Household without youth"~ "Other households",
+      focus_attribute== "Household with older adult"~ "Households with older adults",
+      focus_attribute== "Household without older adult"~ "Other households")) %>% 
+    mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, width=16)) %>%
+    mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order))
+}
 
 # MAP SETTINGS --------
 ## This code helps to set up the legend so that it is arranged high-low with correct color order (https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend) 
