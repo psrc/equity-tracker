@@ -1,6 +1,39 @@
 # This script is meant to streamline the data-gen and data-vis scripts for each indicator. 
 # This script will include the common/repetitive code that is used across the indicators
 
+# CHECKING DATA --------
+# This function will take keep the values associated with the variables and multiply them. 
+# Includes option to multiply by number of subgroups.
+# Generates a message that indicates whether there are the expected number of rows.
+check_missing_data <- function(vars, multiply_by_subgroups = FALSE) {
+  
+  num <- data_fields_summary |> 
+    map(~pluck(.x, "length")) |> 
+    keep_at(vars) |> 
+    reduce(`*`)
+  
+  if(multiply_by_subgroups == TRUE) {
+    num <- num * 2
+  }
+  
+  # return(num)
+  
+  expected_val <- if(vars[2]=="num_county") 5 #King, Kitsap, Pierce, Snohomish, and Region
+  else if(vars[2]=="num_group") 6 #POC, Low Income, Disability, LEP, youth, older adults
+  else if(vars[2]=="num_sub_group") 12 #POC/White non-Hispanic, Low Income/Non-Low Income, etc.
+  
+  actual_val <- data_fields_summary[[vars[1]]]$length*expected_val
+  
+  if(actual_val < num){
+    warning(paste("There are", num, "rows, which is fewer than expected. Please check."))
+  } else if (actual_val > num){
+    warning(paste("There are", num, "rows, which is more than expected. Please check."))
+  } else {
+    message(paste("There are the expected number of rows in the dataset:", num))
+  }
+  
+}
+
 # FORMATTING --------
 # wrap/order labels ----
 county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
@@ -60,34 +93,6 @@ transform_data_labels <- function(table) {
     arrange(county, focus_type_ord, focus_attribute_ord, data_year)
   
   return(data_clean)
-}
-
-equity_tracker_label_formatting <- function(input_df) {
-  ouput_df <- input_df %>% 
-    mutate(county = factor(county, levels=county_order)) %>%
-    mutate(focus_type_ord = case_when(
-      focus_type=="POC_cat"~"People of Color",
-      focus_type=="Disability_cat"~"People with a Disability",
-      focus_type=="LEP_cat"~"Households with Limited English Proficiency",
-      focus_type=="Income_cat"~"Households with Lower Income",
-      focus_type=="Youth_cat"~"Households with Youth <18",
-      focus_type=="Older_cat"~"Households with Older Adults 65+")) %>%
-    mutate(focus_type_ord = factor(focus_type_ord, levels = focus_type_order)) %>%
-    mutate(focus_attribute_ord = case_when(
-      focus_attribute== "POC"~ "People of color",
-      focus_attribute== "Non-POC"~ "White non-Hispanic",
-      focus_attribute== "Low Income"~ "Households with lower income",
-      focus_attribute== "Non-Low Income"~ "Other households",
-      focus_attribute== "With disability"~ "With a disability",
-      focus_attribute== "Without disability"~ "Without a disability",
-      focus_attribute== "Limited English proficiency"~ "Limited English proficiency",
-      focus_attribute== "English proficient"~ "English proficient",
-      focus_attribute== "Household with youth"~ "Households with youth",
-      focus_attribute== "Household without youth"~ "Other households",
-      focus_attribute== "Household with older adult"~ "Households with older adults",
-      focus_attribute== "Household without older adult"~ "Other households")) %>% 
-    mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, width=16)) %>%
-    mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order))
 }
 
 # MAP SETTINGS --------
