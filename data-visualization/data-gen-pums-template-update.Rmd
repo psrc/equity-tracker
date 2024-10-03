@@ -1,7 +1,7 @@
 ---
 title: "SNAP" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
-author: "Mary Richards"
+author: "Kristin Mitchell, updated by Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   html_document:
