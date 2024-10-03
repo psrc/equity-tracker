@@ -40,17 +40,26 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 
 library(echarts4r)
-# remotes::install_github("JohnCoene/echarts4r",
-#                         force=TRUE)
-
 library(webshot2) #static image creation
 library(here)
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
+
+```{r variables setup}
+file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
+                   theme_dir = 'a-regional-health-collaboration',
+                   ind_dir = 'a05-snap',
+                   map = 'a05-snap-map-data',
+                   chart = 'a05-snap-chart-data',
+                   map_name = 'a05-snap-map.html',
+                   column_chart_name = 'a05-snap-column',
+                   line_chart_name = 'a05-snap-line')
+```
+
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
 \
@@ -66,12 +75,12 @@ To map data in this form, it requires accessing data at the regional/tract level
 ### Create Visual
 ```{r map .rda}
 # load map .rda
-base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'a-regional-health-collaboration'
-ind_dir <- 'a05-snap'
-rda <- 'a05-snap-map-data.rda'
-
-load(file=file.path(base_dir,theme_dir,ind_dir,"update/rda-data",rda))
+load(file=file.path(file_names$base_dir,
+                    file_names$theme_dir,
+                    file_names$ind_dir,
+                    "update",
+                    "rda-data",
+                    paste0(file_names$map,'.rda')))
 ``` 
 
 ```{r data format - map, include=FALSE}
@@ -167,13 +176,14 @@ acs_map
 Source(s): U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Estimates, Table S2201; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
-
-# set folder structure
-map_name <- 'a05-snap-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
-                        file=file.path(base_dir,theme_dir,ind_dir, 'update/webpage-html-outputs', map_name))
+                        file=file.path(file_names$base_dir,
+                                       file_names$theme_dir,
+                                       file_names$ind_dir, 
+                                       'update/webpage-html-outputs', 
+                                       file_names$map_name))
 ```
 \
 \
@@ -231,10 +241,13 @@ table(filter$county_name)
 # load visualization functions for charts
 source(here::here('data-visualization/equity-tracker-chart-functions.R'))
 
-# set folder structure
-rda <- 'a05-snap-data.rda'
-
-load(file=file.path(base_dir,theme_dir,ind_dir,"update/rda-data",rda))
+# load chart .rda
+load(file=file.path(file_names$base_dir,
+                    file_names$theme_dir,
+                    file_names$ind_dir,
+                    "update",
+                    "rda-data",
+                    paste0(file_names$chart,'.rda')))
 ```
 
 ```{r column facet - pums}
@@ -279,10 +292,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
-# set folder structure
-file_name <- 'a05-snap-column'
-
-# column Chart - html for interactive
+# Column Chart - html for interactive
 rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
                   params = list(df = df,
                                 geo = geo,
@@ -299,13 +309,22 @@ rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"),
                                 title = title,
                                 # source = source,
                                 subtitle = subtitle),
-                  output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'update/webpage-html-outputs'))
+                  output_file = paste0(file_names$column_chart_name, '.html'),
+                  output_dir = file.path(file_names$base_dir,
+                                         file_names$theme_dir,
+                                         file_names$ind_dir,'update/webpage-html-outputs'))
 
 # Column Chart - png for use in static file
 # need to create a 'static-images' sub-folder in theme sub-folder if not already existing
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'update/webpage-html-outputs', paste0(file_name, '.html')), 
-                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+webshot2::webshot(url = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir,
+                                  'update/webpage-html-outputs', 
+                                  paste0(file_names$column_chart_name, '.html')), 
+                  file = file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   'static-images', 
+                                   paste0(file_names$column_chart_name, '.png')), 
                   vwidth = 1920, vheight = 1080)
 ```
 
@@ -323,7 +342,10 @@ if (output_type == "html") {
   
 } else {
   
-  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  knitr::include_graphics(file.path(file_names$base_dir,
+                                    file_names$theme_dir,
+                                    'static-images', 
+                                    paste0(file_names$column_chart_name, '.png')))
   
 }
 
@@ -425,9 +447,6 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
-# set folder structure
-file_name <- 'a05-snap-line'
-
 # Line Chart - html for interactive
 rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
                   params = list(df = df,
@@ -449,12 +468,22 @@ rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"),
                                 width = '420px',
                                 height = '380px',
                                 charttype = "line"),
-                  output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'update/webpage-html-outputs'))
+                  output_file = paste0(file_names$line_chart_name, '.html'),
+                  output_dir = file.path(file_names$base_dir,
+                                         file_names$theme_dir,
+                                         file_names$ind_dir,
+                                         'update/webpage-html-outputs'))
 
 # Line Chart - png for use in static file
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'update/webpage-html-outputs', paste0(file_name, '.html')), 
-                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+webshot2::webshot(url = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir,
+                                  'update/webpage-html-outputs', 
+                                  paste0(file_names$line_chart_name, '.html')), 
+                  file = file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   'static-images', 
+                                   paste0(file_names$line_chart_name, '.png')), 
                   vwidth = 1920, vheight = 1080)
 ```
 
@@ -471,7 +500,10 @@ if (output_type == "html") {
   
 } else {
   
-  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  knitr::include_graphics(file.path(file_names$base_dir,
+                                    file_names$theme_dir,
+                                    'static-images', 
+                                    paste0(file_names$line_chart_name, '.png')))
   
 }
 # line_chart
@@ -578,7 +610,10 @@ This step will transfer all of the Rmd output files (html and docx) to the netwo
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(getwd())
-y.drive.folder.update <- file.path(base_dir,theme_dir,ind_dir,'update')
+y.drive.folder.update <- file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   file_names$ind_dir,
+                                   'update')
 
 # isolate files in Github
 list.of.files <- list.files(current_folder, 
@@ -606,8 +641,12 @@ do.call(unlink, files.to.remove)
 This step will transfer the previous data and files to the archive folder. This step is meant to retain the older versions in case they are needed for reference. 
 ```{r to archive, include=FALSE, eval=FALSE}
 # set folder structure
-y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
-archive.folder <- file.path(base_dir,theme_dir,ind_dir,'archive')
+y.drive.folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir)
+archive.folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir,'archive')
 
 # isolate old files/directories
 list.of.files <- list.files(y.drive.folder, 
@@ -686,7 +725,10 @@ unlink(dir.to.remove, recursive=T)
 This step copies the htmls for the webpage (3 visuals) from the network to the folder outside the firewall- this 'external' folder connects directly to the webpage.
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
-current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+current_folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir,
+                            'webpage-html-outputs')
 
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
 new.folder <- file.path(web.base.folder,theme_dir)

@@ -13,6 +13,7 @@ output:
   word_document:
 ---
 
+# Organize workspace
 ```{r rmarkdown setup, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE, 
                       warning=FALSE, 
@@ -55,7 +56,6 @@ library(here)
 
 ```{r sources}
 # https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
-# source(here("data-visualization", "addLegend-dec.R"))
 
 # reference supplemental script with supporting settings/functions
 source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
@@ -65,8 +65,8 @@ source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 
 file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    theme_dir = 'a-regional-health-collaboration',
-                   ind_dir = 'a-regional-health-collaboration',
-                   chart = 'a05-snap',
+                   ind_dir = 'a05-snap',
+                   chart = 'a05-snap-chart-data',
                    map = 'a05-snap-map-data')
 ```
 
@@ -130,7 +130,7 @@ data_full <- pums_ospi_elmer %>%
 * There should be 5 geographies - the 4 counties and the Region. 
 * There should be 6 equity focus categories - POC, income, disability, youth, older adult, and LEP
     + 2 sub-groups in each of the 6 equity focus group (e.g. people of color, non-people of color)
-```{r}
+```{r, include=FALSE}
 # geographies
 if(length(unique(data_full$county)) < 4){
   warning("There is a missing geography. Please check.")
@@ -185,11 +185,15 @@ if(length(unique(data_full$indicator_attribute)) > 1){
   message("There is only one indicator attribute: ", attributes_list,
               ". No need to filter.")
 }
+```
 
+```{r}
 # space to filter if necessary
 data_full <- data_full %>%
   filter(indicator_attribute=="Yes")
+```
 
+```{r}
 # calculate expected number of rows
 num_row <- num_yr*5*6*2 #180
 message("There should be data for each year (",num_yr,"), geography (5), equity focus group (6), and equity sub-group (2) = ",num_row ," rows")
@@ -232,72 +236,15 @@ num_row <- data_fields_summary |>
 ```
 
 #### *checking for missing data*
-```{r}
-check_missing_data <- function(vars, multiply_by_subgroups = FALSE) {
-  # This function will take keep the values associated with the variables and multiply them. Includes
-  # option to multiply by number of subgroups
-  
-  num <- data_fields_summary |> 
-    map(~pluck(.x, "length")) |> 
-    keep_at(vars) |> 
-    reduce(`*`)
-  
-  if(multiply_by_subgroups == TRUE) {
-    num <- num * 2
-  }
-  
-  # return(num)
-  
-  expected_val <- if(vars[2]=="num_county") 5 
-  else if(vars[2]=="num_group") 6
-  else if(vars[2]=="num_sub_group") 6
-  
-  # if(vars[2]=="num_county"){
-  #   expected_val==5}
-  # else if(vars[2]=="num_group"){
-  #   expected_val==6}
-  # else if(vars[2]=="num_sub_group"){
-  #   expected_val==6
-  # }
-  
-  actual_val <- data_fields_summary[[vars[1]]]$length*expected_val
-  
-  if(actual_val < num){
-    warning(paste("There are", num, "rows, which is fewer than expected. Please check."))
-  } else if (actual_val > num){
-    warning(paste("There are", num, "rows, which is more than expected. Please check."))
-  } else {
-    message(paste("There are the expected number of rows in the dataset:", num))
-  }
-  
-}
-
-# result_message <- function(var, expected_val, output){
-#   
-#   expected_val <- data_fields_summary[[var]]$length*expected_val
-#   actual_val <- output
-#   
-#   if(expected_val < actual_val){
-#     warning(paste("There are", actual_val, "rows, which is fewer than expected. Please check."))
-#   } else if (expected_val > actual_val){
-#     warning(paste("There are", actual_val, "rows, which is more than expected. Please check."))
-#   } else {
-#     message(paste("There are the expected number of rows in the dataset:", actual_val))
-#   }
-#   
-# }
-```
-
 ##### Year / geography
 ```{r}
+# Function in equity-tracker-supplemental-script.R
 num_yr_geo <- check_missing_data(vars = c("num_yr", "num_county"),
                                  multiply_by_subgroups = FALSE)
 #15
-
-# result_message("num_yr", 5, num_yr_geo)
 ```
-If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
-```{r, include=FALSE, eval=FALSE}
+
+```{r}
 table(data_full$data_year,
       data_full$county)
 ```
@@ -308,11 +255,8 @@ table(data_full$data_year,
 num_yr_grp <- check_missing_data(vars = c("num_yr", "num_group"),
                                  multiply_by_subgroups = FALSE)
 #18
-
-# result_message("num_yr", 6, num_yr_grp)
 ```
 
-If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
 ```{r}
 table(data_full$data_year,
       data_full$focus_type)
@@ -323,27 +267,12 @@ table(data_full$data_year,
 ```{r}
 num_yr_subgrp <- check_missing_data(vars = c("num_yr", "num_sub_group"),
                                     multiply_by_subgroups = FALSE)
-
-#5
+#36
 ```
-If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
+
 ```{r}
 table(data_full$data_year,
       data_full$focus_attribute)
-```
-\
-\
-
-##### Year / indicator attribute
-```{r}
-num_yr_ind <- check_missing_data(vars = c("num_county", "num_group"),
-                                 multiply_by_subgroups = TRUE)
-#60
-```
-If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
-```{r}
-table(data_full$data_year,
-      data_full$indicator_attribute)
 ```
 \
 \
@@ -382,7 +311,6 @@ sumtable(data_refined,
 ```{r}
 # wrap/order labels ----
 # variable ordering and label function in equity-tracker-supplemental-script.R
-# data_clean <- equity_tracker_label_formatting(data_full)
 data_clean <- transform_data_labels(data_full)
 ```
 
