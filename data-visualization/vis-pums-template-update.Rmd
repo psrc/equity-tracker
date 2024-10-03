@@ -731,7 +731,8 @@ current_folder <- file.path(file_names$base_dir,
                             'webpage-html-outputs')
 
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-new.folder <- file.path(web.base.folder,theme_dir)
+new.folder <- file.path(web.base.folder,
+                        file_names$theme_dir)
 
 list.of.files <- list.files(current_folder, 
                             full.names = T)
