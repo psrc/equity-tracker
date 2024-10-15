@@ -45,14 +45,16 @@ hvars <- c(
 
 which_efa_vars <- function(dyear){
   efa_vars <- c("POC_cat", "Income_cat", "Disability_cat", "Youth_cat", "Older_cat", "LEP_cat")
-  efa_vars %<>% .[! efa_vars %in% "Disability_cat"]
+  if(dyear<2012){
+    efa_vars %<>% .[! efa_vars %in% "Disability_cat"]
+  }
   return(efa_vars)
 }
 
 # Create the EFA variables from available PUMS variables
 add_efa_vars <- function(so){
   dyear <- so[[7]]$DATA_YEAR %>% unique
-  so_plus <- mutate(so,
+  so %<>% mutate(
     POC_cat     = factor(case_when(PRACE=="White alone"          ~ "Non-POC",
                             !is.na(PRACE)                        ~ "POC"),
                          levels=c("POC","Non-POC")),
@@ -65,7 +67,7 @@ add_efa_vars <- function(so){
     LEP_cat     = factor(case_when(grepl("^No one", LNGI)        ~ "Limited English proficiency",
                             !is.na(LNGI)                         ~ "English proficient")))
   if(dyear > 2011){
-    so_plus <- mutate(so_plus,
+    so %<>% mutate(
       Disability_cat=if("DIS" %in% colnames(so)){
         factor(case_when(grepl("^With ", DIS)     ~ "With disability",
                          grepl("^Without ", DIS)  ~ "Without disability"))
@@ -74,7 +76,7 @@ add_efa_vars <- function(so){
                          grepl("^Without ", HDIS) ~ "Without disability"))
       })
   }
-  return(so_plus)
+  return(so)
 }
 
 # 3. Setup: Helper functions ----------------------------------------
@@ -160,11 +162,11 @@ efa_to_elmer <- function(efa_result){
 
 # Generate all indicators for a single survey
 pums_efa_singleyear <- function(dyear){
-  refyear <- 2021  # Dollar year for inflation-adjusted comparisons
+  refyear <- 2022  # Dollar year for inflation-adjusted comparisons
   pums_rds <- "J:/Projects/Census/AmericanCommunitySurvey/Data/PUMS/pums_rds" # Network PUMS location
 
   if(dyear < 2012){hvars <- replace(hvars, hvars=="RMSP","RMS")}                                   # Variable changed names w/ 2012 data
-  if(dyear %in% 2017:2020){hvars <- replace(hvars, hvars=="ACCESSINET","ACCESS")                   # Variable changed names w/ 2020 data
+  if(dyear %in% 2017:2019){hvars <- replace(hvars, hvars=="ACCESSINET","ACCESS")                   # Variable changed names w/ 2020 data
   }else if(dyear<2017){hvars %<>% .[! hvars %in% "ACCESSINET"]}
   if(dyear < 2012){
     pvars %<>% .[! pvars %in% c("DIS", "PRIVCOV", "PUBCOV")]
@@ -221,7 +223,7 @@ pums_efa_singleyear <- function(dyear){
   if(dyear > 2016){
     hh_df %<>% mutate(
                internet = factor(case_when(grepl("^Yes", ACCESSINET) ~ "With internet access", # Define the internet access subject variable; began in 2013
-                                        grepl("^No", ACCESSINET)     ~ "Without internet access")))
+                                           grepl("^No", ACCESSINET) ~ "Without internet access")))
   }
 
   deep_pocket <- list()
@@ -229,19 +231,22 @@ pums_efa_singleyear <- function(dyear){
   if(dyear > 2011){
     deep_pocket$"healthcare_coverage"     <- bulk_count_efa(pp_df, "healthcov")
   }
-  deep_pocket$"median_household_income" <- bulk_stat_efa(hh_df, "median", paste0("HINCP",refyear)) # Notice dollar comparisons require inflation adjustment
+  deep_pocket[[paste0("median_household_income_", refyear,"_dollars")]] <-                         # Brackets for dynamic item naming
+    bulk_stat_efa(hh_df, "median", paste0("HINCP",refyear))                                        # Notice dollar comparisons require inflation adjustment
   deep_pocket$"household_poverty"       <- bulk_count_efa(hh_df, "poverty")
   deep_pocket$"housing_cost_burden"     <- bulk_count_efa(hh_df, "housing_burden")
   deep_pocket$"tenure"                  <- bulk_count_efa(hh_df, "OWN_RENT")
   deep_pocket$"rent_burden"             <- bulk_count_efa(hh_df, "rent_burden")
-  deep_pocket$"median_gross_rent"       <- bulk_stat_efa(hh_df, "median", paste0("GRNTP",refyear))
+  deep_pocket[[paste0("median_gross_rent_", refyear,"_dollars")]] <-
+    bulk_stat_efa(hh_df, "median", paste0("GRNTP",refyear))
   deep_pocket$"renter_crowding"         <- bulk_count_efa(hh_df, "renter_crowding")                # i.e. persons per room for renters
   deep_pocket$"owner_crowding"          <- bulk_count_efa(hh_df, "owner_crowding")                 # i.e. persons per room for owners
   deep_pocket$"SNAP"                    <- bulk_count_efa(hh_df, "FS")                             # food stamp/SNAP
   if(dyear > 2016){
-    deep_pocket$"internet_access"         <- bulk_count_efa(hh_df, "internet")
+    deep_pocket$"internet_access"       <- bulk_count_efa(hh_df, "internet")
   }
-  deep_pocket$"renter_median_hh_income" <- bulk_stat_efa(hh_df, "median", "renter_median_hh_income")
+  deep_pocket[[paste0("renter_median_hh_income_", refyear,"_dollars")]] <-
+    bulk_stat_efa(hh_df, "median", "renter_median_hh_income")
 
   return(deep_pocket)
 }
@@ -249,8 +254,8 @@ pums_efa_singleyear <- function(dyear){
 # Generate trend data, i.e. all indicators across multiple years; returns a list                   # Problematic if variables aren't present in all requested years
 pums_efa_multiyear <- function(dyears){                                                            # -- verify in PUMS data dictionaries for each survey
   refyear <- max(dyears)
-  rs_master <- lapply(dyears, pums_efa_singleyear) %>%
-    as.data.frame(do.call(rbind, lapply(., as.vector)))                                            # Combine matching indicator tables across years
+  rs_master <- lapply(dyears, pums_efa_singleyear) #%>%
+    #as.data.frame(do.call(rbind, lapply(., as.vector)))                                            # Combine matching indicator tables across years
   return(rs_master)                                                                                # Return the object
 }
 
@@ -260,7 +265,11 @@ write_pums_efa <- function(efa_rs_list){
   return(NULL)
 }
 
-# Example 1: Generate indicators for a single year/span -------------
+# Example 1: Generate indicators for a single year -------------
 # equity_2022_5 <- pums_efa_singleyear(2022)                                                       # Returns all tables as separate items in a list
 # write_pums_efa(equity_2022_5)                                                                    # Write the tables to .csv
 # efa_to_elmer(equity_2022_5)
+
+# Example 2: Generate indicators for multiple years-------------
+# equity_1222 <- pums_efa_multiyear(2012:2022)                                                     # Returns a list of lists
+# lapply(equity_1222, efa_to_elmer)                                                                # Merge all to Elmer

@@ -1,0 +1,738 @@
+---
+title: "Median Income"
+subtitle: "Visuals for Equity Tracker (PUMS data)"
+author: "Mary Richards"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+  word_document:
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+
+# to reference chart functions in Github
+knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+library(psrcplot)
+library(tidyverse)
+library(magrittr)
+
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+
+library(echarts4r)
+# remotes::install_github("JohnCoene/echarts4r",
+#                         force=TRUE)
+
+library(webshot2) #static image creation
+```
+
+```{r, choose output type}
+output_type <- "word"
+# output_type <- "html"
+```
+# 3 visuals for webpage
+This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
+\
+\
+**If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+
+## Indicator Explanation
+[Please include the following for a general, layperson audience: 1-2 sentences explaining what your indicator is/measures, what it says about people's life outcomes; 1 sentence describing why it is useful/relevant in the indicator's theme]
+
+## 1. Map of most recent data
+To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
+```{r map legend settings, include=FALSE}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
+addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
+			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
+		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
+		  title = NULL, className = "info legend", layerId = NULL, 
+		  group = NULL, data = getMapData(map), decreasing = FALSE) {
+	position <- match.arg(position)
+	type <- "unknown"
+	na.color <- NULL
+	extra <- NULL
+	if (!missing(pal)) {
+		if (!missing(colors)) 
+			stop("You must provide either 'pal' or 'colors' (not both)")
+		if (missing(title) && inherits(values, "formula")) 
+			title <- deparse(values[[2]])
+		values <- evalFormula(values, data)
+		type <- attr(pal, "colorType", exact = TRUE)
+		args <- attr(pal, "colorArgs", exact = TRUE)
+		na.color <- args$na.color
+		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
+		    0) {
+			na.color <- NULL
+		}
+		if (type != "numeric" && !missing(bins)) 
+			warning("'bins' is ignored because the palette type is not numeric")
+		if (type == "numeric") {
+			cuts <- if (length(bins) == 1) 
+				pretty(values, bins)
+			else bins	
+			
+			if (length(bins) > 2) 
+				if (!all(abs(diff(bins, differences = 2)) <= 
+				         sqrt(.Machine$double.eps))) 
+					stop("The vector of breaks 'bins' must be equally spaced")
+			n <- length(cuts)
+			r <- range(values, na.rm = TRUE)
+			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
+			n <- length(cuts)
+			p <- (cuts - r[1])/(r[2] - r[1])
+			extra <- list(p_1 = p[1], p_n = p[n])
+			p <- c("", paste0(100 * p, "%"), "")
+			if (decreasing == TRUE){
+				colors <- pal(rev(c(r[1], cuts, r[2])))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}else{
+				colors <- pal(c(r[1], cuts, r[2]))
+				labels <- rev(labFormat(type = "numeric", cuts))
+			}
+			colors <- paste(colors, p, sep = " ", collapse = ", ")
+			
+		}
+		else if (type == "bin") {
+			cuts <- args$bins
+			n <- length(cuts)
+			mids <- (cuts[-1] + cuts[-n])/2
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "bin", cuts))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "bin", cuts)
+			}
+			
+		}
+		else if (type == "quantile") {
+			p <- args$probs
+			n <- length(p)
+			cuts <- quantile(values, probs = p, na.rm = TRUE)
+			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
+				 na.rm = TRUE)
+			if (decreasing == TRUE){
+				colors <- pal(rev(mids))
+				labels <- rev(labFormat(type = "quantile", cuts, p))
+			}else{
+				colors <- pal(mids)
+				labels <- labFormat(type = "quantile", cuts, p)
+			}
+		}
+		else if (type == "factor") {
+			v <- sort(unique(na.omit(values)))
+			colors <- pal(v)
+			labels <- labFormat(type = "factor", v)
+			if (decreasing == TRUE){
+				colors <- pal(rev(v))
+				labels <- rev(labFormat(type = "factor", v))
+			}else{
+				colors <- pal(v)
+				labels <- labFormat(type = "factor", v)
+			}
+		}
+		else stop("Palette function not supported")
+		if (!any(is.na(values))) 
+			na.color <- NULL
+	}
+	else {
+		if (length(colors) != length(labels)) 
+			stop("'colors' and 'labels' must be of the same length")
+	}
+	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
+	               na_color = na.color, na_label = na.label, opacity = opacity, 
+	               position = position, type = type, title = title, extra = extra, 
+	               layerId = layerId, className = className, group = group)
+	invokeMethod(map, data, "addLegend", legend)
+}
+```
+
+### Create Visual
+```{r map .rda}
+# load map .rda
+base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
+theme_dir <- 'f-economy'
+ind_dir <- 'f01-median-income'
+rda <- 'f01-median-income-map-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+``` 
+
+```{r acs map}
+# setting map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8.5
+
+# check maximum value of data
+# summary(acs_data_tract$estimate) # max is 95.39, so rounding to 100 makes sense
+max_value <- 100 # this value will be the max value in the legend
+
+# setting color palette
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+acs_data_plus_zero<-append(acs_data_tract$estimate,0)
+
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = acs_data_plus_zero) # this is the value field
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
+
+# setting the legend/label variables
+var_name <- "Household Income" # the <br> could be adjusted depending on the length/spacing of the name
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
+  acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
+  paste("Tract value: ","$", # if doesn't require prefix, this can be removed
+        prettyNum((round(acs_data_tract$estimate, digits=-2)),
+                  big.mark = ",")),
+  paste("Tract data reliability: ", acs_data_tract$reliability),
+  paste("Region value: ","$",
+        prettyNum((round(acs_data_tract$reg_estimate, digits=-2)),
+                  big.mark = ",")),
+  paste("County value: ","$",
+        prettyNum((round(acs_data_tract$cnty_estimate, digits=-2)),
+                  big.mark = ","), paste0("(",acs_data_tract$county_name," County)"))) %>%
+  lapply(htmltools::HTML)
+
+# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
+#               big.mark = ","), #this wouldn't be necessary to include for %s    
+#         '%')) %>%
+#   lapply(htmltools::HTML)
+
+
+# map settings
+acs_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=acs_data_tract,
+              fillColor = psrc_palette(acs_data_plus_zero),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = labels) %>% 
+
+  # legend
+  addLegend_decreasing(pal = psrc_palette,
+                       values = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA),
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       labFormat = labelFormat(prefix = "$"),
+                       decreasing = TRUE) %>% #to get legend high-low with correct color order
+  
+  # set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)  
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fixing the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix) # Convert CSS to HTML
+acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML code
+
+# printing map
+acs_map
+```
+Source(s): U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Table B19013; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+```{r generate acs map html, include=FALSE}
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+
+# set folder structure
+map_name <- 'f01-median-income-map.html'
+  
+# interactive webpage output process
+htmlwidgets::saveWidget(acs_map,
+                        file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
+```
+\
+\
+
+#### Data call outs
+```{r map calculations - pums, include=FALSE, eval=FALSE}
+# simplify data set
+data <- acs_data_tract %>%
+  st_drop_geometry()
+
+# calculate call out information
+sort <- data %>% 
+  dplyr::arrange(desc(estimate))
+# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+
+sort <- data %>% 
+  dplyr::arrange(estimate)
+# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
+# 53033030501 (Auburn, around 167)
+```
+
+1. $96,500: The region's median household income
+2. $250,000: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
+3. $21,000: The lowest median income census tract in the region
+
+\
+
+#### Insights & Analysis
+
+* King County has the highest median income (\$106,300), followed by Snohomish (\$95,600), Kitsap (\$84,600), and Pierce (\$82,600)
+* The five census tracts tied with the highest median income (\$250,000) are in King County: Laurelhurst neighborhood in Seattle, Clyde Hill/Yarrow Point/Hunts Point, Bellevue, and two tracts on Mercer Island
+* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000), downtown Tacoma (\$26,400), and Auburn around Route 167 (\$28,400)
+
+\
+\
+
+
+## 2. Facet of most recent data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r data setup, include=FALSE}
+# load visualization functions for charts
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+source('equity-tracker-chart-functions.R') 
+
+# set folder structure
+rda <- 'f01-median-income-data.rda'
+
+load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+```
+
+```{r column facet - pums}
+# Create Facet Column Chart
+data_clean_column <- data_clean %>% 
+  dplyr::filter(data_year=="2021") #filter on most recent year
+
+# set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
+df = data_clean_column
+geo = "county"
+x = "focus_attribute_ord"
+y = "fact_value"
+facet = "focus_type_ord"
+fill = "focus_attribute_ord"
+y_min = 0
+y_max = 180000
+dec = 0
+esttype = "currency"
+color = "oranges"
+num_colors = 2
+color_rev = TRUE
+title = "Household Income by Community"
+subtitle = "Median values adjusted to 2021 dollars"
+source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+
+column_chart <- equity_tracker_column_facet(df = df,
+                                            geo = geo,
+                                            x = x,
+                                            y = y,
+                                            facet = facet,
+                                            title = title,
+                                            y_min = y_min,
+                                            y_max = y_max,
+                                            dec = dec,
+                                            esttype = esttype,
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
+```
+
+```{r output final column chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
+
+# set folder structure
+file_name <- 'f01-median-income-column'
+
+# column Chart - html for interactive
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                # source = source,
+                                subtitle = subtitle),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+
+# Column Chart - png for use in static file
+# need to create a 'static-images' sub-folder in theme sub-folder if not already existing
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r column chart output - pums, echo=FALSE}
+
+if (output_type == "html") {
+
+  column_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+
+# column_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r column facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean_column %>% 
+  filter(county=="Region",
+         focus_type=="Income_cat")
+
+# region low income households: 25409.57	
+# region non-low income households: 135561.35
+# 135561.35-25409.57=110151.8
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="LEP_cat",
+         county=="Region")
+# region lep households: 58284.83	
+# region non-lep households: 116673.43
+# 116673.43-58284.83=58388.6
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="LEP_cat",
+         vulnerability=="high vulnerability")
+
+# region lep households: 58284.83	
+# snohomish lep households: 67832.94
+# 71.45515-63.50990=7.94525
+
+filter <- data_clean_column %>% 
+  filter(county=="Region",
+         focus_type=="Youth_cat")
+
+# region youth households: 141389.8	
+# region non-youth households: 102097.0
+# 141389.8-102097.0=39292.8
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="POC_cat")
+# snohomish poc: 108886.4
+# snohomish non-poc: 112974.4
+# 112974.4-108886.4=4088
+
+# king poc: 111529.77
+# king non-poc: 130977.15
+# 130977.15-111529.77=19447.38
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="Disability_cat")
+# kitsap dis: 84171.34
+# kitsap non-dis: 104284.10
+# 104284.10-84171.34=20112.76
+
+# king dis: 81508.16
+# king non-dis: 134637.12
+# 134637.12-81508.16=53128.96
+
+filter <- data_clean_column %>% 
+  filter(focus_type=="Income_cat",
+         vulnerability=="high vulnerability") %>% 
+  dplyr::arrange(desc(fact_value))
+
+```
+
+1. \$25,400: The regional household median income of those who are below 200% of the poverty level
+2. \$58,400: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
+3. \$39,300: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
+
+\
+
+#### Insights & Analysis
+
+* The smallest difference in median income between people of color and white non-Hispanic is in Snohomish County (\$4,100), while the largest difference is in King County (\$19,400)
+* For households who are below 200% of the poverty level, the median income is lowest in King County (\$24,100), followed by Snohomish and Kitsap (\$26,100), and Pierce (\$27,700)
+* The largest difference in median income between people with and without a disability is in King County (\$53,100), while the smallest difference is in County (\$20,100)
+* Snohomish County is the only county where Non-English proficient households have higher median incomes (\$67,800) than the region's Non-English proficient households (\$58,300)
+
+\
+\
+
+
+## 3. Facet of trend data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r line facet - pums, include=FALSE}
+# Create Facet Line Chart
+
+# set variables
+df = data_clean
+x = "data_year" # different from variables for facet column
+fill = "focus_attribute_ord" # different from variables for facet column
+color = "blues"
+title = "Household Income Trend by Community"
+subtitle = "Median values adjusted to 2021 dollars, in 5-year spans between 2011 and 2021"
+source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+
+line_chart <- equity_tracker_line_facet(df = df,
+                                        geo = geo,
+                                        x = x,
+                                        y = y,
+                                        fill = fill,
+                                        facet = facet,
+                                        y_min = y_min,
+                                        y_max = y_max,
+                                        dec = dec,
+                                        esttype = esttype,
+                                        color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
+                                        width = '420px',
+                                        height = '380px')
+```
+
+```{r output final line chart - pums, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
+
+# set folder structure
+file_name <- 'f01-median-income-line'
+
+# Line Chart - html for interactive
+rmarkdown::render("equity-tracker-chart-creator.RMD", 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                fill = fill,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                # source = source,
+                                subtitle = subtitle,
+                                width = '420px',
+                                height = '380px',
+                                charttype = "line"),
+                  output_file = paste0(file_name, '.html'),
+                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+
+# Line Chart - png for use in static file
+webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
+                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r line chart - pums, echo=FALSE}
+if (output_type == "html") {
+
+  line_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  
+}
+# line_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r line facet calculations - pums, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="Income_cat")
+# 2021 low income: 25409.57
+# 2021 non-low income: 135561.35
+# 135561.35-25409.57=110151.8
+# 2011 low income: 24829.81
+# 2011 non-low income: 106454.25
+# 106454.25-24829.81=81624.44
+# ((110151.8-81624.44)/(81624.44))*100: 34.94953% change
+
+
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="POC_cat")
+# 2021 poc: 102481.29
+# 2021 non-poc: 118053.44
+# 118053.44-102481.29=15572.15
+
+filter <- data_clean %>%
+  filter(county=="Region",
+         focus_type=="Older_cat")
+# 2021 older: 83306.58
+# 2021 non-older: 124514.77
+# 124514.77-83306.58=41208.19
+# 2011 older: 62308.22
+# 2011 non-older: 94026.28
+# 94026.28-62308.22= 31718.06
+# ((41208.19-31718.06)/(31718.06))*100: 29.92027% change
+
+filter <- data_clean %>%
+  filter(county != "Region",
+         focus_type=="Disability_cat")
+# 2016 king disability-no disability: 102202.57-62990.64=39211.93
+# 2021 king disability-no disability: 134637.12-81508.16=53128.96
+# 53128.96-39211.93=13917.03
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="POC_cat",
+         data_year=="2011" |
+           data_year=="2021")
+# 2011 king:82987.29-66233.98=16753.31
+# 2021 king:130977.15-111529.7=19447.45
+# ((19447.45-16753.31)/(16753.31))*100: 16.08124% change
+# 2011 kitsap:101045.37-78865.29=22180.08
+# 2021 kitsap:103185.85-85187.57=17998.28
+# ((17998.28-22180.08)/(22180.08))*100: -18.85385% change
+# 2011 pierce:87650.57-77922.34=9728.23
+# 2021 pierce:103124.26-84547.06=18577.2
+# ((18577.2-9728.23)/(9728.23))*100: 90.96177% change
+# 2011 snohomish:80736.67-64959.63=15777.04
+# 2021 snohomish:112974.44-108886.37=4088.07
+# ((4088.07-15777.04)/(15777.04))*100: -74.08849% change
+
+filter <- data_clean %>%
+  filter(county=="Snohomish",
+         focus_type=="Income_cat",
+         vulnerability=="low vulnerability",
+         data_year=="2011" |
+           data_year=="2021")
+# king non-low income:150511.89-98506.82=52005.07
+# Snohomish non-low income:130900.06-97445.42=33454.64
+```
+
+1. \$110,200: In 2021, households in the region who were below 200% of the poverty line made \$110,200 less than households above the 200% poverty line, a 35% larger gap than in 2011
+2. \$15,600: Regionally, people of color have median households incomes \$15,600 lower than white non-Hispanic households, a gap which has remained relatively consistent in the last ten years
+3. \$36,600: The median household income of households in the region with older adults is $36,600 lower than households without older adults, an increase of 30% from 2011
+
+\
+
+#### Insights & Analysis
+
+* The difference in median income of people of color and white non-Hispanic over time has differed between counties: shifting slightly in King County (increased 16%) and Kitsap County (decreased 19%), while almost doubling in Pierce County (increased 91%), and decreasing significantly in Snohomish County (decreased 74%)
+* The median income of households below 200% of the poverty line stayed relatively static over time, while the the median income of households above 200% of the poverty line increased between 2011 and 2021, especially in King County (\$52,000) and Snohomish County (\$33,500)
+* The difference in median income of people with a disability compared to those without a disability between 2016 and 2021 stayed the same in all counties, except for King County, where the difference increased (\$13,900)
+
+
+\
+\
+
+
+# Transfer files
+## Copy files from Github > Y drive
+```{r to y drive, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(getwd())
+y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+
+# isolate files in Github
+list.of.files <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$")
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          y.drive.folder,
+          overwrite = T)
+
+# keep only .Rmd files in Github (cleaner)
+files.in.dir <- list.files(current_folder, 
+                            full.names = T)
+files.to.keep <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.Rmd$")
+files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
+                                                              files.in.dir, value=TRUE))])
+do.call(unlink, files.to.remove)
+```
+
+## Copy files from Y drive > website folder
+```{r to web dev folder, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+
+web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+new.folder <- file.path(web.base.folder,theme_dir)
+
+list.of.files <- list.files(current_folder, 
+                            full.names = T)
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          new.folder,
+          overwrite = T)
+```
+
+<a href="#top">Back to top of the page</a>

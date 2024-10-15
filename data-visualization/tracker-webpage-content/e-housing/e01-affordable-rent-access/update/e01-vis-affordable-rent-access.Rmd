@@ -1,25 +1,23 @@
 ---
 title: "Access to Affordable Rent"
 subtitle: 'Visuals for Equity Tracker (PUMS data)'
-author: "Mary Richards"
+author: "Mary Richards updated by Christy Lam"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  # word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
+
 ---
 
 ```{r rmarkdown setup, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE, 
                       warning=FALSE, 
                       message=FALSE) # formatting
-
-# to reference chart functions in Github
-knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
 ```{r library setup, include=FALSE}
@@ -44,9 +42,17 @@ library(echarts4r)
 #                         force=TRUE)
 
 library(webshot2) #static image creation
+library(here)
 ```
 
-```{r, choose output type}
+```{r sources, include=FALSE}
+
+source(here("data-visualization", "addLegend-dec.R"))
+source(here("data-visualization", 'equity-tracker-chart-functions.R')) # load visualization functions for charts
+
+```
+
+```{r choose output type}
 # output_type <- "word"
 output_type <- "html"
 ```
@@ -63,122 +69,30 @@ For this measure, we are focused on renter households and define a census tract 
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
-```{r map legend settings, include=FALSE}
-# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
-addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
-		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
-		  title = NULL, className = "info legend", layerId = NULL, 
-		  group = NULL, data = getMapData(map), decreasing = FALSE) {
-	position <- match.arg(position)
-	type <- "unknown"
-	na.color <- NULL
-	extra <- NULL
-	if (!missing(pal)) {
-		if (!missing(colors)) 
-			stop("You must provide either 'pal' or 'colors' (not both)")
-		if (missing(title) && inherits(values, "formula")) 
-			title <- deparse(values[[2]])
-		values <- evalFormula(values, data)
-		type <- attr(pal, "colorType", exact = TRUE)
-		args <- attr(pal, "colorArgs", exact = TRUE)
-		na.color <- args$na.color
-		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
-		    0) {
-			na.color <- NULL
-		}
-		if (type != "numeric" && !missing(bins)) 
-			warning("'bins' is ignored because the palette type is not numeric")
-		if (type == "numeric") {
-			cuts <- if (length(bins) == 1) 
-				pretty(values, bins)
-			else bins	
-			
-			if (length(bins) > 2) 
-				if (!all(abs(diff(bins, differences = 2)) <= 
-				         sqrt(.Machine$double.eps))) 
-					stop("The vector of breaks 'bins' must be equally spaced")
-			n <- length(cuts)
-			r <- range(values, na.rm = TRUE)
-			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
-			n <- length(cuts)
-			p <- (cuts - r[1])/(r[2] - r[1])
-			extra <- list(p_1 = p[1], p_n = p[n])
-			p <- c("", paste0(100 * p, "%"), "")
-			if (decreasing == TRUE){
-				colors <- pal(rev(c(r[1], cuts, r[2])))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}else{
-				colors <- pal(c(r[1], cuts, r[2]))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}
-			colors <- paste(colors, p, sep = " ", collapse = ", ")
-			
-		}
-		else if (type == "bin") {
-			cuts <- args$bins
-			n <- length(cuts)
-			mids <- (cuts[-1] + cuts[-n])/2
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "bin", cuts))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "bin", cuts)
-			}
-			
-		}
-		else if (type == "quantile") {
-			p <- args$probs
-			n <- length(p)
-			cuts <- quantile(values, probs = p, na.rm = TRUE)
-			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
-				 na.rm = TRUE)
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "quantile", cuts, p))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "quantile", cuts, p)
-			}
-		}
-		else if (type == "factor") {
-			v <- sort(unique(na.omit(values)))
-			colors <- pal(v)
-			labels <- labFormat(type = "factor", v)
-			if (decreasing == TRUE){
-				colors <- pal(rev(v))
-				labels <- rev(labFormat(type = "factor", v))
-			}else{
-				colors <- pal(v)
-				labels <- labFormat(type = "factor", v)
-			}
-		}
-		else stop("Palette function not supported")
-		if (!any(is.na(values))) 
-			na.color <- NULL
-	}
-	else {
-		if (length(colors) != length(labels)) 
-			stop("'colors' and 'labels' must be of the same length")
-	}
-	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
-	               na_color = na.color, na_label = na.label, opacity = opacity, 
-	               position = position, type = type, title = title, extra = extra, 
-	               layerId = layerId, className = className, group = group)
-	invokeMethod(map, data, "addLegend", legend)
-}
+
+```{r variables setup}
+year <- "2022" # most recent year
+
+file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
+                   theme_dir = 'e-housing',
+                   ind_dir = 'e01-affordable-rent-access',
+                   rda_map = 'e01-affordable-rent-access-map-data.rda',
+                   map_name = 'e01-affordable-rent-access-map.html',
+                   rda_chart = 'e01-affordable-rent-access.rda',
+                   chart_column = 'e01-affordable-rent-access-column',
+                   chart_line = 'e01-affordable-rent-access-line')
 ```
 
 ### Create Visual
 ```{r map .rda}
 # load map .rda
-base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'e-housing'
-ind_dir <- 'e01-affordable-rent-access'
-rda <- 'e01-affordable-rent-access-map-data.rda'
 
-load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+load(file = file.path(file_names$base_dir,
+                      file_names$theme_dir,
+                      file_names$ind_dir,
+                      "update",
+                      "rda-data",
+                      file_names$rda_map))
 ``` 
 
 ```{r acs map}
@@ -189,35 +103,12 @@ map.zoom<- 8.5
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
-# acs_data_plus_zero<-append(acs_data_tract$estimate,0)
 
-# psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-#                                       domain = acs_data_plus_zero) # this is the value field
-
-# psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
-#                                       domain = acs_data_tract$estimate) # this is the value field
-# psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-#                                       domain = c(min(tract_data_plus_zero,na.rm = TRUE),max_value, NA))
-psrc_palette <- leaflet::colorFactor(palette=psrc_colors$purples_inc,
-                                      domain = acs_data_tract$affordability)
+psrc_palette <- leaflet::colorFactor(palette = psrc_colors$purples_inc,
+                                     domain = acs_data_tract$affordability)
 
 # setting the legend/label variables
 var_name <- "Affordability" # the <br> could be adjusted depending on the length/spacing of the name
-
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
-#   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
-#   paste("Tract value: ","$", # if doesn't require prefix, this can be removed
-#         prettyNum((round(acs_data_tract$estimate, digits=-1)),
-#                   big.mark = ",")),
-#   paste("Tract data reliability: ", acs_data_tract$reliability),
-#   paste("Region value: ","$",
-#         prettyNum((round(acs_data_tract$reg_estimate, digits=-1)),
-#                   big.mark = ",")),
-#   paste("County value: ","$",
-#         prettyNum((round(acs_data_tract$cnty_estimate, digits=-1)),
-#                   big.mark = ","), paste0("(",acs_data_tract$county_name," County)"))) %>%
-#   lapply(htmltools::HTML)
 
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
@@ -279,19 +170,21 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 acs_map
 ```
 
-Source(s): U.S. Census Bureau, 2017-2021 American Community Survey (ACS) 5-Year Estimates, Table B25064; U.S. Census Bureau, 2017-2021 ACS 5-Year Public Use Microdata Sample; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): U.S. Census Bureau, 2018-2022 American Community Survey (ACS) 5-Year Estimates, Table B25064; U.S. Census Bureau, 2018-2022 ACS 5-Year Public Use Microdata Sample; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 \
 * The regional affordability threshold is defined as 30% of the regional monthly median household income
 
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
-# set folder structure
-map_name <- 'e01-affordable-rent-access-map.html'
-
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
-                        file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
+                        file = file.path(file_names$base_dir,
+                                         file_names$theme_dir,
+                                         file_names$ind_dir,
+                                         "update",
+                                         'webpage-html-outputs',
+                                         file_names$map_name))
 ```
 \
 \
@@ -302,32 +195,70 @@ htmlwidgets::saveWidget(acs_map,
 data <- acs_data_tract %>%
   st_drop_geometry()
 
-table(data$affordability)
-# 347/(347+550) = 0.386845
+# table(data$affordability) 
+# table(data$county_name, data$affordability)
 
-table(data$county_name, data$affordability)
-# King: 123/(123+362)= 0.2536082
-# Kitsap: 41/(41+18)= 0.6949153
-# Pierce: 114/(114+76)= 0.6
-# Snohomish: 69/(69+94)= 0.4233129
+data |> 
+  group_by(affordability) |> 
+  tally() |> 
+  pivot_wider(names_from = affordability, values_from = n) |>
+  mutate(denom = (Affordable + `Not affordable`)) |> 
+  mutate(share_aff = Affordable / denom) # NA not included in denominator
+
+# 2022 dollars = 383/(383 + 520) = 0.4241417
+# 2011 Region = 347/(347+550) = 0.386845
+
+data |> 
+  group_by(county_name, affordability) |> 
+  tally() |> 
+  pivot_wider(names_from = affordability, values_from = n) |>
+  mutate(denom = (Affordable + `Not affordable`)) |> 
+  mutate(share_aff = Affordable / denom) # NA not included in denominator
+
+# 2022 King: 150/(150+337) = .3080082
+# 2022 Kitsap: 37/(37+21) = .6379310
+# 2022 Pierce: 124/(124+68) = .6458333
+# 2022 Snohomish: 72/(72+94) = .4337349
+
+# 2021 King: 123/(123+362)= 0.2536082
+# 2021 Kitsap: 41/(41+18)= 0.6949153
+# 2021 Pierce: 114/(114+76)= 0.6
+# 2021 Snohomish: 69/(69+94)= 0.4233129
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
 
 ```
 
-1. \$1,640: Regional affordability threshold for monthly rent, based on 30% of the regional median household income for renters ($65,600/year)
-2. 39%: Share of tracts in the region where rent is affordable based on the regional median household income
-3. 1/4: King County has the lowest proportion of tracts, one quarter, with affordable rent
+Data callout 1:
+
+42%: Share of tracts in the region where rent is affordable based on the regional median household income
+
+<!-- 1. 39%: Share of tracts in the region where rent is affordable based on the regional median household income -->
+
 
 \
 
 #### Insights & Analysis
 
-* Access to affordable rent is highest in Kitsap (69% of tracts), followed by Pierce County (60%), Snohomish (42%), and King (25%)
-* Ten census tracts tied with the highest median gross rent ($3,500) are all in King County: three are in southern Mercer Island, two are in Clyde Hill/Hunts Point/Medina/Yarrow Point, three are in Bellevue, two are in Sammamish
-* The highest median gross rent in Pierce, Kitsap, and Snohomish County are in: Tehaleh community south of Bonney Lake (\$2,800), the southwestern portion of Bainbridge Island (\$3,500), and southern Mukilteo (\$3,400), respectively
-* Relatively affordable areas are in south Seattle, south King County, Tacoma/central Pierce County, along the I-5 corridor in Snohomish County, and in communities farther out from the region’s urban centers
+1. \$1,800: Regional affordability threshold for monthly rent, based on 30% of the regional median household income for renters ($71,910/year)
+
+2. Access to affordable rent is highest in Pierce (65% of tracts), followed by Kitsap County (64%), Snohomish (43%), and King (31%)
+
+3. Ten census tracts tied with the highest median gross rent ($3,500) are all in King County:
+  - 1 is in Seattle (Montlake, south of UW)
+  - 2 are in Mercer Island, 
+  - 2 are in Clyde Hill/Hunts Point/Medina/Yarrow Point, 
+  - 4 are in Bellevue
+  - 1 in Auburn (West Hill)
+  
+4. The highest median gross rent in Pierce, Kitsap, and Snohomish County are in: Tehaleh community south of Bonney Lake (\$3,090), the southeastern portion of Bainbridge Island (\$2,720), and the Edmonds/southern Mukilteo area (\$3,280), respectively  
+
+<!-- 1. \$1,640: Regional affordability threshold for monthly rent, based on 30% of the regional median household income for renters ($65,600/year) -->  
+<!-- * Access to affordable rent is highest in Kitsap (69% of tracts), followed by Pierce County (60%), Snohomish (42%), and King (25%) -->
+<!-- * Ten census tracts tied with the highest median gross rent ($3,500) are all in King County: three are in southern Mercer Island, two are in Clyde Hill/Hunts Point/Medina/Yarrow Point, three are in Bellevue, two are in Sammamish -->
+<!-- * The highest median gross rent in Pierce, Kitsap, and Snohomish County are in: Tehaleh community south of Bonney Lake (\$2,800), the southwestern portion of Bainbridge Island (\$3,500), and southern Mukilteo (\$3,400), respectively -->
+<!-- * Relatively affordable areas are in south Seattle, south King County, Tacoma/central Pierce County, along the I-5 corridor in Snohomish County, and in communities farther out from the region’s urban centers -->
 
 \
 \
@@ -343,38 +274,39 @@ sort <- data %>%
 </style>
 
 ```{r data setup, include=FALSE}
-# load visualization functions for charts
-source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R')
+# # set folder structure
+# rda <- 'e01-affordable-rent-access.rda'
 
-# set folder structure
-rda <- 'e01-affordable-rent-access.rda'
-
-load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+load(file = file.path(file_names$base_dir, 
+                      file_names$theme_dir,
+                      file_names$ind_dir,
+                      "update",
+                      "rda-data",
+                      file_names$rda_chart))
 ```
 
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2021") #filter on most recent year
+  filter(data_year == year) #filter on most recent year
 
 # set variables 
-df = data_clean_column
-geo = "county"
-x = "focus_attribute_ord"
-y = "fact_value"
-facet = "focus_type_ord"
-fill = "focus_attribute_ord"
-y_min = 0
-y_max = 1
-dec = 0
-esttype = "percent"
-color = "oranges"
-num_colors = 2
-color_rev = TRUE
-title = "Access to Affordable Rent by Community"
-subtitle = "Percent of census tracts that are affordable"
-source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+df <-  data_clean_column
+geo <- "county"
+x <- "focus_attribute_ord"
+y <- "fact_value"
+facet <- "focus_type_ord"
+fill <- "focus_attribute_ord"
+y_min <- 0
+y_max <- 1
+dec <- 0
+esttype <- "percent"
+color <- "oranges"
+num_colors <- 2
+color_rev <- TRUE
+title <- "Access to Affordable Rent by Community"
+subtitle <- "Percent of census tracts that are affordable"
+source <- "U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -389,17 +321,16 @@ column_chart <- equity_tracker_column_facet(df = df,
                                             color = color,
                                             num_colors = num_colors,
                                             color_rev = color_rev)
+
+# column_chart
 ```
 
 ```{r output final column chart - pums, include=FALSE}
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
-# set folder structure
-file_name <- 'e01-affordable-rent-access-column'
-
 # column Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD",
+rmarkdown::render(here("data-visualization", "equity-tracker-chart-creator.Rmd"),
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -415,13 +346,27 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 title = title,
                                 # source = source,
                                 subtitle = subtitle),
-                  output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+                  output_file = paste0(file_names$chart_column, '.html'),
+                  output_dir = file.path(file_names$base_dir,
+                                         file_names$theme_dir,
+                                         file_names$ind_dir,
+                                         "update",
+                                         'webpage-html-outputs'))
 
 # Column Chart - png for use in static file
 # need to create a 'static-images' sub-folder in theme sub-folder if not already existing
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
-                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+webshot2::webshot(url = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir,
+                                  "update", # remove for final output
+                                  'webpage-html-outputs', 
+                                  paste0(file_names$chart_column, '.html')),
+                  file = file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   file_names$ind_dir, # remove for final output
+                                   "update", # remove for final output
+                                   'static-images', 
+                                   paste0(file_names$chart_column, '.png')),
                   vwidth = 1920, vheight = 1080)
 ```
 
@@ -435,12 +380,17 @@ webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outpu
 
 if (output_type == "html") {
 
-  column_chart  
-  
+  column_chart
+
 } else {
-  
-  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
-  
+
+  knitr::include_graphics(file.path(file_names$base_dir,
+                                    file_names$theme_dir,
+                                    file_names$ind_dir, # remove for final output
+                                    "update",
+                                    'static-images',
+                                    paste0(file_names$chart_column, '.png')))
+
 }
 
 # column_chart
@@ -452,62 +402,90 @@ if (output_type == "html") {
 #### Data call outs
 ```{r column facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
+
+## Older Cat ----
+o_df <- data_clean_column %>% 
+  filter(focus_type == "Older_cat")
+
+o_df_wide <- o_df |> 
+  select(county, focus_attribute_ord, fact_value_notrounded) |> 
+  pivot_wider(id_cols = county,
+              names_from = focus_attribute_ord,
+              values_from = fact_value_notrounded) |> 
+  mutate(diff = abs(`Households with\nolder adults` - `Other households`))
+
+## 2021 Analysis ----
 filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Disability_cat")
+  filter(county == "Region",
+         focus_type == "Disability_cat")
 
 # region disability: 0.7562297	(698/923)
 # region non-disability: 0.9469122
 # 0.9469122-0.7562297=0.1906825
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         county=="Region")
+  filter(focus_type == "LEP_cat",
+         county == "Region")
 # region lep households: 0.02491874	
 # region non-lep households: 0.65438787
 # 0.65438787-0.02491874=0.6294691
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="Older_cat",
-         county=="Region")
+  filter(focus_type == "Older_cat",
+         county == "Region")
 # region older households: 0.02491874	
 # region non-older households: 0.70964247
 # 0.70964247-0.02491874=0.1928494
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         county=="Snohomish")
+  filter(focus_type == "LEP_cat",
+         county == "Snohomish")
 # King non-lep-lep households: 0.9494949-0.1151515=	0.8343434
 # Kitsap non-lep-lep households: 0.9500000-0.1166667= 0.8333333
 # Pierce non-lep-lep households: 0.9689119-0.2279793=	0.7409326
 # Snohomish non-lep-lep households: 0.9142857-0.4400000=0.4742857
 
-
 filter <- data_clean_column %>% 
-  filter(focus_type=="Income_cat", 
+  filter(focus_type == "Income_cat", 
          vulnerability == "high vulnerability")
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="Older_cat",
-         county=="King")
+  filter(focus_type == "Older_cat",
+         county == "King")
 # King non-older-older households: 0.76363636-0.01212121=	0.7515152
 # Kitsap non-older-older households: 0.6833333-0.1333333=	0.55
 # Pierce non-older-older households: 0.6165803-0.1036269=	0.5129534
 # Snohomish non-older-older households: 0.54857143-0.01714286=	0.5314286
 ```
 
-1. 7%: Renters with a disability have access to affordable rent in 7% of the region’s census tracts 
-2. 2%: Share of affordable tracts for renter households with limited English proficiency, 63 percentage points less than English-proficient renter households
-3. 69%: percentage point difference in the share of affordable tracts between renter households with older adults (2%) and other renter households (71%)
+
+Data callout 2: 
+
+1%: Regionally, 1% of census tracts are affordable to renter households with limited English proficiency, 46X less than the what is affordable to English-proficient renter households (46%)
+
+<!-- 2. 2%: Regionally, 2% of census tracts are affordable to renter households with limited English proficiency, 33X less than the 65% affordable to English-proficient renter households -->
 
 \
 
 #### Insights & Analysis
 
-* Renters of color in King County have access to affordable rent in 50% of the census tracts, while white non-Hispanic renters may find 75% of the tracts to be affordable, the largest difference among the counties
-* While the renter affordability gap between people of color and white non-Hispanic people is notable, it is likely even bigger for some racial subgroups (more information about the way in which housing opportunities are different among racial subgroups is available in the [Regional Housing Strategy: 2023 Monitoring Report](https://www.psrc.org/media/8253)
-* For households living below 200% of poverty level, Pierce County is the only county where there is one affordable tract (out of 193, or 1%)
-* The disparity in access to affordable rent between households with older adults and other households is greatest in King County (75%), followed by Kitsap (55%), Snohomish (53%), and Pierce (51%)
+1. Renters with a disability have access to affordable rent in 3% of the region’s census tracts.
+
+2. 53%: percentage point difference in the regional share of affordable tracts between households with older adults (1%) and other households (54%).
+
+3. Renters of color in King County have access to affordable rent in 32% of the census tracts, while white non-Hispanic renters may find 57% of the tracts to be affordable.
+
+4. For households living below 200% of poverty level there is no access to affordable rent.
+
+5. The disparity in access to affordable rent between households with older adults and other households is greatest in King County (60%), followed by Kitsap (48%), Pierce (41%), and Snohomish (37%).
+
+<!-- 1. 7%: Renters with a disability have access to affordable rent in 7% of the region’s census tracts  -->
+<!-- 2. 2%: Share of affordable tracts for renter households with limited English proficiency, 63 percentage points less than English-proficient renter households -->
+<!-- 3. 69%: percentage point difference in the share of affordable tracts between renter households with older adults (2%) and other renter households (71%) -->
+<!-- * Renters of color in King County have access to affordable rent in 50% of the census tracts, while white non-Hispanic renters may find 75% of the tracts to be affordable, the largest difference among the counties -->
+<!-- * While the renter affordability gap between people of color and white non-Hispanic people is notable, it is likely even bigger for some racial subgroups (more information about the way in which housing opportunities are different among racial subgroups is available in the [Regional Housing Strategy: 2023 Monitoring Report](https://www.psrc.org/media/8253) -->
+<!-- * For households living below 200% of poverty level, Pierce County is the only county where there is one affordable tract (out of 193, or 1%) -->
+<!-- * The disparity in access to affordable rent between households with older adults and other households is greatest in King County (75%), followed by Kitsap (55%), Snohomish (53%), and Pierce (51%) -->
 
 \
 \
@@ -526,13 +504,13 @@ filter <- data_clean_column %>%
 # Create Facet Line Chart
 
 # set variables
-df = data_clean
-x = "data_year" # different from variables for facet column
-fill = "focus_attribute_ord" # different from variables for facet column
-color = "blues"
-title = "Access to Affordable Rent Trend by Community"
-subtitle = "Percent of census tracts that are affordable, in 5-year spans between 2011 and 2021"
-source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+df <-  data_clean
+x <- "data_year" # different from variables for facet column
+fill <- "focus_attribute_ord" # different from variables for facet column
+color <- "blues"
+title <- "Access to Affordable Rent Trend by Community"
+subtitle <- "Percent of census tracts that are affordable, in 5-year spans between 2011 and 2021"
+source <- "U.S. Census Bureau, 2008-2012, 2013-2017, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -555,11 +533,8 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
-# set folder structure
-file_name <- 'e01-affordable-rent-access-line'
-
 # Line Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD",
+rmarkdown::render(here("data-visualization", "equity-tracker-chart-creator.Rmd"),
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -579,12 +554,25 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 width = '420px',
                                 height = '380px',
                                 charttype = "line"),
-                  output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+                  output_file = paste0(file_names$chart_line, '.html'),
+                  output_dir = file.path(file_names$base_dir, 
+                                         file_names$theme_dir, 
+                                         file_names$ind_dir, 
+                                         "update", # remove for final output
+                                         'webpage-html-outputs'))
 
 # Line Chart - png for use in static file
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
-                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+webshot2::webshot(url = file.path(file_names$base_dir, 
+                                  file_names$theme_dir, 
+                                  file_names$ind_dir, 
+                                  'webpage-html-outputs', 
+                                  paste0(file_names$chart_line, '.html')),
+                  file = file.path(file_names$base_dir, 
+                                   file_names$theme_dir,  
+                                   file_names$ind_dir, # remove for final output
+                                   "update", # remove for final output
+                                   'static-images', 
+                                   paste0(file_names$chart_line, '.png')),
                   vwidth = 1920, vheight = 1080)
 ```
 
@@ -595,13 +583,19 @@ webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outpu
 `r subtitle`
 </p>
 ```{r line chart - pums, echo=FALSE}
+
 if (output_type == "html") {
 
-  line_chart  
-  
+  line_chart
+
 } else {
-  
-  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+
+  knitr::include_graphics(file.path(file_names$base_dir,
+                                    file_names$theme_dir,
+                                    file_names$ind_dir, # remove for final output
+                                    "update", # remove for final output
+                                    'static-images',
+                                    paste0(file_names$chart_line, '.png')))
   
 }
 # line_chart
@@ -614,18 +608,18 @@ if (output_type == "html") {
 ```{r line facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="POC_cat",
-         data_year!="2016")
+  filter(county == "Region",
+         focus_type == "POC_cat",
+         data_year != "2016")
 # 2021 poc-2011 poc: 0.4875406-0.7164948=-0.2289542
 # # ((0.4875406-0.7164948)/(0.7164948))*100: -31.95476% change
 # 2011 nonpoc-2011 nonpoc: 0.6673889-0.8311856=-0.1637967
 # # ((0.6673889-0.8311856)/(0.8311856))*100: -19.70639% change
 
 filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="Income_cat",
-         data_year!="2016")
+  filter(county == "Region",
+         focus_type == "Income_cat",
+         data_year != "2016")
 # 2021 low income: 0.0000000
 # 2021 non-low income: 0.9046587
 # 0.9046587-0.0000000=0.9046587
@@ -636,9 +630,9 @@ filter <- data_clean %>%
 # ((0.9046587-0.9716495)/(0.9716495))*100: -6.894544% change in gap for non-low income
 
 filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="LEP_cat",
-         data_year!="2016")
+  filter(county == "Region",
+         focus_type == "LEP_cat",
+         data_year != "2016")
 # 2011 non-lep-lep: 0.83118557-0.17139175=0.6597938
 # 2021 non-lep-lep: 0.65438787-0.02491874=0.6294691
 # ((0.6294691-0.6597938)/(0.6597938))*100: -4.596087% change
@@ -649,9 +643,9 @@ filter <- data_clean %>%
 
 
 filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="Disability_cat",
-         data_year!="2011")
+  filter(county == "Snohomish",
+         focus_type == "Disability_cat",
+         data_year != "2011")
 # King 2016 non-dis - dis: 0.86934673-0.05276382=0.8165829
 # King 2021 non-dis - dis: 0.82020202-0.02424242=0.7959596
 # ((0.7959596-0.8165829)/(0.8165829))*100: -2.525561% change
@@ -666,9 +660,9 @@ filter <- data_clean %>%
 # ((0.5142857-0.6688742)/(0.6688742))*100: -23.11175% change
 
 filter <- data_clean %>%
-  filter(county=="King",
-         focus_type=="LEP_cat",
-         data_year!="2016")
+  filter(county == "King",
+         focus_type == "LEP_cat",
+         data_year != "2016")
 # King 2011 non-lep - lep: 0.85929648-0.18592965=0.6733668
 # King 2021 non-lep - lep: 0.73939394-0.01212121=0.7272727
 # ((0.7272727-0.6733668)/(0.6733668))*100: 8.005429% change
@@ -683,28 +677,48 @@ filter <- data_clean %>%
 # ((0.4514286-0.6423841)/(0.6423841))*100: -29.72606% change
 
 filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="Older_cat",
-         vulnerability=="high vulnerability",
-         data_year=="2011" |
-           data_year=="2021")
+  filter(county == "Snohomish",
+         focus_type == "Older_cat",
+         vulnerability == "high vulnerability",
+         data_year == "2011" |
+           data_year == "2021")
 # King 2011-2021: 0.19346734-0.01212121=0.1813461
 # Kitsap 2011-2021: 0.1272727-0.1333333=-0.0060606
 # Pierce 2011-2021: 0.4186047-0.1036269=0.3149778
 # Snohomish 2011-2021: 0.07947020-0.01714286=0.06232734
 ```
 
-1. 1.6x: The share of tracts with affordable rent decreased 32% for renters of color between 2011 and 2021, about 1.6 times more than the decrease for white non-Hispanic renters (20%)
-2. 6%: The difference in regional access to affordable rent between renter households with lower income and other renter households decreased 6 percentage points because the number of affordable tracts for other renter households decreased by 81
-3. 85%: The regional share of affordable tracts for renter households with limited English proficiency decreased 85% between 2011 and 2021, from 133 to 23 tracts, a 4x larger decrease than for English proficient renter households (-21%, from 645 to 604 tracts)
+Data callout 3: 
+
+2.5X: The share of tracts with affordable rent decreased 45% for renters of color between 2012 and 2022, about 2.5 times more than the decrease for white non-Hispanic renters (38%)
+
+
+<!-- 3. 1.7X: The share of tracts with affordable rent decreased 32% for renters of color between 2011 and 2021, about 1.7 times more than the decrease for white non-Hispanic renters (20%) -->
+
+<!-- 1. 1.6x: The share of tracts with affordable rent decreased 32% for renters of color between 2011 and 2021, about 1.6 times more than the decrease for white non-Hispanic renters (20%) -->
+<!-- 2. 6%: The difference in regional access to affordable rent between renter households with lower income and other renter households decreased 6 percentage points because the number of affordable tracts for other renter households decreased by 81 -->
+<!-- 3. 85%: The regional share of affordable tracts for renter households with limited English proficiency decreased 85% between 2011 and 2021, from 133 to 23 tracts, a 4x larger decrease than for English proficient renter households (-21%, from 645 to 604 tracts) -->
 
 
 \
 
 #### Insights & Analysis
-* The disparity in access to affordable rent between those with and without a disability decreased over time, with the greatest change in Kitsap and Pierce counties (-35%), followed by Snohomish (-23%) and King (-3%)
-* The disparity in access to affordable rent between households with limited English proficiency and English proficient households decreased in Snohomish (28%) and Pierce (6%) counties between 2011 and 2021, while the disparity slightly increased in King (8%) and greatly increased in Kitsap (679%)  
-* Kitsap is the only county where access to affordable rent for households with older adults increased over time (1%), compared to the other counties, where access decreased over time: Pierce (31%), King (18%), and Snohomish (6%)
+
+1. The difference in regional access to affordable rent between renter households with lower income and other renter households decreased 12 percentage points. 
+
+2. The disparity in access to affordable rent between those with and without a disability decreased over time for most counties, with the greatest difference in Snohomish (41%), followed by Kitsap (32%), and King (14%). The disparity for Pierce grew by 5%.
+
+3. The regional share of affordable tracts for renter households with limited English proficiency decreased 80% between 2012 and 2022, a 2x larger decrease than for English proficient renter households (40%).
+
+4. The disparity in access to affordable rent between households with limited English proficiency and English proficient households decreased in Snohomish (40 percentage points), followed by King (23 percentage points), and  Pierce (17 percentage points) while disparity greatly increased in Kitsap. Access to affordable rent in Kitsap dropped nearly 70 percentage points.
+
+<!-- 4. As % instead of percentage points? -->
+
+5. Snohomish is the only county where access to affordable rent for households with older adults stayed the same over time, compared to the other counties, where access decreased over time: Pierce (17 percentage points), King (6 percentage points), and Kitsap (4 percentage points).
+
+<!-- * The disparity in access to affordable rent between those with and without a disability decreased over time, with the greatest change in Kitsap and Pierce counties (-35%), followed by Snohomish (-23%) and King (-3%) -->
+<!-- * The disparity in access to affordable rent between households with limited English proficiency and English proficient households decreased in Snohomish (28%) and Pierce (6%) counties between 2011 and 2021, while the disparity slightly increased in King (8%) and greatly increased in Kitsap (679%)   -->
+<!-- * Kitsap is the only county where access to affordable rent for households with older adults increased over time (1%), compared to the other counties, where access decreased over time: Pierce (31%), King (18%), and Snohomish (6%) -->
 
 
 \
@@ -715,47 +729,49 @@ filter <- data_clean %>%
 ## Copy files from Github > Y drive
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
-current_folder <- file.path(getwd())
-y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+# current_folder <- file.path(getwd()) # maybe use dirname(rstudioapi::getSourceEditorContext()$path)
+# y.drive.folder <- file.path(file_names$base_dir, file_names$theme_dir, file_names$ind_dir)
+current_folder <- dirname(rstudioapi::getSourceEditorContext()$path)
+y.drive.folder <- file.path(file_names$base_dir, file_names$theme_dir, file_names$ind_dir, "update") # to update folder
 
 # isolate files in Github
-list.of.files <- list.files(current_folder, 
+list.of.files <- list.files(current_folder,
                             full.names = T,
                             pattern = "\\.(html|docx)$")
-# list.of.files
+list.of.files
 
-# copy the files to the new folder
-file.copy(list.of.files,
-          y.drive.folder,
-          overwrite = T)
-
-# keep only .Rmd files in Github (cleaner)
-files.in.dir <- list.files(current_folder, 
-                            full.names = T)
-files.to.keep <- list.files(current_folder, 
-                            full.names = T,
-                            pattern = "\\.Rmd$")
-files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
-                                                              files.in.dir, value=TRUE))])
-do.call(unlink, files.to.remove)
+# # copy the files to the new folder
+# file.copy(list.of.files,
+#           y.drive.folder,
+#           overwrite = T)
+# 
+# # keep only .Rmd files in Github (cleaner)
+# files.in.dir <- list.files(current_folder, 
+#                             full.names = T)
+# files.to.keep <- list.files(current_folder, 
+#                             full.names = T,
+#                             pattern = "\\.Rmd$")
+# files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
+#                                                               files.in.dir, value=TRUE))])
+# do.call(unlink, files.to.remove)
 ```
 
 ## Copy files from Y drive > website folder
 ```{r to web dev folder, include=FALSE, eval=FALSE}
-# set folder structure
-current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
-
-web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-new.folder <- file.path(web.base.folder,theme_dir)
-
-list.of.files <- list.files(current_folder, 
-                            full.names = T)
-# list.of.files
-
-# copy the files to the new folder
-file.copy(list.of.files,
-          new.folder,
-          overwrite = T)
+# # set folder structure
+# current_folder <- file.path(file_names$base_dir, file_names$theme_dir, file_names$ind_dir,'webpage-html-outputs')
+# 
+# web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+# new.folder <- file.path(web.base.folder, file_names$theme_dir)
+# 
+# list.of.files <- list.files(current_folder, 
+#                             full.names = T)
+# # list.of.files
+# 
+# # copy the files to the new folder
+# file.copy(list.of.files,
+#           new.folder,
+#           overwrite = T)
 ```
 
 <a href="#top">Back to top of the page</a>
