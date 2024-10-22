@@ -7,39 +7,45 @@ library(data.table)
 # 1. Setup: List necessary direct-PUMS variables --------------------
 
 # PUMS variables desired at person level
-pvars <- c("AGEP",                   # used as condition >25yo
-           "DIS",                    # Disability - unavailable before 2012
-           "LNGI",                   # Limited English speaking household
-           "PRACE",                  # Individual race (PSRC categories)
-           "POVPIP",                 # Income-to-poverty ratio (all household members share it)
-           "PRIVCOV",                # Private health insurance coverage
-           "PUBCOV",                 # Public health insurance coverage
-           "R18",                    # Presence of persons under 18 years in household
-           "R65",                    # Presence of persons over 65 years in household
-           "SCHL"                    # Educational attainment
-           )
+pefavars <- c("AGEP",                   # used as condition >25yo
+              "DIS",                    # Disability - unavailable before 2012
+              "LNGI",                   # Limited English speaking household
+              "POVPIP",                 # Income-to-poverty ratio (all household members share it)
+              "PRACE",                  # Individual race (PSRC categories)
+              "R18",                    # Presence of persons under 18 years in household
+              "R65")                    # Presence of persons over 65 years in household
+
+pindvars <- c("PRIVCOV",                # Private health insurance coverage
+              "PUBCOV",                 # Public health insurance coverage
+              "SCHL"                    # Educational attainment
+              )
 
 # PUMS variables desired at household level
-hvars <- c(
-           "ACCESSINET",             # Internet access; "ACCESS" from 2017 5yr to 2019 5yr
-           "RMSP",                   # Number of rooms
-           "FS",                     # Supplemental Nutrition Assistance Program
-           "GRPIP",                  # Gross rent as percentage of income
-           "GRNTP",                  # Gross rent
-           "HDIS",                   # Any member of household disabled - unavailable before 2012
-           "HINCP",                  # Household income
-           "HRACE",                  # Household race (PSRC categories)
-           "LNGI",                   # Limited English speaking household
-           "NP",                     # Number of persons in household
-           "OCPIP",                  # Homeowner costs as percentage of income
-           "OWN_RENT",               # Simplified housing tenure (PSRC categories)
-           "POVPIP",                 # Income-to-poverty ratio
-           "PRACE",                  # Householder race (PSRC categories)
-           "SMOCP",                  # Homeowner costs
-           "R18",                    # Presence of persons under 18 years in household
-           "R65",                    # Presence of persons over 65 years in household
-           "TEN"                     # Housing tenure
-           )
+
+hefavars <- c("HDIS",                   # Any member of household disabled - unavailable before 2012
+              "HRACE",                  # Household race (PSRC categories)
+              "LNGI",                   # Limited English speaking household
+              "OWN_RENT",               # Simplified housing tenure (PSRC categories)
+              "POVPIP",                 # Income-to-poverty ratio
+              "PRACE",                  # Householder race (PSRC categories)
+              "R18",                    # Presence of persons under 18 years in household
+              "R65"                     # Presence of persons over 65 years in household
+              )
+
+hindvars <- c("ACCESSINET",             # Internet access; "ACCESS" from 2017 5yr to 2019 5yr
+              "RMSP",                   # Number of rooms
+              "FS",                     # Supplemental Nutrition Assistance Program
+              "GRPIP",                  # Gross rent as percentage of income
+              "NP",                     # Number of persons in household
+              "OCPIP",                  # Homeowner costs as percentage of income
+              "SMOCP"                   # Homeowner costs
+              )
+
+hmonvars <- c("GRNTP",                  # Gross rent
+              "HINCP")                  # Household income
+
+pvars <- c(pefavars, pindvars)
+hvars <- c(hefavars, hindvars, hmonvars)
 
 # 2. Setup: List and define Equity Focus Area (EFA) variables -------
 
@@ -79,7 +85,68 @@ add_efa_vars <- function(so){
   return(so)
 }
 
-# 3. Setup: Helper functions ----------------------------------------
+# 3. Setup: Add target indicators -----------------------------------
+
+add_pp_indicators <- function(so){
+  so %<>% mutate(
+    edu_simp = factor(case_when(
+      AGEP<25                       ~ NA_character_,                                               # Define the educational attainment subject variable
+      grepl("(Bach|Mast|Prof|Doct)", SCHL) ~ "Bachelor's degree or higher",
+      !is.na(SCHL)                         ~ "Less than a Bachelor's degree")))
+  if(dyear > 2011){
+    pp_df %<>% mutate(
+      healthcov = factor(case_when(
+        AGEP<25                      ~ NA_character_,                                              # Define the health insurance coverage subject variable
+        grepl("^With ", PRIVCOV)|grepl("^With ", PUBCOV) ~ "With health insurance",
+        grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
+  }
+}
+
+add_hh_indicators <- function(so){
+  so %<>% mutate(
+    poverty=Income_cat,                                                                            # Identical to Income_cat
+    housing_burden=factor(case_when(                                                               # Define the housing cost burden subject variable
+      GRPIP<30|OCPIP<30|SMOCP==0|(is.na(GRNTP) & is.na(SMOCP)) ~ "Less than 30 percent",
+      dplyr::between(GRPIP,30,50)|dplyr::between(OCPIP,30,50) ~ "Between 30 and 50 percent",
+      GRPIP>50|OCPIP>50|is.na(HINCP)      ~ "Greater than 50 percent"),
+      levels=c("Greater than 50 percent",
+               "Between 30 and 50 percent",
+               "Less than 30 percent")),
+    rent_burden=factor(case_when(                                                                  # Define the rent burden subject variable
+      GRPIP<30|(is.na(GRNTP) & OWN_RENT=="Rented") ~ "Less than 30 percent",
+      dplyr::between(GRPIP,30,50) ~ "Between 30 and 50 percent",
+      GRPIP>50|is.na(HINCP)       ~ "Greater than 50 percent"),
+      levels=c("Greater than 50 percent",
+               "Between 30 and 50 percent",
+               "Less than 30 percent")),
+    renter_crowding = factor(case_when(
+      is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,                                               # Define the crowding subject variable
+      NP/RMSP <= 1   & OWN_RENT=="Rented" ~ "One person per room or less",
+      NP/RMSP  > 1 & OWN_RENT=="Rented" ~ "More than 1 person per room"),
+      levels=c("More than 1 person per room",
+               "One person per room or less")),
+    owner_crowding = factor(case_when(
+      is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,                                               # Define the crowding subject variable
+      NP/RMSP <= 1   & OWN_RENT=="Owned" ~ "One person per room or less",
+      NP/RMSP  > 1 & OWN_RENT=="Owned" ~ "More than 1 person per room"),
+      levels=c("More than 1 person per room",
+               "One person per room or less"))
+  )
+  if(dyear > 2016){
+    hh_df %<>% mutate(
+      internet = factor(case_when(grepl("^Yes", ACCESSINET) ~ "With internet access",              # Define the internet access subject variable; began in 2013
+                                  grepl("^No", ACCESSINET) ~ "Without internet access")))
+  }
+} 
+
+add_monetary_indicators <- function(so, refyear){
+  so %<>% mutate(
+    renter_median_hh_income = case_when(OWN_RENT=="Rented" ~ !!as.name(paste0("HINCP", refyear)),
+                                        TRUE ~ NA_real_))
+}
+
+
+# 4. Setup: Helper functions ----------------------------------------
 
 # These two bulk stat functions give results for a single subject variable sliced by each of the EFA categories,
 #  -- at both county and regional levels.
@@ -155,6 +222,14 @@ efa_to_elmer <- function(efa_result){
   return(invisible(NULL))
 }
 
+monetary_to_elmer <- function(monetary_result){
+  delete_sql <- paste("DELETE FROM Elmer.equity.indicator_facts",
+                      "WHERE indicator_type LIKE '%_dollars'",
+                      "AND fact_type='median'")
+  psrcelmer::sql_execute(sql=delete_sql)
+  lapply(monetary_result, efa_to_elmer)
+}
+
 # 4. Main functions -------------------------------------------------
 
 # Subject variables are defined within the primary function
@@ -162,7 +237,6 @@ efa_to_elmer <- function(efa_result){
 
 # Generate all indicators for a single survey
 pums_efa_singleyear <- function(dyear){
-  refyear <- 2022  # Dollar year for inflation-adjusted comparisons
   pums_rds <- "J:/Projects/Census/AmericanCommunitySurvey/Data/PUMS/pums_rds" # Network PUMS location
 
   if(dyear < 2012){hvars <- replace(hvars, hvars=="RMSP","RMS")}                                   # Variable changed names w/ 2012 data
@@ -174,16 +248,7 @@ pums_efa_singleyear <- function(dyear){
   }
 
   pp_df <- get_psrc_pums(span=5, dyear, "p", pvars, dir=pums_rds)                                  # Retrieve persons data
-  pp_df %<>% add_efa_vars() %>% mutate(
-               edu_simp = factor(case_when(AGEP<25                       ~ NA_character_,          # Define the educational attainment subject variable
-                  grepl("(Bach|Mast|Prof|Doct)", SCHL) ~ "Bachelor's degree or higher",
-                  !is.na(SCHL)                         ~ "Less than a Bachelor's degree")))
-  if(dyear > 2011){
-    pp_df %<>% mutate(
-               healthcov = factor(case_when(AGEP<25                      ~ NA_character_,          # Define the health insurance coverage subject variable
-                  grepl("^With ", PRIVCOV)|grepl("^With ", PUBCOV) ~ "With health insurance",
-                  grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
-  }
+  pp_df %<>% add_efa_vars() %>% add_pp_indicators()
 
   hh_df <- get_psrc_pums(span=5, dyear, "h", hvars, dir=pums_rds)                                  # Retrieve household data
   if("ACCESS" %in% colnames(hh_df)){hh_df %<>% rename("ACCESSINET"="ACCESS")}                      # Variable changed names w/ 2020 data
@@ -191,71 +256,57 @@ pums_efa_singleyear <- function(dyear){
     hh_df %<>% mutate(RMS=as.integer(stringr::str_extract(as.character(RMS),"^\\d+")))             # Convert from factor to value
     hh_df %<>% rename("RMSP"="RMS")                                                                # Variable changed names w/ 2012 data
     }
-  hh_df %<>% real_dollars(refyear) %>% add_efa_vars() %>% mutate(
-               poverty=Income_cat,                                                                 # Identical to Income_cat
-               housing_burden=factor(case_when(                                                    # Define the housing cost burden subject variable
-                                     GRPIP<30|OCPIP<30|SMOCP==0|(is.na(GRNTP) & is.na(SMOCP)) ~ "Less than 30 percent",
-                                     dplyr::between(GRPIP,30,50)|dplyr::between(OCPIP,30,50) ~ "Between 30 and 50 percent",
-                                     GRPIP>50|OCPIP>50|is.na(HINCP)      ~ "Greater than 50 percent"),
-                                levels=c("Greater than 50 percent",
-                                         "Between 30 and 50 percent",
-                                         "Less than 30 percent")),
-               rent_burden=factor(case_when(                                                       # Define the rent burden subject variable
-                                         GRPIP<30|(is.na(GRNTP) & OWN_RENT=="Rented") ~ "Less than 30 percent",
-                                         dplyr::between(GRPIP,30,50) ~ "Between 30 and 50 percent",
-                                         GRPIP>50|is.na(HINCP)       ~ "Greater than 50 percent"),
-                                    levels=c("Greater than 50 percent",
-                                             "Between 30 and 50 percent",
-                                             "Less than 30 percent")),
-               renter_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,          # Define the crowding subject variable
-                                           NP/RMSP <= 1   & OWN_RENT=="Rented" ~ "One person per room or less",
-                                           NP/RMSP  > 1 & OWN_RENT=="Rented" ~ "More than 1 person per room"),
-                                 levels=c("More than 1 person per room",
-                                          "One person per room or less")),
-               owner_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_,          # Define the crowding subject variable
-                                           NP/RMSP <= 1   & OWN_RENT=="Owned" ~ "One person per room or less",
-                                           NP/RMSP  > 1 & OWN_RENT=="Owned" ~ "More than 1 person per room"),
-                                 levels=c("More than 1 person per room",
-                                          "One person per room or less")),
-               renter_median_hh_income = case_when(OWN_RENT=="Rented" ~ !!as.name(paste0("HINCP",refyear)),
-                                                   TRUE ~ NA_real_)
-  )
-  if(dyear > 2016){
-    hh_df %<>% mutate(
-               internet = factor(case_when(grepl("^Yes", ACCESSINET) ~ "With internet access", # Define the internet access subject variable; began in 2013
-                                           grepl("^No", ACCESSINET) ~ "Without internet access")))
-  }
+  hh_df %<>% real_dollars(refyear) %>% add_efa_vars() %>% 
+    add_hh_indicators()
 
   deep_pocket <- list()
   deep_pocket$"educational_attainment"  <- bulk_count_efa(pp_df, "edu_simp")
   if(dyear > 2011){
-    deep_pocket$"healthcare_coverage"     <- bulk_count_efa(pp_df, "healthcov")
+    deep_pocket$"healthcare_coverage"   <- bulk_count_efa(pp_df, "healthcov")
   }
-  deep_pocket[[paste0("median_household_income_", refyear,"_dollars")]] <-                         # Brackets for dynamic item naming
-    bulk_stat_efa(hh_df, "median", paste0("HINCP",refyear))                                        # Notice dollar comparisons require inflation adjustment
   deep_pocket$"household_poverty"       <- bulk_count_efa(hh_df, "poverty")
   deep_pocket$"housing_cost_burden"     <- bulk_count_efa(hh_df, "housing_burden")
   deep_pocket$"tenure"                  <- bulk_count_efa(hh_df, "OWN_RENT")
   deep_pocket$"rent_burden"             <- bulk_count_efa(hh_df, "rent_burden")
-  deep_pocket[[paste0("median_gross_rent_", refyear,"_dollars")]] <-
-    bulk_stat_efa(hh_df, "median", paste0("GRNTP",refyear))
   deep_pocket$"renter_crowding"         <- bulk_count_efa(hh_df, "renter_crowding")                # i.e. persons per room for renters
   deep_pocket$"owner_crowding"          <- bulk_count_efa(hh_df, "owner_crowding")                 # i.e. persons per room for owners
   deep_pocket$"SNAP"                    <- bulk_count_efa(hh_df, "FS")                             # food stamp/SNAP
   if(dyear > 2016){
     deep_pocket$"internet_access"       <- bulk_count_efa(hh_df, "internet")
   }
-  deep_pocket[[paste0("renter_median_hh_income_", refyear,"_dollars")]] <-
-    bulk_stat_efa(hh_df, "median", "renter_median_hh_income")
-
   return(deep_pocket)
+}
+
+
+pums_efa_monetary <- function(){
+  refyear <- max(tidycensus::pums_variables$year) # Dollar year for inflation-adjusted comparisons
+  pums_rds <- "J:/Projects/Census/AmericanCommunitySurvey/Data/PUMS/pums_rds" # Network PUMS location
+  
+  monetary_singleyear <- function(dyear){
+    if(dyear < 2012){
+      hefavars %<>% .[!hefavars %in% "HDIS"]
+    }
+    hh_df <- get_psrc_pums(span=5, dyear, "h", vars=c(hefavars, hmonvars), dir=pums_rds)           # Retrieve household data
+    hh_df %<>% real_dollars(refyear) %>% add_efa_vars() %>% 
+      add_monetary_indicators(refyear)
+    
+    wallet <- list()  
+    wallet[[paste0("median_household_income_", refyear,"_dollars")]] <-                            # Brackets for dynamic item naming
+      bulk_stat_efa(hh_df, "median", paste0("HINCP", refyear))                                     # Notice dollar comparisons require inflation adjustment 
+    wallet[[paste0("median_gross_rent_", refyear,"_dollars")]] <-
+      bulk_stat_efa(hh_df, "median", paste0("GRNTP", refyear))
+    wallet[[paste0("renter_median_hh_income_", refyear,"_dollars")]] <-
+      bulk_stat_efa(hh_df, "median", "renter_median_hh_income")
+    return(wallet)
+  }
+  rs_master <- lapply(2009:refyear, monetary_singleyear)
 }
 
 # Generate trend data, i.e. all indicators across multiple years; returns a list                   # Problematic if variables aren't present in all requested years
 pums_efa_multiyear <- function(dyears){                                                            # -- verify in PUMS data dictionaries for each survey
   refyear <- max(dyears)
   rs_master <- lapply(dyears, pums_efa_singleyear) #%>%
-    #as.data.frame(do.call(rbind, lapply(., as.vector)))                                            # Combine matching indicator tables across years
+    #as.data.frame(do.call(rbind, lapply(., as.vector)))                                           # Combine matching indicator tables across years
   return(rs_master)                                                                                # Return the object
 }
 
@@ -267,9 +318,12 @@ write_pums_efa <- function(efa_rs_list){
 
 # Example 1: Generate indicators for a single year -------------
 # equity_2022_5 <- pums_efa_singleyear(2022)                                                       # Returns all tables as separate items in a list
-# write_pums_efa(equity_2022_5)                                                                    # Write the tables to .csv
-# efa_to_elmer(equity_2022_5)
+# efa_to_elmer(equity_2022_5)                                                                      # Merge to Elmer
+# equity_monetary <- pums_efa_monetary()                                                           # Generate all monetary stats w/current dollar basis
+# monetary_to_elmer(rs_monetary)                                                               # Merge to Elmer
 
 # Example 2: Generate indicators for multiple years-------------
-# equity_1222 <- pums_efa_multiyear(2012:2022)                                                     # Returns a list of lists
+# equity_0922 <- pums_efa_multiyear(2009:2022)                                                     # Returns a list of lists
 # lapply(equity_1222, efa_to_elmer)                                                                # Merge all to Elmer
+# equity_monetary <- pums_efa_monetary()                                                           # Generate all monetary stats w/current dollar basis
+# monetary_to_elmer(equity_monetary)                                                               # Merge to Elmer
