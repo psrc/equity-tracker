@@ -1,5 +1,5 @@
 ---
-title: "SNAP" 
+title: "Median Household Income" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
@@ -64,10 +64,10 @@ source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 ```{r variables setup}
 
 file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
-                   theme_dir = 'a-regional-health-collaboration',
-                   ind_dir = 'a05-snap',
-                   chart = 'a05-snap-chart-data',
-                   map = 'a05-snap-map-data')
+                   theme_dir = 'f-economy',
+                   ind_dir = 'f01-median-income',
+                   chart = 'f01-median-income-chart-data',
+                   map = 'f01-median-income-map-data')
 ```
 
 **Median Income**
@@ -106,8 +106,8 @@ walk(pums_ospi_cols, ~print(unique(pums_ospi_elmer[[.x]])))
 
 ```{r indicator specific information, include=FALSE}
 # set indicator information
-indicator_measure <- 'SNAP'
-indicator_title <- 'SNAP'
+indicator_measure <- 'median_household_income_2022_dollars'
+indicator_title <- 'Median household income'
 ```
 
 
@@ -189,8 +189,8 @@ if(length(unique(data_full$indicator_attribute)) > 1){
 
 ```{r}
 # space to filter if necessary
-data_full <- data_full %>%
-  filter(indicator_attribute=="Yes")
+# data_full <- data_full %>%
+#   filter(indicator_attribute=="Yes")
 ```
 
 ```{r}
@@ -461,17 +461,12 @@ nrow(tracts10.lyr) #773
 
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
-                              table.names = 'S2201', #subject table code
+                              table.names = 'B19013', #subject table code
                               years = c(2022),
                               acs.type = 'acs5')
 
-
-#filter for percentage instead of total number
-acs_data_per <- base_acs_data %>%
-  dplyr::filter(variable == "S2201_C04_001")
-
 # filter only fields of interest - census tract, value, and reliability (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
-acs_data <- acs_data_per %>% 
+acs_data <- base_acs_data %>% 
   dplyr::select(GEOID, estimate, reliability)
 
 # you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
@@ -487,82 +482,24 @@ acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
 
 # getting data by county from acs 
 county_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'S2201', #subject table code
+                                table.names = 'B19013', #subject table code
                                 years = c(2021),
                                 acs.type = 'acs5')
-
-#filter for percentage instead of total number
-# county_acs_data_per <- county_acs_data %>%
-#   dplyr::filter(variable == "S2701_C03_001")
-# 
-# county_data <- county_acs_data_per %>% 
-#   dplyr::select(name,estimate) %>% #to simplify table
-#   dplyr::rename(cnty_estimate=estimate) %>% #to distinguish between tract and county values
-#   mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
+county_data <- county_acs_data %>% 
+  dplyr::select(name,estimate) %>% #to simplify table
+  dplyr::rename(cnty_estimate=estimate) %>% #to distinguish between tract and county values
+  mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
 
 # getting data by region from PUMS
-# pums_data <- get_psrc_pums(span = 5,
-#                            dyear = 2021,
-#                            level = "p",
-#                            vars = c("PRIVCOV", "PUBCOV"))
-# 
-# reg_median <- psrc_pums_median(pums_data, stat_var = c("PRIVCOV", "PUBCOV"))
-# 
-# # add region median to county data
-# county_reg_data <- county_data %>% 
-#   mutate(reg_estimate=reg_median$POVPIP_median)
-# 
-# # merge tract, county, and region data into one data set 
-# acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
-#                         by.x="county_name",
-#                         by.y="county_name",
-#                         all.x=TRUE)
-
-
-# county transformations
-county_snap <- county_acs_data %>% 
-  dplyr::filter(variable=="S2201_C03_001",
-                name!="Region") %>% 
-  dplyr::select(name, estimate) %>% 
-  dplyr::rename(snap=estimate)
-county_pop <- county_acs_data %>% 
-  dplyr::filter(variable=="S2201_C01_001",
-                name!="Region") %>% 
-  dplyr::select(name, estimate) %>% 
-  dplyr::rename(pop_snap=estimate)
-
-county_merge <- merge(county_snap, county_pop,
-                      by.x="name",
-                      by.y="name",
-                      all.x=TRUE)
-county_data_simp <- county_merge %>% 
-  dplyr::mutate(cnty_estimate=snap/pop_snap) %>% 
-  dplyr::mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) %>% #for join to tract level data
-  dplyr::select(county_name,cnty_estimate) #to simplify table
-
-# region transformations
-reg_snap <- county_acs_data %>% 
-  dplyr::filter(variable=="S2201_C03_001",
-                name=="Region") %>% 
-  dplyr::select(name, estimate) %>% 
-  dplyr::rename(snap=estimate)
-reg_pop <- county_acs_data %>% 
-  dplyr::filter(variable=="S2201_C01_001",
-                name=="Region") %>% 
-  dplyr::select(name, estimate) %>% 
-  dplyr::rename(pop_snap=estimate)
-
-reg_merge <- merge(reg_snap, reg_pop,
-                      by.x="name",
-                      by.y="name",
-                      all.x=TRUE)
-reg_data <- reg_merge %>% 
-  dplyr::mutate(reg_estimate=snap/pop_snap) %>% 
-  dplyr::select(name,reg_estimate)
+pums_data <- get_psrc_pums(span = 5,
+                           dyear = 2021,
+                           level = "h",
+                           vars = "HINCP")
+reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
 
 # add region median to county data
-county_reg_data <- county_data_simp %>% 
-  mutate(reg_estimate=reg_data$reg_estimate)
+county_reg_data <- county_data %>% 
+  mutate(reg_estimate=reg_median$HINCP_median)
 
 # merge tract, county, and region data into one data set 
 acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
@@ -580,7 +517,7 @@ psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate)
 
 # set the variable
-var_name <- "SNAP"
+var_name <- "Median income"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -596,7 +533,7 @@ tract_map <- leaflet() %>%
               smoothFactor = 0.2,
               fillOpacity = 0.7,
               group = var_name,
-              label = round(acs_data_tract$estimate, digits=1)) %>%
+              label = round(acs_data_tract$estimate, digits=2)) %>%
 
   # legends
   addLegend_decreasing(pal = psrc_palette, #included in equity-tracker-supplemental-script.R
@@ -606,7 +543,7 @@ tract_map <- leaflet() %>%
                        group = var_name,
                        opacity = 0.7,
                        decreasing = TRUE,
-                       labFormat = labelFormat()) %>% 
+                       labFormat =  labelFormat(prefix = "$")) %>% 
   
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
