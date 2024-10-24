@@ -683,7 +683,7 @@ do.call(unlink, files.to.remove)
 ```
 
 ## Copy new files from Y drive/update folder > Y drive/indicator folder
-Once the data and planning reviews are complete, this step will move all of the updated data/files to the general indicator folder. They should be moved from the update (draft staging directory) to the parent folder so that the htmls can be copied to the webpage folder (outside the firewall).
+This step will move all of the updated data/files to the general indicator folder. They should be moved from the update (draft staging directory) to the parent folder so that the htmls can be copied to the webpage folder (outside the firewall).
 ```{r update to indicator folder, include=FALSE, eval=FALSE}
 # isolate old files/directories
 list.of.files <- list.files(y.drive.folder.update, 
