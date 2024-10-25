@@ -70,8 +70,6 @@ file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    map = 'f02-kindergarten-readiness-map-data')
 ```
 
-**Median Income**
-
 # Download data 
 ## Primary data 
 The data set referenced in this script is generated from the American Community Survey (ACS) and the Washington Office of Superintendent of Public Instruction [(OSPI)](https://www.k12.wa.us/data-reporting/data-portal). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the FOUR equity demographic groups of interest. 
@@ -86,12 +84,6 @@ years <- c("2011", "2012", "2013", "2014",
 
 # PUMS/OSPI data set
 pums_ospi_elmer <- get_table(schema = "equity", tbl_name = "v_tracker_indicators")
-```
-
-```{r, include=FALSE}
-# PUMS/OSPI data set
-pums_ospi_elmer <- get_table(schema="equity",
-                             tbl_name="v_tracker_indicators")
 ```
 \
 This data set was compiled from PUMS data.

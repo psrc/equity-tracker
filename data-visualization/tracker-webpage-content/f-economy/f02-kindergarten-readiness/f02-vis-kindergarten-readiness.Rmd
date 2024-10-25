@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (OSPI data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -174,25 +174,52 @@ data <- ospi_data_tract %>%
 
 # calculate call out information
 sort <- data %>% 
-  dplyr::arrange(desc(estimate))
-# Highest percentage of SNAP participation is 53053940006 (east Tacoma where two low income housing complexes are - 49.4%), 53053061601 (downtown Tacoma - 44.1%), 53033029004 (southeast Des Moines - 39.3%), 53033029604 (southeast Kent - 35.8%), 53053063301 (east Tacoma just south of 53053940006 - 35.0%)
-
-# national average
-# acs table: S2201, https://data.census.gov/table/ACSST5Y2022.S2201?q=S2201
+  dplyr::arrange(desc(Percent_num))
+# Highest percentage of KG readiness is 80.508% (Snoqualmie Valley School District)
 
 sort <- data %>% 
-  dplyr::arrange(estimate)
+  dplyr::arrange(Percent_num)
+# Lowest percentage of KG readiness is 31.818% (University Place School District)
 
+# filter by county
 filter <- data %>% 
-  filter(estimate==0)
-# There are 38 census tracts with a 0% participation. 
-table(filter$county_name)
-# 30 tracts in King County, 2 in Kitsap, 2 in Pierce, and 4 in Snohomish 
+  filter(county=="King") %>% 
+  mutate(cntyavg=sum(Numerator,na.rm=TRUE)/sum(Denominator, na.rm=TRUE)) %>% #0.5899207 (19 districts)
+  mutate(total_students=sum(Denominator, na.rm=TRUE)) %>% #18672 students
+  select(county, DistrictName, Numerator, Denominator, Percent, Percent_num, cnty_percent_num, reg_percent_num, cntyavg, total_students)
+filter <- data %>% 
+  filter(county=="Kitsap") %>% 
+  mutate(cntyavg=sum(Numerator,na.rm=TRUE)/sum(Denominator, na.rm=TRUE)) %>%  #0.5249448 (5 districts)
+  mutate(total_students=sum(Denominator, na.rm=TRUE)) %>% #2265 students
+  select(county, DistrictName, Numerator, Denominator, Percent, Percent_num, cnty_percent_num, reg_percent_num, cntyavg, total_students)
+filter <- data %>% 
+  filter(county=="Pierce") %>% 
+  mutate(cntyavg=sum(Numerator,na.rm=TRUE)/sum(Denominator, na.rm=TRUE)) %>% #0.4713206 (15 districts)
+  mutate(total_students=sum(Denominator, na.rm=TRUE)) %>% #9397 students
+  select(county, DistrictName, Numerator, Denominator, Percent, Percent_num, cnty_percent_num, reg_percent_num, cntyavg, total_students)
+filter <- data %>% 
+  filter(county=="Snohomish") %>% 
+  mutate(cntyavg=sum(Numerator,na.rm=TRUE)/sum(Denominator, na.rm=TRUE)) %>%#0.4643527 (14 districts)
+  mutate(total_students=sum(Denominator, na.rm=TRUE)) %>% #7462 students
+  select(county, DistrictName, Numerator, Denominator, Percent, Percent_num, cnty_percent_num, reg_percent_num, cntyavg, total_students)
+# 18672+2265+9397+7462=37796
+# 18672/37796=0.4940205
+# 2265/37796=0.05992698
+# 9397/37796=0.2486242
+# 7462/37796=0.1974283
+
+# suppressed data
+filter <- data %>% 
+  filter(is.na(Denominator)) #2: Index School District and Skykomish School District
+
+# more than one county
+filter <- data %>% 
+  filter(grepl(",", counties))
 ```
 
 1. 53%: Regional share of students ready for kindergarten
-2. 40%: Percentage point difference between the school district with the most kindergarten ready students and the one with the least
-3. 47%: Students with disabilities in the region are less likely to be prepared for kindergarten compared to students without disabilities, a gap which has increased by 47% over time
+2. 49%: Percentage point difference between the school district with the most kindergarten ready students and the one with the least
+3. 57%: Students with disabilities in the region are less likely to be prepared for kindergarten compared to students without disabilities, a gap which has increased by 47% over time
 
 \
 
@@ -341,46 +368,58 @@ if (output_type == "html") {
 ```{r column facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
-  filter(focus_type=="Disability_cat")
-# Region: 0.21 vs. 0.06
-# with disability has higher coverage across all counties/region
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat")
-# King lep households: .22	
-# King non-lep households: .07
-
-filter <- data_clean_column %>% 
   filter(county=="Region",
          focus_type=="Income_cat")
-# region low income households: .32	
-# region non-low income households: .04
-# .32-.04=.28
+# region low income households: 0.43	
+# region high income households: 0.66
+# 43% of students from households below 200% of the poverty level are kindergarten ready
+# 0.66-0.43=0.23
 
 filter <- data_clean_column %>% 
   filter(county=="Region",
-         focus_type=="LEP_cat")
-# region non-lep:0.09
-# region lep: 0.21
-# 0.21/0.09=1.857143
+         focus_type=="Disability_cat")
+# region disability households (low vuln-high vuln): 0.62 - 0.26 = 0.36
+# ((0.26-0.62)/0.62)*100=58
 
 filter <- data_clean_column %>% 
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
   filter(county=="Region",
          focus_type=="POC_cat")
-# region non-poc:0.07
-# region poc: 0.13
-# 0.13/0.07=2.3333
+# King (low-high): 0.72-0.60=0.12
+# Kitsap (low-high): 0.57-0.49=0.08
+# Pierce (low-high): 0.58-0.47=0.11
+# Snohomish (low-high): 0.56-0.47=0.09
+# Region (low-high): 0.63-0.54=0.11
+
+filter <- data_clean_column %>% 
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  filter(county!="Region",
+         focus_type=="Income_cat",
+         vulnerability=="high vulnerability")
+# King (high): 0.45
+# Kitsap (high): 0.44
+# Pierce (high): 0.44
+# Snohomish (high): 0.39
+
+filter <- data_clean_column %>% 
+  distinct(indicator_fact_id, .keep_all = TRUE) %>% 
+  filter(county!="Region",
+         focus_type=="Disability_cat")
+# King (low-high): 0.68-0.28=0.40
+# Kitsap (low-high): 0.56-0.25=0.31
+# Pierce (low-high): 0.55-0.23=0.32
+# Snohomish (low-high): 0.55-0.24=0.31
 ```
 \
 
 #### Insights & Analysis
 
-* The share of kindergarten ready students from households with lower income in the region is 37%, 24 percentage points lower than other households.
-* The share of kindergarten ready students in the region for those with a disability is 59% lower than those without.
-* In 2022, fewer students of color were kindergarten ready than white non-Hispanic students, a difference of 11 percentage points.
-* The smallest percentage point difference in kindergarten readiness between students of color and white non-Hispanic students is in Kitsap County (3%), while the largest difference is in King County (16%); Pierce (11%) and Snohomish (9%) fall in the middle.
-* For students in households with lower income, kindergarten readiness is lowest in Snohomish County (32%), followed by Pierce (37%), King (38%), and Kitsap (48%).
-* The largest percentage point difference in kindergarten readiness between students with a disability and those without is in King County (37%), while the smallest difference is in Kitsap and Pierce counties (28%).
+* The share of kindergarten ready students from households with lower income in the region is 43%, 23 percentage points lower than other households.
+* The share of kindergarten ready students in the region for those with a disability is 58% lower than those without.
+* In 2023, fewer students of color were kindergarten ready than white non-Hispanic students, a difference of 11 percentage points.
+* The smallest percentage point difference in kindergarten readiness between students of color and white non-Hispanic students is in Kitsap County (8%), while the largest difference is in King County (12%); Pierce (11%) and Snohomish (9%) fall in the middle.
+* For students in households with lower income, kindergarten readiness is lowest in Snohomish County (39%), followed by Pierce and King (44%), and Kitsap (45%).
+* The largest percentage point difference in kindergarten readiness between students with a disability and those without is in King County (40%), while the smallest difference is in Kitsap and Snohomish counties (31%).
 
 
 \
@@ -497,89 +536,52 @@ if (output_type == "html") {
 #### Data call outs
 ```{r line facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
-filter <- data_clean %>%
-  filter(county=="Snohomish",
+calc <- data_clean %>% 
+  filter(county=="Region",
          focus_type=="POC_cat",
-         data_year!="2017")
-# king 2012: 0.17-0.07=0.10
-# king 2022: 0.12-0.06=0.06
-# kitsap 2012: 0.19-0.10=0.09
-# kitsap 2022:0.14-0.08=0.06
-# pierce 2012: 0.19-0.10=0.09
-# pierce 2022:0.17-0.10=0.07
-# snohomish 2012: 0.16-0.10=0.06
-# snohomish 2022: 0.11-0.08=0.03
+         data_year=="2011" | data_year=="2023")
 
-filter <- data_clean %>%
+# dif in 2011: 0.59-0.38=0.21
+# dif in 2023: 0.63-0.54=0.09
+# ((0.09 - 0.21)/0.21)*100 >>> -57.14286%
+
+calc <- data_clean %>% 
+  filter(county=="Region",
+         focus_type=="Income_cat",
+         data_year=="2011" | 
+           data_year=="2023")
+
+# dif in 2011: 0.62-0.35 = 0.27
+# dif in 2023: 0.66-0.43 = 0.23
+
+
+calc <- data_clean %>% 
   filter(county=="Snohomish",
-         focus_type=="LEP_cat",
-         vulnerability=="high vulnerability",
-         data_year!="2017")
-# king 2022-2012: 0.22-0.24=-0.02
-# kitsap 2022-2012: 0.13-0.18=-0.05
-# pierce 2022-2012: 0.23-0.21=0.02
-# snohomish 2022-2012: 0.18-0.26=-0.08
-
-filter <- data_clean %>%
-  filter(county!="Region",
          focus_type=="Disability_cat",
-         vulnerability=="high vulnerability",
-         data_year!="2017")
-# King 2022-2012: 0.21-0.22=-0.01
-# Kitsap 2022-2012: 0.20-0.20=0
-# Pierce 2022-2012: 0.22-0.22=0
-# Snohomish: 0.19-0.23=-0.04
+         data_year=="2012" | 
+           data_year=="2023")
 
-filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="POC_cat",
-         data_year!="2017")
-# King 2012 poc-non poc: 0.17-0.07=0.10
-# King 2022: 0.12-0.06=0.06
-# King: ((0.06-0.10)/(0.10))*100: -40% change
-# Kitsap 2012: 0.19-0.10=0.09
-# Kitsap 2022: 0.14-0.08=0.06
-# Kitsap: ((0.06-0.09)/(0.09))*100: -33% change
-# Pierce 2012:0.19-0.10=0.09
-# Pierce 2022: 0.17-0.10=0.07
-# Pierce: ((0.07-0.09)/(0.09))*100: -22% change
-# Snohomish 2012: 0.16-0.10=0.06
-# Snohomish 2022: 0.11-0.08=0.03 
-# Snohomish: ((0.03-0.06)/(0.06))*100: -50% change
-
-
-filter <- data_clean %>%
-  filter(county == "Region",
-         focus_type=="Income_cat",
-         vulnerability=="high vulnerability",
-         data_year!="2017")
-# 2012: 0.35
-# 2022: 0.32
-
-
-filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="POC_cat",
-         data_year=="2016" |
-           data_year=="2021")
-
-
-filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="Income_cat",
-         vulnerability=="low vulnerability",
-         data_year=="2016" |
-           data_year=="2021")
-
+# King dif in 2011: 0.34- 0.15 = 0.19
+# King dif in 2023: 0.68- 0.28 = 0.40
+# %gap over 10 years: ((0.40-0.19)/0.19)*100 >>> 110.5263% (increase)
+# Kitsap dif in 2015: 0.56- 0.26 = 0.30
+# Kitsap dif in 2023: 0.56- 0.25 = 0.31
+# %gap over 10 years: ((0.31-0.30)/0.30)*100 >>> 3.333333% (increase)
+# Pierce dif in 2011: 0.62- 0.31 = 0.31
+# Pierce dif in 2023: 0.55- 0.32 = 0.32
+# %gap over 10 years: ((0.32-0.31)/0.31)*100 >>> 3.225806% (increase)
+# Snohomish dif in 2012: 0.54- 0.22 = 0.32
+# Snohomish dif in 2023: 0.55- 0.24 = 0.31
+# %gap over 10 years: ((0.31-0.32)/0.32)*100 >>> -3.125% (decrease)
 ```
 \
 
 #### Insights & Analysis
 
 * The share of students prepared for kindergarten decreased over the past decade for all groups in Pierce and Snohomish counties, and increased for all groups in King County.
-* Students of color in the region are less likely to be prepared for kindergarten compared to white non-Hispanic students, a gap of 10 percentage points and a decrease of almost half (48%) over the past decade.
-* The gap in kindergarten readiness in the region between students from households with lower income and those from other households has remained relatively consistent in the last decade, decreasing from 27 percentage points to 24 percentage points in 2022.
-* In King County, the difference in kindergarten readiness between students with a disability and those without almost doubled over the past decade (+95%), while the difference decreased in Snohomish County (-9%) and in Pierce County (-10%). Kitsap County didn’t report data for students with disabilities until 2015 and in the past half decade, the difference has decreased slightly (-7%).
+* Students of color in the region are less likely to be prepared for kindergarten compared to white non-Hispanic students, a gap of 11 percentage points and a decrease of over half (57%) over the past decade.
+* The gap in kindergarten readiness in the region between students from households with lower income and those from other households has remained relatively consistent in the last decade, decreasing from 27 percentage points to 23 percentage points in 2023.
+* In King County, the difference in kindergarten readiness between students with a disability and those without almost doubled between 2011 and 2023 (+95%), while the difference remained similar in Pierce County - increasing slightly (+3%). Snohomish and Kitsap counties didn't report data for students with disabilities until 2012 and 2015, respectively. Over the past 11 years, the difference decreased very slightly in Snohomish County (-3%) and over the past 8 years, the difference increased very slightly in Kitsap County (3%).
 
 
 \
