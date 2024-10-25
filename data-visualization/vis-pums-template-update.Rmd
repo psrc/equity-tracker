@@ -84,6 +84,8 @@ load(file=file.path(file_names$base_dir,
 ``` 
 
 ```{r data format - map, include=FALSE}
+# This space is for any data transformations that may be needed before the final visualizations are generated. This code may or may not be necessary depending on the way the data were formatted in the data-gen script and saved in the rda.
+
 # move the decimal point for reg_estimate and cnty_estimate
 acs_data_tract <- acs_data_tract %>%
    mutate(reg_estimate = (reg_estimate*100)) %>%
