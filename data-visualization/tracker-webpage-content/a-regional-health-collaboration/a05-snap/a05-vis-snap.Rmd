@@ -597,7 +597,7 @@ filter <- data_clean %>%
 * Regionally, people of color have consistently been almost twice as likely to participate in SNAP compared to the white non-Hispanic population; however, the disparity between these two groups decreased in all counties - Snohomish (-50%), King (-40%), Kitsap (-33%), Pierce (-22%).
 * SNAP participation decreased in all counties for households with limited English proficiency between 2012 and 2022, except for Pierce County where participation for the same group increased from 21% in 2012 to 23% in 2022.
 * SNAP participation among people with disabilities in the region either stayed the same (Kitsap and Pierce counties) or decreased (King and Snohomish counties) from 2012 to 2022.
-* The share of participating lower income households reached 40% in 2017, the highest for any group in the past decade; however, between 2012 and 2022, there was a three percentage point decrease in SNAP participation for households with lower income across the region
+* The share of participating lower income households reached 36% in 2017, the highest for any group in the past decade; however, between 2012 and 2022, there was a three percentage point decrease in SNAP participation for households with lower income across the region
 
 
 \
