@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Meg Grzybowski, updated by Grant Gibson"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -45,8 +45,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 
 ```{r variables setup}
@@ -210,8 +210,8 @@ sort <- data %>%
 ```
 
 1. 61%: The region's average rate of homeownership
-2. 70%: Kitsap County has the highest homeownership rates
-3. 56%: King County has the lowest percentage of homeowners
+2. 21%: Regionally, households with limited English proficiency have homeownership rates 21 percentage points lower than households proficient in English
+3. 13%: The regional homeownership gap between households with lower income and other households decreased 13% between 2012 and 2022
 
 \
 
@@ -352,7 +352,6 @@ if (output_type == "html") {
 `r source`
 </p> 
 
-#### Data call outs
 ```{r column facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
@@ -407,10 +406,6 @@ filter <- data_clean_column %>%
   dplyr::arrange(desc(fact_value))
 ```
 \
-
-1. 33%: Difference in percentage points between regional homeownership rates for households living above or below 200% of federal poverty level
-2. 66%: Homeownership rates of households living with children (below 18 years old) is 66%, only 7 percentage points higher than households without children
-3. 21%: Limited English proficient households have homeownership rates 21 percentage points lower than English proficient households
 
 #### Insights & Analysis
 
@@ -530,7 +525,6 @@ if (output_type == "html") {
 `r source`
 </p> 
 
-#### Data call outs
 ```{r line facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>%
@@ -600,10 +594,6 @@ filter <- data_clean %>%
 # Snohomish non-low income:130900.06-97445.42=33454.64
 ```
 \
-
-1. 13%: The homeownership rate gap between households in the region who were living below 200% federal poverty level and those above decreased 13% between 2012 and 2022
-2. 41%: The 2022 homeownership rate for households with limited English proficiency, an 11% increase from 2017
-3. 24%: The difference in homeownership rates between households with older adults and those without in the region has increased 24% between 2012 and 2022
 
 #### Insights & Analysis
 
