@@ -45,8 +45,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 
 ```{r variables setup}
@@ -85,9 +85,14 @@ load(file=file.path(file_names$base_dir,
 
 ```{r data format - map, include=FALSE}
 # move the decimal point for reg_estimate and cnty_estimate
+# test <- acs_data_tract %>%
+#   mutate(reg_estimate = formatC( round((reg_estimate*100), 1), format='f', digits=1)) %>% 
+#   mutate(reg_estimate = sprintf('%.1f',reg_estimate*100)) %>% #keep zero after decimal, while round to nearest tenth
+#   mutate(cnty_estimate = sprintf('%.1f',cnty_estimate*100)) 
+
 acs_data_tract <- acs_data_tract %>%
-   mutate(reg_estimate = (reg_estimate*100)) %>%
-   mutate(cnty_estimate = (cnty_estimate*100))
+   mutate(reg_estimate = round((reg_estimate*100), 1)) %>%
+   mutate(cnty_estimate = round((cnty_estimate*100),1))
 ```
 
 
