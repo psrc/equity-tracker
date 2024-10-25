@@ -1,16 +1,17 @@
 ---
 title: "Educational Attainment"
 subtitle: "Visuals for Equity Tracker (PUMS data)"
-author: "Mary Richards"
+author: "Mary Richards, updated by Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  html_document:
+    word_document:
+    html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
+
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -19,7 +20,7 @@ knitr::opts_chunk$set(echo=FALSE,
                       message=FALSE) # formatting
 
 # to reference chart functions in Github
-knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+#knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
 ```{r library setup, include=FALSE}
@@ -44,11 +45,12 @@ library(echarts4r)
 #                         force=TRUE)
 
 library(webshot2) #static image creation
+library(here)
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+#output_type <- "html"
 ```
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
@@ -173,7 +175,7 @@ addLegend_decreasing <- function (map, position = c("topright", "bottomright", "
 # load map .rda
 base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
 theme_dir <- 'f-economy'
-ind_dir <- 'f03-educational-attainment'
+ind_dir <- 'f03-educational-attainment/update'
 rda <- 'f03-educational-attainment-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
@@ -266,7 +268,7 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 # printing map
 acs_map
 ```
-Source(s): U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Table S1501; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Source(s): U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Estimates, Table S1501; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
@@ -288,42 +290,43 @@ data <- acs_data_tract %>%
 
 # calculate call out information
 calc <- data %>%
-  dplyr::mutate(reg_bach = sum(bach_plus, na.rm=TRUE)/sum(pop_25_plus, na.rm=TRUE))
-# regional bach of 25+ pop: 0.4371736
+  dplyr::mutate(reg_bach = sum(bach_plus_estimate, na.rm=TRUE)/sum(pop_25_estimate, na.rm=TRUE))
+# regional bach of 25+ pop: 0.4458494
 
-x<-rep(data$estimate,times=data$pop_25_plus)
+x<-rep(data$estimate,times=data$pop_25_estimate)
 df1<-data.frame(x)
 summary(df1$x)
 median(df1$x, na.rm=TRUE)
 hist(df1$x)
-# regional median educational attainment: 39.379 
+# regional median educational attainment: 40.932
 
 sort <- data %>% 
   dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood in Seattle) - 95.087719%, 53033006701 (Westlake neighborhood in Seattle) - 92.924375%, [53033023702 (Bel-Red neighborhood in Bellevue) - 92.222222% - low population number in census tract (630 25+)] 53033005401 (Northlake neighborhood in Seattle) - 89.115143%
+# 53033004101 (Laurelhurst neighborhood in Seattle) - 95.40481%, 53033006701 (Westlake neighborhood in Seattle) - 92.12800%, NEW - 53033007503 (Pike/Pine on Capitol Hill just south of Cal Anderson Park) - 90.71651%, [53033023702 (Bel-Red neighborhood in Bellevue) - 90.67017% - low population number in census tract (761 25+)] 53033005401 (Northlake neighborhood in Seattle) - 90.61082%
 
 sort <- data %>% 
   dplyr::arrange(estimate)
-# 53061052211 (Monroe, Snohomish) - 4.941947%, 53053072000 (Tillicum and Joint Base Lewis–McChor, Pierce) - 5.639535%, 53053071416 (Spanaway and Loveland, Pierce) - 6.163435%
+# 53061052211 (Monroe, Snohomish) - 3.053173%, 53053071808 (Northeast Lakewood along I-5, Pierce) - 3.890330%, 53053072000 (Tillicum and Joint Base Lewis–McChord, Pierce) - 5.854874%, 53053071408 and 53053071400 (between Spanaway and Parkland, Pierce) - 7.223114% and 8.806818%, 53053071416 was #4 in 2021 but dropped to #11 (Spanaway and Loveland, Pierce) - went from 6.163435% to 10.260223%
 
 by_county <- data %>%
   dplyr::group_by(county_name) %>%
-  dplyr::summarise(cnt_bach = sum(bach_plus, na.rm=TRUE)/sum(pop_25_plus, na.rm=TRUE)) %>%
+  dplyr::summarise(cnt_bach = sum(bach_plus_estimate, na.rm=TRUE)/sum(pop_25_estimate, na.rm=TRUE)) %>%
   dplyr::arrange(desc(cnt_bach))
-# King (54%), Kitsap (35%), Snohomish (34%), Pierce (28%)
+# King (55%), Kitsap (35%), Snohomish (35%), Pierce (29%)
 ```
 
-1. 44%: The region's educational attainment
-2. 95%: The region's highest educational attainment is in the Laurelhurst neighborhood
-3. 5%: The lowest educational attainment in the region is in a census tract in Monroe, Snohomish County
-
+1. 45%: Share of adults in the region 25 years and older who have a bachelor's degree or higher
+2. 26%: Educational attainment of people in households with lower income is 26 percentage points lower than those in other households
+3. 3%: Educational attainment for white non-Hispanic people in the region is 3 percentage points higher than for people of color
 \
 
 #### Insights & Analysis
 
-* King County has the highest educational attainment (54%), followed by Kitsap (35%), Snohomish (34%), and Pierce (28%)
-* The 50 census tracts with the highest educational attainment are in King County - the first four census tracts are in the Laurelhurst neighborhood (Seattle), Westlake neighborhood (Seattle), Bellevue, and Northlake neighborhood (Seattle)
-* The first census tract with the highest educational attainment not located in King County includes the Lynwood and Fletcher Bay neighborhoods on Bainbridge Island in Kitsap County (82%)
+* King County has the highest share of adults 25 years and older who have a bachelor’s degree or higher (55%), followed by Snohomish (35%), Kitsap (35%), and Pierce (29%).
+* Five census tracts with the highest educational attainment are all in King County neighborhoods: Laurelhurst (Seattle), Westlake (Seattle), Pike/Pine area of Capitol Hill (Seattle), Spring District/Bel-Red (Bellevue), and Northlake (Seattle).
+* The census tract with the highest educational attainment located outside of King County is in the Mill Creek area of Snohomish County (83%).
+* Educational attainment in the Laurelhurst neighborhood of Seattle, the region's highest (95%).
+* Educational attainment in a census tract in Monroe, Snohomish County, the region's lowest (3%).
 
 \
 \
@@ -340,8 +343,8 @@ by_county <- data %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R') 
+source('C:/Coding/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
+#source('equity-tracker-chart-functions.R') 
 
 # set folder structure
 rda <- 'f03-educational-attainment-data.rda'
@@ -352,7 +355,7 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2021") #filter on most recent year
+  dplyr::filter(data_year=="2022") #filter on most recent year
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
@@ -370,7 +373,7 @@ num_colors = 2
 color_rev = TRUE
 title = "Educational Attainment by Community"
 subtitle = "Percent of individuals 25 years or older with a Bachelor's degree or higher"
-source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+source = "U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -396,7 +399,7 @@ column_chart <- equity_tracker_column_facet(df = df,
 file_name <- 'f03-educational-attainment-column'
 
 # column Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -446,64 +449,57 @@ if (output_type == "html") {
 `r source`
 </p> 
 
-#### Data call outs
 ```{r column facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean_column %>% 
   filter(focus_type=="POC_cat",
          county!="Region")
-# King no poc-poc: 0.5713854-0.4861901=0.0851953
-# Kitsap no poc-poc: 0.3655688-0.2784608=0.087108
-# Pierce no poc-poc: 0.3034835-0.2330582=0.0704253
-# Snohomish no poc-poc: 0.3320712-0.3706851=-0.0386139
+# King no poc-poc: 0.5811493-0.4999316=0.0812177 (2021 - 0.0851953)
+# Kitsap no poc-poc: 0.3713769-0.2813983=0.0899786 (2021 - 0.087108)
+# Pierce no poc-poc: 0.3152704-0.2439870=0.0712834 (2021 - 0.0704253)
+# Snohomish no poc-poc: 0.3408168-0.3873440=-0.0465272 (2021 - -0.0386139)
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
          county=="Region")
-# lep: 0.2935020
-# non lep: 0.4468569
-# 0.4468569-0.2935020=0.1533549
+# lep: 0.3150890
+# non lep: 0.4565184
+# 0.4565184-0.3150890=0.1414294 (2021 - 0.1533549)
 
 filter <- data_clean_column %>% 
   filter(county!="Region",
          focus_type=="Income_cat")
-# King not low inc-low inc: 0.5888835-0.2776186=0.3112649
-# Kitsap not low inc-low inc: 0.3875144-0.1811566=0.2063578
-# Pierce not low inc-low inc: 0.3181438-0.1379590=0.1801848
-# Snohomish not low inc-low inc: 0.3793164-0.1703160=0.2090004
+# King not low inc-low inc: 0.5985038-0.2869053=0.3115985 (2021 - 0.3112649)
+# Kitsap not low inc-low inc: 0.3919729-0.1783536=0.2136193 (2021 - 0.2063578)
+# Pierce not low inc-low inc: 0.3282930-0.1431039=0.1851891 (2021 - 0.1801848)
+# Snohomish not low inc-low inc: 0.3916045-0.1819030=0.2097015 (2021 - 0.2090004)
 
 filter <- data_clean_column %>% 
   filter(focus_type=="Disability_cat")
-# region dis: 0.2553356
-# region no dis: 0.4660190
-# 0.4660190-0.2553356=0.2106834
-# King no dis-dis: 0.5693938-0.3180987=0.2512951
-# Kitsap no dis-dis: 0.3772126-0.2192018=0.1580108
-# Pierce no dis-dis: 0.3014983-0.1903546=0.1111437
-# Snohomish no dis-dis: 0.3668158-0.2054530=0.1613628
+# region dis: 0.2656091
+# region no dis: 0.4766827
+#0.4766827-0.2656091=0.2110736 (2021 - 0.2106834)
+# King no dis-dis: 0.5803068-0.3315794=0.2487274 (2021 - 0.2512951)
+# Kitsap no dis-dis: 0.3819782-0.2189284=0.1630498 (2021 - 0.1580108)
+# Pierce no dis-dis: 0.3143972-0.1932216=0.1211756 (2021 - 0.1111437)
+# Snohomish no dis-dis: 0.3783800-0.2193957=0.1589843 (2021 - 0.1613628)
 
 filter <- data_clean_column %>% 
   filter(focus_type=="LEP_cat",
          county!="Region")
-# King: 0.5557650-0.3244048=0.2313602
-# Kitsap: 0.3518236-0.2574751=0.0943485
-# Pierce: 0.2885311-0.1582440=0.1302871
-# Snohomish 0.3499894-0.2690853=0.0809041
+# King: 0.5658232-0.3457887=0.2200345 (2021 - 0.2313602)
+# Kitsap: 0.3571338-0.1646628= 0.192471 (2021 - 0.0943485)
+# Pierce: 0.2991697-0.1753646=0.1238051 (2021 - 0.1302871)
+# Snohomish: 0.3606245-0.3055273=0.0550972 (2021 - 0.0809041)
 ```
-
-1. 9% The difference in educational attainment between people of color and white non-Hispanic in King and Kitsap Counties
-2. 26%: The educational attainment of those who are below 200% of the poverty level is 26% lower than those who are above 200% of the poverty level
-3. 29%: The percentage of Non-English proficient individuals who have a bachelor's degree or higher, 15% lower than English-proficient individuals
-
-\
 
 #### Insights & Analysis
 
-* Snohomish County is the only county where people of color (37%) have a higher educational attainment than white non-Hispanic people (33%)
-* The smallest difference in educational attainment between people below and above 200% of the poverty line is in Pierce County (18%), followed by Kitsap and Snohomish Counties (21%), and King County (31%)
-* When comparing the difference in educational attainment between people with and without disabilities, King County is the only county with a larger difference (25%) than the regional average (21%)
-* The largest difference in educational attainment between people with and without limited English proficiency is in King County (23%), while the smallest difference is in Snohomish County (8%)
-
+* Snohomish County is the only county where people of color have a higher educational attainment than white non-Hispanic people, 39% vs. 34%.
+* Educational attainment is lower for people in households with lower income than those in other households for all counties; the gap is smallest in Pierce County (19 percentage points), followed by Kitsap and Snohomish Counties (21 percentage points), and King County (31 percentage points).
+* Educational attainment is lower for people with disabilities than those without in the region and King County is the only county with a larger gap (25 percentage points) than the region (21 percentage points).
+* Share of people in households with limited English proficiency who have a bachelor’s degree or higher is 32%, 14 percentage points lower than people in households proficient in English.
+* Educational attainment for people in households with limited English proficiency is 22 percentage points lower than people in households proficient in English in King County, the largest such gap in the region, while the smallest gap is in Snohomish County (five percentage points).
 \
 \
 
@@ -526,8 +522,8 @@ x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
 title = "Educational Attainment Trend by Community"
-subtitle = "Percent of individuals 25 years or older with a Bachelor's degree or higher, in 5-year spans between 2011 and 2021"
-source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+subtitle = "Percent of individuals 25 years or older with a Bachelor's degree or higher, in 5-year spans between 2012 and 2022"
+source = "U.S. Census Bureau, 2008-2012, 2013-2017, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -554,7 +550,7 @@ line_chart <- equity_tracker_line_facet(df = df,
 file_name <- 'f03-educational-attainment-line'
 
 # Line Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -605,7 +601,7 @@ if (output_type == "html") {
 `r source`
 </p> 
 
-#### Data call outs
+ 
 ```{r line facet calculations - pums, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>%
@@ -680,18 +676,17 @@ filter <- data_clean %>%
 # 2021 snohomish no dis-dis: 0.3668158-0.2054530=0.1613628
 ```
 
-1. 41%: Regionally, educational attainment among people of color is slightly lower (41%) than white non-Hispanic individuals (44%), a gap which has remained relatively consistent in the last ten years
-2. 17%: In 2021, people in households making below 200% of the poverty line earned bachelor's degrees at lower rates (22%) than people in households making more than 200% of the poverty line (48%), a 17% larger difference than in 2011
-3. 15%: The difference in educational attainment between people with limited English proficiency and those who are English proficient has remained consistently around 15% between 2011 and 2021
 
 \
 
 #### Insights & Analysis
 
-* In Kitsap County, the percentage of individuals (25 years or older) with a bachelor's degree or higher has decreased for people of color (5%) and white non-Hispanic individuals (3%) over the past decade. There was also a decrease among people of color (6%) in Pierce County.
-* The difference in educational attainment between people in households above the 200% of the poverty line and and those above it has differed greatly over the past decade between counties: almost doubling in King County (+97%), decreasing in Kitsap County (-26%) and Pierce County (-6%), and only slightly increasing in Snohomish County (+2%)
-* The difference in educational attainment between people with a disability and those without a disability between 2016 and 2021 stayed consistent in all counties - between 1-2%
-
+* Regionally, educational attainment among people of color is lower (43%) than white non-Hispanic people (46%), a consistent gap in the last decade but one that is getting smaller.
+* In 2022, the difference in educational attainment between people in households with limited English proficiency and those who are in households proficient in English was 14%, a consistent gap in the last decade.
+* In 2022, people in households with lower income have lower educational attainment (23%) than people in other households (49%), a difference two percentage points larger than in 2012.
+* In Kitsap County, the share of adults 25 years or older with a bachelor’s degree or higher has increased for people of color (by 4 percentage points) and white non-Hispanic people (by 7 percentage points) over the past decade. There was also an increase of 5 percentage points among people of color in Pierce County.
+* The difference in educational attainment between people in households with lower income and those in other households has seen an increase in all four counties over the past decade: increasing in King County (+12%), Kitsap County (+4%), Pierce County (+4%), and Snohomish County (+6%).
+* The difference in educational attainment between people with a disability and those without a disability between 2012 and 2022 stayed consistent in all counties while both cohorts both saw education attainment increase over the decade.
 
 \
 \
