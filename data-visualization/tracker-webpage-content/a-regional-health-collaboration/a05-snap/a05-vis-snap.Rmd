@@ -45,8 +45,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 
 ```{r variables setup}
@@ -224,7 +224,7 @@ table(filter$county_name)
 
 #### Insights & Analysis
 
-* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.8%), Kitsap (10.0%), and Pierce (11.7%).
+* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.7%), Kitsap (9.6%), and Pierce (11.6%).
 * There are 38 census tracts with no SNAP participation with 30 tracts in King County, two in Kitsap, two in Pierce, and four in Snohomish.
 * The four census tracts with the highest participation include one tract in the Eastside neighborhood of Tacoma (49.4%), Downtown Tacoma (44.1%), southeast Des Moines (39.3%), and southeast Kent (35.8%).
 * The national average SNAP participation is 11.5%.
