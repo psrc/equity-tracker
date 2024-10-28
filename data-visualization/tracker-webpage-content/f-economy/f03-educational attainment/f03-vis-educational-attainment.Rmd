@@ -322,7 +322,7 @@ by_county <- data %>%
 
 #### Insights & Analysis
 
-* King County has the highest share of adults 25 years and older who have a bachelor’s degree or higher (55%), followed by Snohomish (35%), Kitsap (35%), and Pierce (29%).
+* King County has the highest share of adults 25 years and older who have a bachelor’s degree or higher (55%), followed by Snohomish and Kitsap (35%), and Pierce (29%).
 * Five census tracts with the highest educational attainment are all in King County neighborhoods: Laurelhurst (Seattle), Westlake (Seattle), Pike/Pine area of Capitol Hill (Seattle), Spring District/Bel-Red (Bellevue), and Northlake (Seattle).
 * The census tract with the highest educational attainment located outside of King County is in the Mill Creek area of Snohomish County (83%).
 * Educational attainment in the Laurelhurst neighborhood of Seattle, the region's highest (95%).
@@ -681,10 +681,10 @@ filter <- data_clean %>%
 
 #### Insights & Analysis
 
-* Regionally, educational attainment among people of color is lower (43%) than white non-Hispanic people (46%), a consistent gap in the last decade but one that is getting smaller.
+* Regionally, educational attainment among people of color is lower (43%) than white non-Hispanic people (46%), a relatively consistent gap in the last decade.
 * In 2022, the difference in educational attainment between people in households with limited English proficiency and those who are in households proficient in English was 14%, a consistent gap in the last decade.
 * In 2022, people in households with lower income have lower educational attainment (23%) than people in other households (49%), a difference two percentage points larger than in 2012.
-* In Kitsap County, the share of adults 25 years or older with a bachelor’s degree or higher has increased for people of color (by 4 percentage points) and white non-Hispanic people (by 7 percentage points) over the past decade. There was also an increase of 5 percentage points among people of color in Pierce County.
+* In Kitsap County, the share of adults 25 years or older with a bachelor’s degree or higher has increased for people of color (by 4 percentage points) and white non-Hispanic people (by 7 percentage points) over the past decade. There was also an increase of 5 percentage points among people of color in Pierce County. Increases in educational attainment among people of color were larger in Snohomish (9 percentage points) and King County (16 percentage points).
 * The difference in educational attainment between people in households with lower income and those in other households has seen an increase in all four counties over the past decade: increasing in King County (+12%), Kitsap County (+4%), Pierce County (+4%), and Snohomish County (+6%).
 * The difference in educational attainment between people with a disability and those without a disability between 2012 and 2022 stayed consistent in all counties while both cohorts both saw education attainment increase over the decade.
 
