@@ -219,7 +219,7 @@ filter <- data %>%
 
 1. 53%: Regional share of students ready for kindergarten
 2. 49%: Percentage point difference between the school district with the most kindergarten ready students and the one with the least
-3. 57%: Students with disabilities in the region are less likely to be prepared for kindergarten compared to students without disabilities, a gap which has increased by 47% over time
+3. 57%: Students with disabilities in the region are less likely to be prepared for kindergarten compared to students without disabilities, a gap which has increased by 57% over time
 
 \
 
@@ -415,10 +415,10 @@ filter <- data_clean_column %>%
 #### Insights & Analysis
 
 * The share of kindergarten ready students from households with lower income in the region is 43%, 23 percentage points lower than other households.
-* The share of kindergarten ready students in the region for those with a disability is 58% lower than those without.
-* In 2023, fewer students of color were kindergarten ready than white non-Hispanic students, a difference of 11 percentage points.
+* The share of kindergarten ready students in the region for those with a disability is 138% lower than those without.
+* In 2023, fewer students of color were kindergarten ready than white non-Hispanic students, a difference of nine percentage points.
 * The smallest percentage point difference in kindergarten readiness between students of color and white non-Hispanic students is in Kitsap County (8%), while the largest difference is in King County (12%); Pierce (11%) and Snohomish (9%) fall in the middle.
-* For students in households with lower income, kindergarten readiness is lowest in Snohomish County (39%), followed by Pierce and King (44%), and Kitsap (45%).
+* For students in households with lower income, kindergarten readiness is lowest in Snohomish County (39%), followed by Kitsap and Pierce (44%), and King (45%).
 * The largest percentage point difference in kindergarten readiness between students with a disability and those without is in King County (40%), while the smallest difference is in Kitsap and Snohomish counties (31%).
 
 
@@ -578,10 +578,10 @@ calc <- data_clean %>%
 
 #### Insights & Analysis
 
-* The share of students prepared for kindergarten decreased over the past decade for all groups in Pierce and Snohomish counties, and increased for all groups in King County.
-* Students of color in the region are less likely to be prepared for kindergarten compared to white non-Hispanic students, a gap of 11 percentage points and a decrease of over half (57%) over the past decade.
+* The share of students prepared for kindergarten decreased over the past decade for all groups in Pierce County, and increased for all groups in King County.
+* Students of color in the region are less likely to be prepared for kindergarten compared to white non-Hispanic students, a gap of nine percentage points and a decrease of over half (57%) over the past decade.
 * The gap in kindergarten readiness in the region between students from households with lower income and those from other households has remained relatively consistent in the last decade, decreasing from 27 percentage points to 23 percentage points in 2023.
-* In King County, the difference in kindergarten readiness between students with a disability and those without almost doubled between 2011 and 2023 (+95%), while the difference remained similar in Pierce County - increasing slightly (+3%). Snohomish and Kitsap counties didn't report data for students with disabilities until 2012 and 2015, respectively. Over the past 11 years, the difference decreased very slightly in Snohomish County (-3%) and over the past 8 years, the difference increased very slightly in Kitsap County (3%).
+* In King County, the difference in kindergarten readiness between students with a disability and those without more than doubled between 2011 and 2023 (+111%), while the difference remained similar in Pierce County - increasing slightly (+3%). Snohomish and Kitsap counties didn't report data for students with disabilities until 2012 and 2015, respectively. Over the past 11 years, the difference decreased very slightly in Snohomish County (-3%) and over the past 8 years, the difference increased very slightly in Kitsap County (3%).
 
 
 \
