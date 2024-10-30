@@ -1,7 +1,7 @@
 ---
-title: "SNAP"
+title: "Median Household Income"
 subtitle: "Visuals for Equity Tracker (PUMS data)"
-author: "Kristin Mitchell, updated by Mary Richards"
+author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   word_document:
@@ -51,13 +51,13 @@ output_type <- "html"
 
 ```{r variables setup}
 file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
-                   theme_dir = 'a-regional-health-collaboration',
-                   ind_dir = 'a05-snap',
-                   map = 'a05-snap-map-data',
-                   chart = 'a05-snap-chart-data',
-                   map_name = 'a05-snap-map.html',
-                   column_chart_name = 'a05-snap-column',
-                   line_chart_name = 'a05-snap-line')
+                   theme_dir = 'f-economy',
+                   ind_dir = 'f01-median-income',
+                   map = 'f01-median-income-map-data',
+                   chart = 'f01-median-income-chart-data',
+                   map_name = 'f01-median-income-map.html',
+                   column_chart_name = 'f01-median-income-column',
+                   line_chart_name = 'f01-median-income-line')
 ```
 
 # 3 visuals for webpage
@@ -113,14 +113,16 @@ var_name <- "SNAP" # the <br> could be adjusted depending on the length/spacing 
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
-  paste("Tract value: ", 
-        prettyNum((round(acs_data_tract$estimate, digits=2))), " %"), 
+  paste("Tract value: ","$", # if doesn't require prefix, this can be removed
+        prettyNum((round(acs_data_tract$estimate, digits=-2)),
+                  big.mark = ",")),
   paste("Tract data reliability: ", acs_data_tract$reliability),
-  paste("Region value: ",
-        prettyNum((round(acs_data_tract$reg_estimate, digits=2))), " %"), 
-  paste("County value: ",
-        prettyNum((round(acs_data_tract$cnty_estimate, digits=2))), " %"), 
-  paste0("(",acs_data_tract$county_name," County)")) %>%
+  paste("Region value: ","$",
+        prettyNum((round(acs_data_tract$reg_estimate, digits=-2)),
+                  big.mark = ",")),
+  paste("County value: ","$",
+        prettyNum((round(acs_data_tract$cnty_estimate, digits=-2)),
+                  big.mark = ","), paste0("(",acs_data_tract$county_name," County)"))) %>%
   lapply(htmltools::HTML)
 
 # if the label required a suffix instead of a prefix, for example a %, the code would look like this:
@@ -150,12 +152,12 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA),
+                       values = acs_data_plus_zero,
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
                        opacity = 0.7,
-                       labFormat = labelFormat(suffix = "%"),
+                       labFormat = labelFormat(prefix = "$"),
                        decreasing = TRUE) %>% #to get legend high-low with correct color order
   
   # set view extent
@@ -263,14 +265,14 @@ y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
 y_min = 0
-y_max = 0.5
+y_max = 180000
 dec = 0
-esttype = "percent"
+esttype = "currency"
 color = "oranges"
 num_colors = 2
 color_rev = TRUE
-title = "SNAP Participation by Community"
-subtitle = "Percent of households participating in SNAP"
+title = "Household Income by Community"
+subtitle = "Median values adjusted to 2022 dollars"
 source = "U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -422,8 +424,8 @@ df = data_clean
 x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
-title = "SNAP Participation Trend by Community"
-subtitle = "Percent of households participating in SNAP"
+title = "Household Income Trend by Community"
+subtitle = "Median values adjusted to 2022 dollars, in 5-year spans between 2012 and 2022"
 source = "U.S. Census Bureau, 2008-2012, 2013-2017, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,

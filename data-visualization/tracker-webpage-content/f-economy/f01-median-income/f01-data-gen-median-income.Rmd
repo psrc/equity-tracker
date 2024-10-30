@@ -70,8 +70,6 @@ file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    map = 'f01-median-income-map-data')
 ```
 
-**Median Income**
-
 # Download data 
 ## Primary data 
 The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
@@ -84,12 +82,6 @@ years <- c("2012", "2017", "2022")
 
 # PUMS/OSPI data set
 pums_ospi_elmer <- get_table(schema = "equity", tbl_name = "v_tracker_indicators")
-```
-
-```{r, include=FALSE}
-# PUMS/OSPI data set
-pums_ospi_elmer <- get_table(schema="equity",
-                             tbl_name="v_tracker_indicators")
 ```
 \
 This data set was compiled from PUMS data.
@@ -462,7 +454,7 @@ nrow(tracts10.lyr) #773
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
                               table.names = 'B19013', #subject table code
-                              years = c(2022),
+                              years = c(as.numeric(pums_ospi_year)),
                               acs.type = 'acs5')
 
 # filter only fields of interest - census tract, value, and reliability (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
@@ -483,7 +475,7 @@ acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
 # getting data by county from acs 
 county_acs_data <- get_acs_recs(geography ='county', 
                                 table.names = 'B19013', #subject table code
-                                years = c(2021),
+                                years = c(as.numeric(pums_ospi_year)),
                                 acs.type = 'acs5')
 county_data <- county_acs_data %>% 
   dplyr::select(name,estimate) %>% #to simplify table

@@ -28,21 +28,12 @@ library(tidyverse)
 library(psrcelmer)
 library(psrccensus)
 library(psrcplot)
-library(psrctrends)
 library(rlang) #required for psrccensus
 library(emmeans) #required for rlang
 library(magrittr)
-library(ggplot2)
-library(tidyr) #moe calculations
 
-library(summarytools) #freq
 library(vtable) #summary stats
-library(table1)  #nice descriptive summary table
-library(scales) #number formatting
-library(ggpubr) #graphing - ggarrange fx
 library(forcats) #for factor re-leveling
-library(plotly) #for interactive charts
-library(stringr) #for string wrapping
 
 library(odbc) #connect to ElmerGeo
 library(DBI) #connect to ElmerGeo
@@ -50,18 +41,16 @@ library(sf)
 library(leaflet)
 library(leafem) #home button
 library(htmlwidgets) #save visuals as html
-library(raster)
 library(ggspatial)
 library(lubridate) #year formatting
-library(stringr) #add leading zero's
-library(reshape2) #formatting data
 library(readxl)
-library(gridExtra)
 
 install_psrc_fonts()
 library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
+
+library(here)
 ```
 
 **Educational Attainment**
@@ -476,7 +465,7 @@ nrow(tracts10.lyr) #773
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
                               table.names = 'S1501', #subject table code
-                              years = c(2022),
+                              years = c(as.numeric(pums_ospi_year)),
                               acs.type = 'acs5')
 
 # filter only fields of interest - census tract and population (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
@@ -557,7 +546,7 @@ acs_data_tract_merge <- merge(tracts20.lyr, acs_data_final,
 # getting data by county and region from acs 
 county_acs_data <- get_acs_recs(geography ='county', 
                                 table.names = 'S1501', #subject table code
-                                years = c(2022),
+                                years = c(as.numeric(pums_ospi_year)),
                                 acs.type = 'acs5')
 
 # county transformations

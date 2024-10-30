@@ -86,8 +86,13 @@ load(file=file.path(file_names$base_dir,
 ```{r data format - map, include=FALSE}
 # move the decimal point for reg_estimate and cnty_estimate
 acs_data_tract <- acs_data_tract %>%
-   mutate(reg_estimate = (reg_estimate*100)) %>%
-   mutate(cnty_estimate = (cnty_estimate*100))
+  # mutate(reg_estimate = formatC( round((reg_estimate*100), 1), format='f', digits=1)) %>%
+  mutate(reg_estimate = sprintf('%.1f',reg_estimate*100)) %>% #keep zero after decimal, while round to nearest tenth
+  mutate(cnty_estimate = sprintf('%.1f',cnty_estimate*100))
+
+# acs_data_tract <- acs_data_tract %>%
+#    mutate(reg_estimate = round((reg_estimate*100), 1)) %>%
+#    mutate(cnty_estimate = round((cnty_estimate*100),1))
 ```
 
 
@@ -96,8 +101,8 @@ acs_data_tract <- acs_data_tract %>%
 source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 
 # check maximum value of data
-# summary(acs_data_tract$estimate) # max is 250001, so rounding to 260000 makes sense
-max_value <- 60 # this value will be the max value in the legend
+# summary(acs_data_tract$estimate) # max is 49.4, so rounding to 50 makes sense
+max_value <- 50 # this value will be the max value in the legend
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
@@ -116,10 +121,12 @@ labels <- sprintf(
   paste("Tract value: ", 
         prettyNum((round(acs_data_tract$estimate, digits=2))), " %"), 
   paste("Tract data reliability: ", acs_data_tract$reliability),
-  paste("Region value: ",
-        prettyNum((round(acs_data_tract$reg_estimate, digits=2))), " %"), 
-  paste("County value: ",
-        prettyNum((round(acs_data_tract$cnty_estimate, digits=2))), " %"), 
+  # paste("Region value: ",
+  #       prettyNum((round(acs_data_tract$reg_estimate, digits=2))), " %"), 
+  # paste("County value: ",
+  #       prettyNum((round(acs_data_tract$cnty_estimate, digits=2))), " %"), 
+  paste("Region value: ", acs_data_tract$reg_estimate, " %"), 
+  paste("County value: ", acs_data_tract$cnty_estimate, " %"), 
   paste0("(",acs_data_tract$county_name," County)")) %>%
   lapply(htmltools::HTML)
 
@@ -219,7 +226,7 @@ table(filter$county_name)
 
 #### Insights & Analysis
 
-* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.8%), Kitsap (10.0%), and Pierce (11.7%).
+* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.7%), Kitsap (9.6%), and Pierce (11.6%).
 * There are 38 census tracts with no SNAP participation with 30 tracts in King County, two in Kitsap, two in Pierce, and four in Snohomish.
 * The four census tracts with the highest participation include one tract in the Eastside neighborhood of Tacoma (49.4%), Downtown Tacoma (44.1%), southeast Des Moines (39.3%), and southeast Kent (35.8%).
 * The national average SNAP participation is 11.5%.

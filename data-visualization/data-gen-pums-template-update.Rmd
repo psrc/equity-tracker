@@ -453,7 +453,7 @@ nrow(tracts10.lyr) #773
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
                               table.names = 'S2201', #subject table code
-                              years = c(2022),
+                              years = c(as.numeric(pums_ospi_year)),
                               acs.type = 'acs5')
 
 

@@ -462,7 +462,7 @@ nrow(tracts10.lyr) #773
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
                               table.names = 'S2502', #subject table code
-                              years = c(2022),
+                              years = c(as.numeric(pums_ospi_year)),
                               acs.type = 'acs5')
 
 
@@ -522,7 +522,7 @@ acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
 # getting data by county and region from acs 
 county_reg_acs_data <- get_acs_recs(geography ='county', 
                                 table.names = 'S2502', #subject table code
-                                years = c(2022),
+                                years = c(as.numeric(pums_ospi_year)),
                                 acs.type = 'acs5')
 
 county_reg_data_rename <- county_reg_acs_data %>% 
