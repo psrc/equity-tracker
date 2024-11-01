@@ -400,12 +400,11 @@ filter <- data_clean_column %>%
 
 #### Insights & Analysis
 
-* Snohomish County is the only county in the region where households with people of color have higher access to internet compared to white non-Hispanic households. The difference is still very small (1%).
-* For households with lower income, the share of households with internet access is lowest in King, Pierce, and Snohomish counties (88%), followed by Kitsap (91%). The largest difference between households with lower income and other households is in King (10%), followed by Snohomish (9%), Pierce (8%), and Kitsap (7%).
-* The largest difference in internet access between people with a disability and those without is in King County (7%), followed by Snohomish (6%), Pierce (5%), and Kitsap (3%).
-* Households with older adults consistently have less access to internet compared to other households across the region, with differences ranging between 5-8%.
-* Households with limited English proficiency have access to internet 6% less than English proficient households.
-* Internet access for households with youth is 99%, compared to 94% for households without.
+* Households with lower income have less internet access than other households; their share with internet access is lowest in King, Pierce, and Snohomish counties (88%), followed by Kitsap (91%). The largest difference between households with lower income and other households is in King (10%), followed by Snohomish (9%), Pierce (8%), and Kitsap (7%).
+* Internet access for people with a disability is lower than those without across the region, with differences ranging between 3-7%: King County (7%), Snohomish County (6%), Pierce County (5%), and Kitsap County (3%).
+* Limited English proficient households in the region have lower access to internet compared to English proficient households, a difference of six percentage points.
+* Regionally, internet access for households with youth is 99%, compared to 94% for households without. The largest difference is in Pierce County (6%), followed by Snohomish County (5%), and King and Kitsap counties (4%).
+* Households with older adults consistently have lower access to internet compared to other households across the region, with differences ranging between 5-8%.
 
 
 \
@@ -601,8 +600,8 @@ filter <- data_clean %>%
 
 #### Insights & Analysis
 
-* In 2022, people in households with lower income have lower internet access (88%) than people in other households (97%), a difference seven percentage points smaller than in 2017.
-* The difference in internet access between people in households with limited English proficiency and those in other households has decreased across all the counties over the past five years: decreasing in King County (-71%), Kitsap County (-37%), Pierce County (-52%), and Snohomish County (-58%).
+* In 2022, people in households with lower income have lower internet access (88%) than people in other households (97%) - a smaller difference than in 2017 when the difference was 16 percentage points.
+* A greater proportion of English proficient households have internet access than households with limited English proficiency. The difference between these two groups has decreased across all the counties over the past five years: decreasing in King County (-71%), Snohomish County (-58%), Pierce County (-52%), and Kitsap County (-37%).
 * Internet access has increased for all six communities between 2017 and 2022.
 
 
