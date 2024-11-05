@@ -66,7 +66,7 @@ source('e01-table-gen-affordability.R')
 file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    theme_dir = 'e-housing',
                    ind_dir = 'e01-affordable-rent-access',
-                   chart = 'e01-affordable-rent-access',
+                   chart = 'e01-affordable-rent-access-chart-data',
                    map = 'e01-affordable-rent-access-map-data')
 ```
 
