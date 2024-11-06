@@ -1,18 +1,19 @@
 ---
 title: "Overcrowding (Renters)" 
 subtitle: "Data Gen: Exploring, Cleaning, Transforming (PUMS/OSPI data)"
-author: "Meg Grzybowski"
+author: "Meg Grzybowski, updated by Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
+# Organize workspace
 ```{r rmarkdown setup, include=FALSE}
 knitr::opts_chunk$set(echo=FALSE, 
                       warning=FALSE, 
@@ -20,26 +21,20 @@ knitr::opts_chunk$set(echo=FALSE,
 ```
 
 ```{r library setup, include=FALSE}
+# install.packages("devtools")
 # devtools::install_github("psrc/psrcplot",
 #                          force=TRUE)
+
 library(tidyverse)
 library(psrcelmer)
 library(psrccensus)
 library(psrcplot)
-library(psrctrends)
 library(rlang) #required for psrccensus
 library(emmeans) #required for rlang
 library(magrittr)
-library(ggplot2)
 
-library(summarytools) #freq
 library(vtable) #summary stats
-library(table1)  #nice descriptive summary table
-library(scales) #number formatting
-library(ggpubr) #graphing - ggarrange fx
 library(forcats) #for factor re-leveling
-library(plotly) #for interactive charts
-library(stringr) #for string wrapping
 
 library(odbc) #connect to ElmerGeo
 library(DBI) #connect to ElmerGeo
@@ -47,28 +42,46 @@ library(sf)
 library(leaflet)
 library(leafem) #home button
 library(htmlwidgets) #save visuals as html
-library(raster)
 library(ggspatial)
 library(lubridate) #year formatting
-library(stringr) #add leading zero's
-library(reshape2) #formatting data
 library(readxl)
-library(gridExtra)
 
 install_psrc_fonts()
 library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
+
+library(here)
 ```
 
-**Overcrowding**
+```{r sources}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
+
+# reference supplemental script with supporting settings/functions
+source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
+```
+
+```{r variables setup}
+
+file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
+                   theme_dir = 'e-housing',
+                   ind_dir = 'e04-overcrowding',
+                   chart = 'e04-overcrowding-chart-data',
+                   map = 'e04-overcrowding-map-data')
+```
 
 # Download data 
 ## Primary data 
 The data set referenced in this script is generated from the Census Bureau’s American Community Survey (ACS) Public Use Microdata Sample [(PUMS)](https://www.census.gov/programs-surveys/acs/microdata/documentation.html). These data sets provide data at the **person- or household-level**, with the ability to look at the different indicators by the six equity demographic groups of interest. 
 ```{r, include=FALSE}
+# pums_ospi_year <- "2021"
+# years <- c("2011", "2016", "2021") # these years are no longer available/reproducible
+
+pums_ospi_year <- "2022"
+years <- c("2012", "2017", "2022")
+
 # PUMS/OSPI data set
-pums_ospi_elmer <- get_table(schema="equity", tbl_name="v_tracker_indicators")
+pums_ospi_elmer <- get_table(schema = "equity", tbl_name = "v_tracker_indicators")
 ```
 \
 This data set was compiled from PUMS data.
@@ -77,12 +90,10 @@ Looking at the fields in the data set:
 ```{r}
 # explore the data
 head(pums_ospi_elmer)
-# view the equity demographic groups
-unique(pums_ospi_elmer$focus_type)
-# view the different indicators available within the data set
-unique(pums_ospi_elmer$indicator_type)
-# view the different data years available within the data set
-unique(pums_ospi_elmer$data_year)
+
+# view the equity demographic groups, different indicators, and data years
+pums_ospi_cols <- c('focus_type', 'indicator_type', 'data_year') 
+walk(pums_ospi_cols, ~print(unique(pums_ospi_elmer[[.x]])))
 ```
 
 ```{r indicator specific information, include=FALSE}
@@ -90,6 +101,7 @@ unique(pums_ospi_elmer$data_year)
 indicator_measure <- 'renter_crowding'
 indicator_title <- 'Renter Overcrowding (>1 person/bedroom)'
 ```
+
 
 ## 1. Explore data
 *In this section we make sure that the data set has the correct dimensions - year, geography, equity focus group, etc.*  
@@ -110,17 +122,34 @@ data_full <- pums_ospi_elmer %>%
 * There should be 5 geographies - the 4 counties and the Region. 
 * There should be 6 equity focus categories - POC, income, disability, youth, older adult, and LEP
     + 2 sub-groups in each of the 6 equity focus group (e.g. people of color, non-people of color)
-```{r}
+```{r, include=FALSE}
 # geographies
-num_county <- length(unique(data_full$county)) #5
-unique(data_full$county)
+if(length(unique(data_full$county)) < 4){
+  warning("There is a missing geography. Please check.")
+} else if (length(unique(data_full$county)) < 5) {
+  warning("There is a missing geography. Please check.")
+} else {
+  message("All geographies are included: King, Kitsap, Pierce, Snohomish, and Region.")
+}
 
 # equity focus groups
-num_group <- length(unique(data_full$focus_type)) #6
-unique(data_full$focus_type)
+if(length(unique(data_full$focus_type)) < 5){
+  warning("There are missing equity groups. Please check.")
+} else if (length(unique(data_full$focus_type)) < 6) {
+  warning("There is a missing equity group. Please check.")
+} else {
+  message("All 6 equity groups are included.")
+}
+
+# equity focus attributes
+if(length(unique(data_full$focus_attribute)) < 11){
+  warning("There are missing equity sub-groups. Please check.")
+} else if (length(unique(data_full$focus_attribute)) < 12) {
+  warning("There is a missing equity sub-groups. Please check.")
+} else {
+  message("All 12 equity sub-groups are included.")
+}
 ```
-\
-\
 
 #### *indicator-specific data*
 These fields will vary by indicator:
@@ -130,80 +159,112 @@ These fields will vary by indicator:
 * Number of indicator-specific categories - this can vary depending on the indicator of interest, ranging from N/A (*median income*) to multiple levels (*crowding, housing cost burden*)
 ```{r}
 # metric
-unique(data_full$fact_type) #share
+data_type <- unique(data_full$fact_type) #median
+message("This indicator's data type/format: ", data_type)
 
 # years
 num_yr <- length(unique(data_full$data_year)) #3
-unique(data_full$data_year)
+range <- list(paste(as.character(unique(data_full$data_year)),collapse=", ",sep=""))
+message("There are ", num_yr, " available years: ", range)
 
 # indicator attributes
 num_indatt <- length(unique(data_full$indicator_attribute)) #1
-unique(data_full$indicator_attribute) #3
+attributes_list <- list(paste(unique(data_full$indicator_attribute), collapse=", ", sep=""))
+if(length(unique(data_full$indicator_attribute)) > 1){
+  warning(paste("There are",num_indatt, "indicator attributes: ",
+              attributes_list, ". Please choose 1."))
+} else {
+  message("There is only one indicator attribute: ", attributes_list,
+              ". No need to filter.")
+}
+```
+
+```{r}
+# space to filter if necessary
+data_full <- data_full %>%
+  filter(indicator_attribute=="More than 1 person per room")
+```
+
+```{r}
+# calculate expected number of rows
+num_row <- num_yr*5*6*2 #180
+message("There should be data for each year (",num_yr,"), geography (5), equity focus group (6), and equity sub-group (2) = ",num_row ," rows")
+
+if(nrow(data_full) < num_row){
+  warning(paste("There are", nrow(data_full), "rows, which is fewer than expected. Please check."))
+} else if (nrow(data_full )> num_row){
+  warning(paste("There are", nrow(data_full), "rows, which is more than expected. Please check and filter as necessary."))
+} else {
+  message(paste("There are the expected number of rows in the dataset:", nrow(data_full)))
+}
+```
+
+```{r check data elements}
+# extra detail: if there are any missing elements, can run this code
+check_data_fields <- function(column) {
+  l <- length(unique(column))
+  v <- unique(column)
+  return(list(length = l, values = v))
+}
+
+data_fields <- c("num_county" = "county", # geographies
+                 "num_group" = "focus_type", # equity focus groups
+                 "metric" = "fact_type", 
+                 "num_yr" = "data_year", 
+                 "num_sub_group" = "focus_attribute") #equity sub-focus groups
+
+data_fields_summary <- map(data_fields, ~check_data_fields(data_full[[.x]]))
+
+data_fields_summary
+
 
 # calculate expected number of rows
-num_row <- num_yr*num_county*num_group*2*num_indatt #540
-```
+num_row <- data_fields_summary |> 
+  map(~pluck(.x, "length")) |> # isolate nums
+  discard_at("metric") |> # remove metric element
+  reduce(`*`) * 2 # multiply all numbers and by 2 for subgroups
 
-There are **`r num_county`** geographies and **`r num_group`** equity focus groups (each with **2** subgroups). There are **`r num_yr`** years in the data set and the indicator specific field has **`r num_indatt`** attribute(s), which means there should be a total of **`r num_row`** rows.
-```{r}
-# count number of rows
-nrow(data_full) #540
+#180
 ```
-<span style="color: #00A7A0">There are some missing data.</span> 
-\
-\
 
 #### *checking for missing data*
 ##### Year / geography
 ```{r}
-num_yr_geo <- num_group*2*num_indatt #36
+# Function in equity-tracker-supplemental-script.R
+num_yr_geo <- check_missing_data(vars = c("num_yr", "num_county"),
+                                 multiply_by_subgroups = FALSE)
+#15
 ```
-If we look at the data by year and geography, there should be **`r num_yr_geo`** entries per year/geography.
-```{r, include=FALSE, eval=FALSE}
+
+```{r}
 table(data_full$data_year,
       data_full$county)
 ```
-<span style="color: #00A7A0">
-2011 is missing some data for all geographies.
-</span> 
-\
-\
+
 
 ##### Year / equity focus group
 ```{r}
-num_yr_grp <- num_county*2*num_indatt #30
+num_yr_grp <- check_missing_data(vars = c("num_yr", "num_group"),
+                                 multiply_by_subgroups = FALSE)
+#18
 ```
-If we look at the data by year and focus group, there should be **`r num_yr_grp`** entries per year/focus group.
+
 ```{r}
 table(data_full$data_year,
       data_full$focus_type)
 ```
-<span style="color: #00A7A0">
-The disability category is missing all data in 2011.
-</span> 
-\
-\
+
 
 ##### Year / equity focus sub-group
 ```{r}
-num_yr_subgrp <- num_county*num_indatt #15
+num_yr_subgrp <- check_missing_data(vars = c("num_yr", "num_sub_group"),
+                                    multiply_by_subgroups = FALSE)
+#36
 ```
-If we look at the data by year and focus sub-group, there should be **`r num_yr_subgrp`** entries per year/focus sub-group.
+
 ```{r}
 table(data_full$data_year,
       data_full$focus_attribute)
-```
-\
-\
-
-##### Year / indicator attribute
-```{r}
-num_yr_ind <- num_county*num_group*2 #60
-```
-If we look at the data by year and indicator attribute, there should be **`r num_yr_ind`** entries per year/indicator attribute.
-```{r}
-table(data_full$data_year,
-      data_full$indicator_attribute)
 ```
 \
 \
@@ -214,14 +275,10 @@ To check for *0*s and *NULL*s
 # checking for NULLs
 summary(data_full$fact_value)
 ```
-<span style="color: #00A7A0">
-There are no 0s or nulls.
-</span> 
 \
 \
 
-To look at distribution of all data - not the most useful visual, but provides a sense of the range of values at a high level in one plot. 
-\
+To look at distribution of all data - not the most useful visual, but provides a sense of the range of values at a high level in one plot. It can also help show if there are any outliers in the data.
 ```{r}
 qplot(data_year_yr, fact_value, 
       colour = county, shape = focus_type, 
@@ -232,82 +289,27 @@ qplot(data_year_yr, fact_value,
 \
 This table includes a lot of information about the data set and helps to show the different levels of each field. It provides another way to check if data are available for all counties and all years, or where there may be gaps in the data set. 
 ```{r}
-data_refined <- data_full %>% 
-  dplyr::select(data_year_yr, county, vulnerability, focus_type, focus_attribute,
-                indicator_type, indicator_attribute, fact_value)
+data_refined <- data_full |> 
+  select(data_year_yr, county, vulnerability, focus_type, focus_attribute,
+        indicator_type, indicator_attribute, fact_value)
 
 sumtable(data_refined,
-         add.median=TRUE,
-         group="county",
-         out="return")
+         add.median = TRUE,
+         group = "county",
+         out = "return")
 ```
 
 ```{r}
 # wrap/order labels ----
-county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
-
-focus_type_order <- c("People of Color", 
-                      "Households with Lower Income", 
-                      "People with a Disability", 
-                      "Households with Limited English Proficiency", 
-                      "Households with Youth <18", 
-                      "Households with Older Adults 65+")
-
-focus_attribute_order <- c("People of color",
-                           "White\nnon-Hispanic",
-                           "Households with\nlower income",
-                           "With a\ndisability",
-                           "Without a\ndisability",
-                           "Limited English\nproficiency",
-                           "English\nproficient",
-                           "Households with\nyouth",
-                           "Households with\nolder adults",
-                           "Other households")
-
-# transforming data labels ----
-data_clean <- data_full %>% 
-  mutate(county = factor(county, levels=county_order)) %>%
-  mutate(focus_type_ord = case_when(
-    focus_type=="POC_cat"~"People of Color",
-    focus_type=="Disability_cat"~"People with a Disability",
-    focus_type=="LEP_cat"~"Households with Limited English Proficiency",
-    focus_type=="Income_cat"~"Households with Lower Income",
-    focus_type=="Youth_cat"~"Households with Youth <18",
-    focus_type=="Older_cat"~"Households with Older Adults 65+")) %>%
-  mutate(focus_type_ord = factor(focus_type_ord, levels = focus_type_order)) %>%
-  mutate(focus_attribute_ord = case_when(
-    focus_attribute== "POC"~ "People of color",
-    focus_attribute== "Non-POC"~ "White non-Hispanic",
-    focus_attribute== "Low Income"~ "Households with lower income",
-    focus_attribute== "Non-Low Income"~ "Other households",
-    focus_attribute== "With disability"~ "With a disability",
-    focus_attribute== "Without disability"~ "Without a disability",
-    focus_attribute== "Limited English proficiency"~ "Limited English proficiency",
-    focus_attribute== "English proficient"~ "English proficient",
-    focus_attribute== "Household with youth"~ "Households with youth",
-    focus_attribute== "Household without youth"~ "Other households",
-    focus_attribute== "Household with older adult"~ "Households with older adults",
-    focus_attribute== "Household without older adult"~ "Other households")) %>% 
-  mutate(focus_attribute_ord = str_wrap(focus_attribute_ord, width=16)) %>%
-  mutate(focus_attribute_ord = factor(focus_attribute_ord, levels = focus_attribute_order)) 
-
-# echarts wants axis to be factors/characters so convert year to a character
-data_clean$data_year <- as.character(data_clean$data_year)
-
-# Sort the data to ensure the charts work
-data_clean <- data_clean %>%
-  arrange(county, focus_type_ord, focus_attribute_ord, data_year)
+# variable ordering and label function in equity-tracker-supplemental-script.R
+data_clean <- transform_data_labels(data_full)
 ```
 
 ```{r}
-# indicator specific re-ordering - median income is N/A so this step is unnecessary
-data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
-                                    levels = c("One person per room or less",
-                                               "More than 1 person per room"))
-
-# data_clean2 <- data_clean %>% 
-#   filter(indicator_attribute=="Between 1 and 1.5 person(s) per room" |
-#            indicator_attribute=="More than 1.5 persons per room")
+# indicator specific re-ordering - this step is unnecessary for SNAP and likely for most indicators since we are focused on one aspect of the variable
+# data_clean$indicator_attribute <- factor(data_clean$indicator_attribute,
+#                                     levels = c("Less than a Bachelor's degree",
+#                                                "Bachelor's degree or higher"))
 ```
 \
 
@@ -321,58 +323,40 @@ These charts also help to confirm that the shares add up to 100% - only relevant
 *The colors of the charts may not be consistent between the years depending on missing data.* 
 \
 ```{r}
+check_region <- function(df, year) {
+  df |> 
+    filter(county == "Region") |> 
+    filter(data_year == year) |> 
+    arrange(focus_attribute_ord)
+}
+
+check_region_facet <- function(df, year) {
+  static_facet_column_chart(t = df,
+                            x = "data_year", 
+                            y = "fact_value",
+                            fill = "vulnerability", 
+                            facet = "focus_type_ord",
+                            est = "percent",
+                            scales = "fixed",
+                            color = "psrc_pairs", 
+                            ncol = 3,
+                            title = paste0(indicator_title, ": Region (", year, ")"),
+                            subtitle = paste(str_to_title(str_replace_all(indicator_measure, "_", " ")), "by Equity Focus Group"),
+                            source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+}
+
 # the years below reflect the years that are available from unique(data_year)
-just_region_11 <- data_clean %>% 
-  filter(county=="Region",
-         data_year==2011) %>% 
-  arrange(focus_attribute_ord)
-just_region_16 <- data_clean %>% 
-  filter(county=="Region",
-         data_year==2011)%>% 
-  arrange(focus_attribute_ord)
-just_region_21 <- data_clean %>% 
-  filter(county=="Region",
-         data_year==2011)%>% 
-  arrange(focus_attribute_ord)
+just_region_dfs <- map(years, ~check_region(df = data_clean, 
+                                            year = .x)) |> 
+  set_names(paste0('r', years))
 
 # check est type - make sure it corresponds to your indicator (percent, currency, or number)
-facet_chart <- static_facet_column_chart(t=just_region_11,
-                                         x="data_year", y="fact_value",
-                                         fill="vulnerability", facet="focus_type_ord",
-                                         est = "percent",
-                                         scales= "fixed",
-                                         color = "psrc_pairs", 
-                                         ncol=3,
-                                         title = paste0(indicator_title, ": Region (2011)"),
-                                         subtitle = "by equity focus group",
-                                         source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
+check_region_facets <- map2(just_region_dfs, 
+                            years, 
+                            ~check_region_facet(df = .x, year = .y))
 
-facet_chart
+walk(check_region_facets, ~print(.x))
 
-facet_chart <- static_facet_column_chart(t=just_region_16,
-                                         x="data_year", y="fact_value",
-                                         fill="vulnerability", facet="focus_type_ord",
-                                         est = "percent",
-                                         scales= "fixed",
-                                         color = "psrc_pairs", 
-                                         ncol=3,
-                                         title = paste0(indicator_title, ": Region (2016)"),
-                                         subtitle = "by equity focus group",
-                                         source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
-facet_chart
-
-facet_chart <- static_facet_column_chart(t=just_region_21,
-                                         x="indicator_attribute", y="fact_value",
-                                         fill="vulnerability", facet="focus_type_ord",
-                                         est = "percent",
-                                         scales= "fixed",
-                                         color = "psrc_pairs", 
-                                         ncol=3,
-                                         title = paste0(indicator_title, ": Region (2021)"),
-                                         subtitle = "by equity focus group",
-                                         source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)")
-
-facet_chart
 ```
 
 ## 2. Visually explore data
@@ -390,34 +374,32 @@ This section isn't relevant for this specific indicator because there aren't uni
 #### By Year
 ```{r}
 # separating by year ----
-data_clean11 <- data_clean %>% 
-  filter(data_year==2011)
-data_clean16 <- data_clean %>% 
-  filter(data_year==2016)
-data_clean21 <- data_clean %>% 
-  filter(data_year==2021)
+
+data_clean_dfs <- map(years, ~data_clean |> filter(data_year == .x))
 ```
 
 ```{r}
 # plot data, adjust y limits based on data set
-qplot(focus_type_ord, fact_value, 
-      colour = county, shape = vulnerability, 
-      data = data_clean11, 
-      main = paste0(indicator_title, ": 2011")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 1)
+data_clean_plot <- function(df, year) {
+  qplot(focus_type_ord, 
+        fact_value, 
+        colour = county, 
+        shape = vulnerability, 
+        data = df, 
+        main = paste0(indicator_title, ": ", year)) + 
+    scale_x_discrete(labels = function(x) str_wrap(x, width = 10)) +
+    theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank()#,
+          # axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)
+          ) + 
+    ylim(0, (max(data_clean$fact_value)*1.5))
+}
 
-qplot(focus_type_ord, fact_value, 
-      colour = county, shape = vulnerability, 
-      data = data_clean16,
-      main = paste0(indicator_title, ": 2016")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 1)
+data_clean_plots <- map2(data_clean_dfs, years, ~data_clean_plot(.x, .y))
 
-qplot(focus_type_ord, fact_value, 
-      colour = county, shape = vulnerability, 
-      data = data_clean21, 
-      main = paste0(indicator_title, ": 2021")) + theme(axis.title.x = element_blank(),
-                                                        axis.title.y = element_blank()) + ylim(0, 1)
+walk(data_clean_plots, ~print(.x))
 ```
+
 
 # **CHART .rda**
 ```{r, include=FALSE}
@@ -425,23 +407,20 @@ head(data_clean) # make sure this is the correct data set
 
 # make any additional edits 
 data_clean <- data_clean %>% 
-  filter(indicator_attribute=="More than 1 person per room") %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=2)) #round percentage to whole percentage - retain consistent name
+  mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds and set retain consistent name - if you are not working with $ you will need to change this to the correct number of digits you would like to round to (for example, if using decimals, you may want to set digits=2 or if you using whole numbers you may want to set digits=0)
+
+data_clean #check to make sure the rounding worked for your indicator - if not will need to go back to generate data set in chunk around line 245
 ```
 Save final data set (.rda) for charts
 ```{r}
-# set folder structure
-base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'e-housing'
-ind_dir <- 'e04-overcrowding'
-file_name <- 'e04-overcrowding-data'
-
 # save final data set as .rda
-save(data_clean, file = file.path(base_dir,
-                                  theme_dir,
-                                  ind_dir, "rda-data",
-                                  paste0(file_name,'.rda')))
+save(data_clean, file = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir, 
+                                  "update",
+                                  "rda-data",
+                                  paste0(file_names$chart,'.rda')))
 ```
 
 
@@ -464,18 +443,26 @@ nrow(tracts10.lyr) #773
 ```
 
 #### Corresponding ACS table
-```{r acs data - tract level, include=FALSE, eval=FALSE}
+```{r acs data, include=FALSE}
 # Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
+# x <- tidycensus::load_variables(2021,"acs5") %>% 
+#   dplyr::filter(grepl("median household income",
+#                       concept, ignore.case=TRUE) & 
+#                   (geography=="tract"))
 
 # getting data by tract
-acs_data <- get_acs_recs(geography ='tract', 
-                         table.names = 'B25014', #room
-                         # table.names = 'B25042', #bedroom
-                         years = c(2021),
-                         acs.type = 'acs5')
+base_acs_data <- get_acs_recs(geography ='tract', 
+                              table.names = 'B25014', #room
+                              # table.names = 'B25042', #bedroom
+                              years = c(as.numeric(pums_ospi_year)),
+                              acs.type = 'acs5')
 
-# filter to the variables of interest
-acs_data_filter <- acs_data %>%
+
+#filter for percentage instead of total number
+# acs_data_per <- base_acs_data %>%
+#   dplyr::filter(variable == "S2201_C04_001")
+
+acs_data_filter <- base_acs_data %>%
   # dplyr::filter(type %in% row_names) %>%
   dplyr::filter(variable != 'B25014_001') %>% #remove total households
   mutate(per_bedroom = factor(
@@ -538,161 +525,13 @@ acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
   mutate(estimate=estimate_dec*100) %>% 
   dplyr::select(GEOID,estimate,reliability)
 
-# ----------------
-# # for combined owners and renters
-# # use the moe_sum function from tidycensus
-# acs_data_group <- acs_data_filter %>% 
-#   dplyr::group_by(GEOID, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
-#   dplyr::summarise(estimate=sum(estimate), 
-#                    moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-#   dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
-# 
-# # pivot data to calculate percentage by census tract
-# acs_data_pivot<- acs_data_group %>%   
-#   pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-# 
-# # calculating percentage/share of population per tract instead of integer
-# acs_data_calc <- acs_data_pivot %>%
-#   mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total))
-# 
-# # calculate moes
-# acs_data_moes <- acs_data_calc %>%
-#   rowwise() %>% 
-#   dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
-#                                              moe = moe_Overcrowding))
-# acs_data_final<- acs_data_moes %>% 
-#   dplyr::filter(!is.na(estimate_Overcrowding))
-# 
-# # calculate reliability values
-# acs_data_reliability <- reliability_calcs(acs_data_final,
-#                                           estimate='estimate_Overcrowding',
-#                                           moe='moe_Overcrowding')
-# 
-# # rename and simplify
-# acs_data <- acs_data_reliability %>% #just interested in renters for now
-#   rename(estimate_dec='estimate_perc_overcrowding') %>%
-#   mutate(estimate=estimate_dec*100) %>% 
-#   dplyr::select(GEOID,estimate,reliability)
-```
 
-```{r acs data - place level, include=FALSE, eval=FALSE}
-# Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
+# filter only fields of interest - census tract, value, and reliability (may need to be adjusted depending on indicator and if you need to run any calculations/transformations) - look at labels and filter on variable if necessary
 
-# getting data by tract
-acs_data <- get_acs_recs(geography ='place', 
-                         table.names = 'B25014', #subject table code
-                         years = c(2021),
-                         acs.type = 'acs5')
+# acs_data <- acs_data_per %>% 
+#   dplyr::select(GEOID, estimate, reliability)
 
-# filter to the variables of interest
-acs_data_filter <- acs_data %>%
-  # dplyr::filter(type %in% row_names) %>%
-  dplyr::filter(variable != 'B25014_001') %>% #remove total households
-  mutate(per_room = factor(
-    case_when(variable == "B25014_002" ~ "Total",
-              variable == "B25014_008" ~ "Total",
-              grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", label) ~ "Less than or equal to 1.5 persons per bedroom",
-              grepl("1.51 to 2.00|2.01 or more", label) ~ "Overcrowding",
-              TRUE ~ as.character(label)))) %>%
-  mutate(type = factor(
-    case_when(grepl("B25014_002|B25014_003|B25014_004|B25014_005|B25014_006|B25014_007", variable) ~ "Owner",
-              grepl("B25014_008|B25014_009|B25014_010|B25014_011|B25014_012|B25014_013", variable) ~ "Renter",
-              TRUE ~ as.character(variable)))) #%>%
-  # dplyr::select(GEOID, variable, per_bedroom, type, estimate, moe) #%>% #simplify table
-  # dplyr::filter(type != 'Owner')    #this can be commented out for inclusion of both Owners and Renters
-
-# ----------------
-# for separate owners and renters
-# use the moe_sum function from tidycensus
-acs_data_group <- acs_data_filter %>% 
-  dplyr::group_by(GEOID, per_room, type) %>% #add 'type' if want to distinguish b/t Owners and Renters
-  dplyr::summarise(estimate=sum(estimate), 
-                   moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-  dplyr::filter(per_room != "Less than or equal to 1.5 persons per bedroom")
-
-# pivot data to calculate percentage by census tract
-acs_data_pivot<- acs_data_group %>%   
-  pivot_wider(names_from = c(per_room, type), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-
-# calculating percentage/share of population per tract instead of integer
-acs_data_calc <- acs_data_pivot %>%
-  mutate(estimate_perc_overcrowding_rent=(estimate_Overcrowding_Renter/estimate_Total_Renter),
-         estimate_perc_overcrowding_own=(estimate_Overcrowding_Owner/estimate_Total_Owner))
-
-# calculate moes
-acs_data_moes <- acs_data_calc %>%
-  rowwise() %>% 
-  dplyr::mutate(moe_rent=tidycensus::moe_sum(estimate = estimate_Overcrowding_Renter,
-                                             moe = moe_Overcrowding_Renter),
-                # moe_own=tidycensus:moe_prop(num=estimate_Overcrowding_Owner,
-                #                           denom=estimate_Total_units,
-                #                           moe_num=moe_Overcrowding_Owner,
-                #                           moe_denom=moe_Total_units),
-                moe_own=tidycensus::moe_sum(estimate = estimate_Overcrowding_Owner,
-                                            moe = moe_Overcrowding_Owner))
-acs_data_final<- acs_data_moes %>% 
-  dplyr::filter(!is.na(estimate_Overcrowding_Renter),
-                !is.na(estimate_Overcrowding_Owner))
-
-# calculate reliability values
-acs_data_reliability_rent <- reliability_calcs(acs_data_final,
-                                               estimate='estimate_Overcrowding_Renter',
-                                               moe='moe_rent')
-acs_data_reliability_own <- reliability_calcs(acs_data_final,
-                                              estimate='estimate_Overcrowding_Owner',
-                                              moe='moe_own')
-
-# rename and simplify
-acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
-  rename(estimate_dec='estimate_perc_overcrowding_rent') %>%
-  mutate(estimate=estimate_dec*100) %>% 
-  dplyr::select(GEOID,estimate,reliability)
-
-# connect to place shapefile to get names instead of just geoid
-acs_data_place <- merge(places.lyr, acs_data,
-                        by.x="geoid20",
-                        by.y="GEOID",
-                        all.x=FALSE)
-
-# export table to excel
-# library("writexl")
-# write_xlsx(acs_data_place,"T:/2023November/Mary/EquityTracker/temp/overcrowding_renters_acs_place.xlsx")
-
-# ----------------
-# # for combined owners and renters
-# # use the moe_sum function from tidycensus
-# acs_data_group <- acs_data_filter %>% 
-#   dplyr::group_by(GEOID, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
-#   dplyr::summarise(estimate=sum(estimate), 
-#                    moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-#   dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
-# 
-# # pivot data to calculate percentage by census tract
-# acs_data_pivot<- acs_data_group %>%   
-#   pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-# 
-# # calculating percentage/share of population per tract instead of integer
-# acs_data_calc <- acs_data_pivot %>%
-#   mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total))
-# 
-# # calculate moes
-# acs_data_moes <- acs_data_calc %>%
-#   rowwise() %>% 
-#   dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
-#                                              moe = moe_Overcrowding))
-# acs_data_final<- acs_data_moes %>% 
-#   dplyr::filter(!is.na(estimate_Overcrowding))
-# 
-# # calculate reliability values
-# acs_data_reliability <- reliability_calcs(acs_data_final,
-#                                           estimate='estimate_Overcrowding',
-#                                           moe='moe_Overcrowding')
-# 
-# # rename and simplify
-# acs_data <- acs_data_reliability %>% #just interested in renters for now
-#   rename(estimate_dec='estimate_perc_overcrowding') %>%
-#   mutate(estimate=estimate_dec*100) %>% 
-#   dplyr::select(GEOID,estimate,reliability)
+# you may need to do some additional data wrangling to get the acs data into the desired format - for example, aggregating education attainment to two categories - less than bachelor's and bachelors and higher or dividing number of people 25+ who have a bachelor's degree or higher by the total population 25+ to get the share
 ```
 
 ```{r acs data - county level}
@@ -702,7 +541,7 @@ acs_data_place <- merge(places.lyr, acs_data,
 acs_data <- get_acs_recs(geography ='county', 
                          table.names = 'B25014', #subject table code
                          # table.names = 'B25042',
-                         years = c(2021),
+                         years = c(2022),
                          acs.type = 'acs5')
 
 # filter to the variables of interest
@@ -780,603 +619,118 @@ acs_data_reg <- acs_data %>%
 county_reg_data <- acs_data_cnty %>%
   mutate(reg_estimate=acs_data_reg$estimate)
 
-# ----------------
-# # for combined owners and renters
-# # use the moe_sum function from tidycensus
-# acs_data_group <- acs_data_filter %>% 
-#   dplyr::group_by(GEOID, name, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
-#   dplyr::summarise(estimate=sum(estimate), 
-#                    moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-#   dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
-# 
-# # pivot data to calculate percentage by census tract
-# acs_data_pivot<- acs_data_group %>%   
-#   pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-# 
-# # calculating percentage/share of population per tract instead of integer
-# acs_data_calc <- acs_data_pivot %>%
-#   mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total),
-#          county_name=str_split(name, " ", simplify = TRUE)[,1])
-# 
-# # calculate moes
-# acs_data_moes <- acs_data_calc %>%
-#   rowwise() %>% 
-#   dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
-#                                              moe = moe_Overcrowding))
-# acs_data_final<- acs_data_moes %>% 
-#   dplyr::filter(!is.na(estimate_Overcrowding))
-# 
-# # calculate reliability values
-# acs_data_reliability <- reliability_calcs(acs_data_final,
-#                                           estimate='estimate_Overcrowding',
-#                                           moe='moe_Overcrowding')
-# 
-# # rename and simplify
-# acs_data <- acs_data_reliability %>% 
-#   rename(estimate_dec='estimate_perc_overcrowding') %>%
-#   mutate(estimate=estimate_dec*100) %>% 
-#   dplyr::select(GEOID,county_name, estimate,reliability)
-```
-
-```{r pums data - county level, include=FALSE, eval=FALSE}
-# access pums data - 2021
-crowd_2021 <- get_psrc_pums(span = 5,
-                            dyear = 2021,
-                            level = "h", # Unit of analysis == household
-                            vars = c("NP", # Number of persons in household
-                                     "RMSP", # Number of rooms
-                                     # "BDSP", # Number of bedrooms
-                                     "OWN_RENT")) # Own/rent tenure status
-
-# calculate NP/BDSP
-crowding <- crowd_2021 %>% 
-  dplyr::mutate(crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_, 
-                                            NP/RMSP <= 1 ~ "One person per room or less",
-                                            NP/RMSP <= 1.5 ~ "Between 1 and 1.5 person(s) per room",
-                                            NP/RMSP  > 1.5 ~ "More than 1.5 persons per room"),
-                                  levels=c("More than 1.5 persons per bedroom",
-                                           "Between 1 and 1.5 person(s) per bedroom",
-                                           "One person per bedroom or less")),
-                rent_crowding = factor(case_when(is.na(NP)|is.na(RMSP)|RMSP==0 ~ NA_character_, 
-                                                 NP/RMSP <= 1   & OWN_RENT=="Rented" ~ "One person per room or less",
-                                                 NP/RMSP <= 1.5 & OWN_RENT=="Rented" ~ "Between 1 and 1.5 person(s) per room",
-                                                 NP/RMSP  > 1.5 & OWN_RENT=="Rented" ~ "More than 1.5 persons per room"),
-                                       levels=c("More than 1.5 persons per room",
-                                                "Between 1 and 1.5 person(s) per room",
-                                                "One person per room or less")))
-
-# calculate count statistics based on adjusted variables
-# for all households
-# dt_21 <- psrc_pums_count(crowding, 
-#                          group_vars=c("crowding","COUNTY"), 
-#                          rr = TRUE)
-# for renter households
-dt_21 <- psrc_pums_count(crowding, 
-                         group_vars=c("rent_crowding","COUNTY"), 
-                         rr = TRUE)
-
-totals <- dt_21 %>% 
-  dplyr::filter(!is.na(rent_crowding),
-                rent_crowding != "Total") %>% 
-  dplyr::group_by(COUNTY) %>% 
-  dplyr::mutate(geo_total_rent=sum(count),
-                share_rent=count/geo_total_rent) %>% 
-  dplyr::filter(rent_crowding=="More than 1.5 persons per room") %>% 
-  dplyr::select(-reliability, - share, -share_moe)
-
-
-# calculate moes/relative reliability -----
-totals_moes <- totals %>%
-  rowwise() %>% 
-  dplyr::mutate(moe_rent=tidycensus::moe_sum(estimate = count,
-                                             moe = count_moe))
-                # moe_own=tidycensus:moe_prop(num=estimate_Overcrowding_Owner,
-                #                           denom=estimate_Total_units,
-                #                           moe_num=moe_Overcrowding_Owner,
-                #                           moe_denom=moe_Total_units),
-                # moe_own=tidycensus::moe_sum(estimate = estimate_Overcrowding_Owner,
-                #                             moe = moe_Overcrowding_Owner))
-totals_final<- totals_moes %>% 
-  dplyr::filter(!is.na(count))
-
-# calculate reliability values
-totals_reliability_rent <- reliability_calcs(totals_final,
-                                             estimate='count',
-                                             moe='moe_rent')
-# acs_data_reliability_own <- reliability_calcs(acs_data_final,
-#                                               estimate='estimate_Overcrowding_Owner',
-#                                               moe='moe_own')
-
-
-# filter county data
-county_data <- totals_reliability_rent %>% 
-  dplyr::filter(COUNTY != "Region") %>% 
-  dplyr::rename(cnty_estimate=share_rent)
-
-# filter region data
-region_data <- totals_reliability_rent %>%
-  dplyr::filter(COUNTY == "Region") %>%
-  dplyr::rename(reg_estimate=share_rent) %>%
-  dplyr::select(COUNTY, reg_estimate) #simplify table
-
-# add region to county data
-county_reg_data <- county_data %>%
-  mutate(reg_estimate=region_data$reg_estimate)
-
-# rename and simplify
-pums_data <- county_reg_data %>%
-  rename(estimate_dec='cnty_estimate') %>%
-  mutate(estimate=estimate_dec*100) %>% 
-  rename(reg_estimate_dec='reg_estimate') %>% 
-  mutate(reg_estimate=reg_estimate_dec*100) %>% 
-  dplyr::select(COUNTY,estimate,reg_estimate, reliability)
-
-
-# # calculate moes -----
-# acs_data_moes <- acs_data_calc %>%
-#   rowwise() %>% 
-#   dplyr::mutate(moe_rent=tidycensus::moe_sum(estimate = estimate_Overcrowding_Renter,
-#                                              moe = moe_Overcrowding_Renter),
-#                 # moe_own=tidycensus:moe_prop(num=estimate_Overcrowding_Owner,
-#                 #                           denom=estimate_Total_units,
-#                 #                           moe_num=moe_Overcrowding_Owner,
-#                 #                           moe_denom=moe_Total_units),
-#                 moe_own=tidycensus::moe_sum(estimate = estimate_Overcrowding_Owner,
-#                                             moe = moe_Overcrowding_Owner))
-# acs_data_final<- acs_data_moes %>% 
-#   dplyr::filter(!is.na(estimate_Overcrowding_Renter),
-#                 !is.na(estimate_Overcrowding_Owner))
-# 
-# # calculate reliability values
-# acs_data_reliability_rent <- reliability_calcs(acs_data_final,
-#                                                estimate='estimate_Overcrowding_Renter',
-#                                                moe='moe_rent')
-# acs_data_reliability_own <- reliability_calcs(acs_data_final,
-#                                               estimate='estimate_Overcrowding_Owner',
-#                                               moe='moe_own')
-# 
-# # rename and simplify
-# acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
-#   rename(estimate_dec='estimate_perc_overcrowding_rent') %>%
-#   mutate(estimate=estimate_dec*100) %>% 
-#   dplyr::select(PUMA5CE,estimate,cv,reliability)
-```
-
-```{r acs data - puma level, include=FALSE, eval=FALSE}
-# Finding the corresponding ACS table - this works if you know the correct concept label. If not, another option would be to visit https://data.census.gov/table and search for the right subject table and skip to the next step ----
-
-# getting data by tract
-acs_data <- get_acs_recs(geography ='tract', 
-                         table.names = 'B25014', #subject table code
-                         years = c(2021),
-                         acs.type = 'acs5')
-
-# filter to the variables of interest
-acs_data_filter <- acs_data %>%
-  # dplyr::filter(type %in% row_names) %>%
-  dplyr::filter(variable != 'B25014_001') %>% #remove total households
-  mutate(per_bedroom = factor(
-    case_when(variable == "B25014_002" ~ "Total",
-              variable == "B25014_008" ~ "Total",
-              grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", label) ~ "Less than or equal to 1.5 persons per bedroom",
-              grepl("1.51 to 2.00|2.01 or more", label) ~ "Overcrowding",
-              TRUE ~ as.character(label)))) %>%
-  mutate(type = factor(
-    case_when(grepl("B25014_002|B25014_003|B25014_004|B25014_005|B25014_006|B25014_007", variable) ~ "Owner",
-              grepl("B25014_008|B25014_009|B25014_010|B25014_011|B25014_012|B25014_013", variable) ~ "Renter",
-              TRUE ~ as.character(variable)))) #%>%
-  # dplyr::select(GEOID, variable, per_bedroom, type, estimate, moe) #%>% #simplify table
-  # dplyr::filter(type != 'Owner')    #this can be commented out for inclusion of both Owners and Renters
-
-# import tracts to pumas crosswalk
-tracts_pumas_crosswalk <- read.csv("T:/2023November/Mary/EquityTracker/crosswalk/Census_Tract_to_2020_PUMA.txt")
-
-psrc_pumas_crosswalk <- tracts_pumas_crosswalk %>% 
-  dplyr::filter(STATEFP==53 &
-                  (COUNTYFP==33 | 
-                     COUNTYFP==35 |
-                     COUNTYFP==53 |
-                     COUNTYFP==61)) %>% 
-  mutate(tract_6=as.character(sprintf("%06d",TRACTCE)))
-
-# create field in acs data for merge (last 6 digits to match puma data)
-acs_for_merge <- acs_data_filter %>% 
-  dplyr::mutate(tract_6=str_sub(GEOID, start= -6))
-
-# merge pumas crosswalk to acs data
-merged_tract_puma <- merge(acs_for_merge, psrc_pumas_crosswalk,
-                           by.x="tract_6",
-                           by.y="tract_6",
-                           all.x=TRUE)
-
-# # testing to make sure numbers line up
-# one_puma <- merged_tract_puma %>% 
-#   dplyr::filter(PUMA5CE==23318,
-#                 per_bedroom=="Overcrowding")
-# 
-# one_puma_own <- one_puma %>% 
-#   dplyr::select(-tract_6, -name, -state, -variable, 
-#                 -concept, -acs_type, -year, -census_geography, -STATEFP, -COUNTYFP) %>% 
-#   dplyr::filter(type=="Owner") %>% 
-#   dplyr::mutate(sq=(moe^2),
-#                 sum_sq=sum(sq),
-#                 sq_rt=sqrt(sum_sq),
-#                 num1=sq_rt/1.645,
-#                 sum_est=sum(estimate),
-#                 cv_final=num1/sum_est)
-
-# ----------------
-# for separate owners and renters
-# use the moe_sum function from tidycensus
-acs_data_group <- merged_tract_puma %>% 
-  dplyr::group_by(PUMA5CE, per_bedroom, type) %>% #add 'type' if want to distinguish b/t Owners and Renters
-  dplyr::summarise(estimate=sum(estimate), 
-                   moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-  dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
-
-# pivot data to calculate percentage by census tract
-acs_data_pivot<- acs_data_group %>%   
-  pivot_wider(names_from = c(per_bedroom, type), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-
-# calculating percentage/share of population per tract instead of integer
-acs_data_calc <- acs_data_pivot %>%
-  mutate(estimate_perc_overcrowding_rent=(estimate_Overcrowding_Renter/estimate_Total_Renter),
-         estimate_perc_overcrowding_own=(estimate_Overcrowding_Owner/estimate_Total_Owner))
-
-# calculate moes
-acs_data_moes <- acs_data_calc %>%
-  rowwise() %>% 
-  dplyr::mutate(moe_rent=tidycensus::moe_sum(estimate = estimate_Overcrowding_Renter,
-                                             moe = moe_Overcrowding_Renter),
-                # moe_own=tidycensus:moe_prop(num=estimate_Overcrowding_Owner,
-                #                           denom=estimate_Total_units,
-                #                           moe_num=moe_Overcrowding_Owner,
-                #                           moe_denom=moe_Total_units),
-                moe_own=tidycensus::moe_sum(estimate = estimate_Overcrowding_Owner,
-                                            moe = moe_Overcrowding_Owner))
-acs_data_final<- acs_data_moes %>% 
-  dplyr::filter(!is.na(estimate_Overcrowding_Renter),
-                !is.na(estimate_Overcrowding_Owner))
-
-# calculate reliability values
-acs_data_reliability_rent <- reliability_calcs(acs_data_final,
-                                               estimate='estimate_Overcrowding_Renter',
-                                               moe='moe_rent')
-acs_data_reliability_own <- reliability_calcs(acs_data_final,
-                                              estimate='estimate_Overcrowding_Owner',
-                                              moe='moe_own')
-
-# rename and simplify
-acs_data <- acs_data_reliability_rent %>% #just interested in renters for now
-  rename(estimate_dec='estimate_perc_overcrowding_rent') %>%
-  mutate(estimate=estimate_dec*100) %>% 
-  dplyr::select(PUMA5CE,estimate,cv,reliability)
-
-# ----------------
-# for combined owners and renters
-# use the moe_sum function from tidycensus
-acs_data_group <- merged_tract_puma %>% 
-  dplyr::group_by(PUMA5CE, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
-  dplyr::summarise(estimate=sum(estimate), 
-                   moe=tidycensus::moe_sum(estimate=estimate, moe=moe)) %>% 
-  dplyr::filter(per_bedroom != "Less than or equal to 1.5 persons per bedroom")
-
-# pivot data to calculate percentage by census tract
-acs_data_pivot<- acs_data_group %>%   
-  pivot_wider(names_from = c(per_bedroom), values_from = c(estimate,moe)) #add 'type' if want to distinguish b/t Owners and Renters
-
-# calculating percentage/share of population per tract instead of integer
-acs_data_calc <- acs_data_pivot %>%
-  mutate(estimate_perc_overcrowding=(estimate_Overcrowding/estimate_Total))
-
-# calculate moes
-acs_data_moes <- acs_data_calc %>%
-  rowwise() %>% 
-  dplyr::mutate(moe_overcrowding=tidycensus::moe_sum(estimate = estimate_Overcrowding,
-                                             moe = moe_Overcrowding))
-acs_data_final<- acs_data_moes %>% 
-  dplyr::filter(!is.na(estimate_Overcrowding))
-
-# calculate reliability values
-acs_data_reliability <- reliability_calcs(acs_data_final,
-                                          estimate='estimate_Overcrowding',
-                                          moe='moe_Overcrowding')
-
-# rename and simplify
-acs_data <- acs_data_reliability %>% #just interested in renters for now
-  rename(estimate_dec='estimate_perc_overcrowding') %>%
-  mutate(estimate=estimate_dec*100) %>% 
-  dplyr::select(PUMA5CE,estimate,cv,reliability)
 ```
 
 ### Joining data
 ```{r}
-# # merge to 2020 census tract spatial file
-# acs_data_merge <- merge(tracts20.lyr, acs_data,
-#                         by.x="geoid20",
-#                         by.y="GEOID",
-#                         all.x=TRUE)
+# merge to 2020 census tract spatial file
+# acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
+#                               by.x="geoid20",
+#                               by.y="GEOID",
+#                               all.x=TRUE)
+
+# getting data by county from acs 
+# county_acs_data <- get_acs_recs(geography ='county', 
+#                                 table.names = 'B25014', #subject table code
+#                                 years = c(as.numeric(pums_ospi_year)),
+#                                 acs.type = 'acs5')
 
 # merge to 2020 census tract spatial file
-acs_data <- merge(county.lyr, county_reg_data,
+acs_data_tract <- merge(county.lyr, county_reg_data,
                   by.x="county_name",
                   by.y="county_name",
                   all.y=TRUE)
 
-# # merge to 2020 county spatial file
-# pums_data_county <- merge(county.lyr, pums_data,
-#                           by.x="county_name",
-#                           by.y="COUNTY",
-#                           all.x=FALSE)
-
-# # getting data by county and region from acs
-# county_reg_acs_data <- get_acs_recs(geography ='county',
-#                                 table.names = 'B25014', #subject table code
-#                                 years = c(2021),
-#                                 acs.type = 'acs5')
+#filter for percentage instead of total number
+# county_acs_data_per <- county_acs_data %>%
+#   dplyr::filter(variable == "S2701_C03_001")
 # 
-# county_reg_data_rename <- county_reg_acs_data %>%
-#   dplyr::filter(variable != 'B25014_001') %>% #remove total households
-#   mutate(per_bedroom = factor(
-#     case_when(variable == "B25014_002" ~ "Total",
-#               variable == "B25014_008" ~ "Total",
-#               grepl("0.50 or less|0.51 to 1.00|1.01 to 1.50", label) ~ "Less than or equal to 1.5 persons per bedroom",
-#               grepl("1.51 to 2.00|2.01 or more", label) ~ "Overcrowding",
-#               TRUE ~ as.character(label)))) %>%
-#   mutate(type = factor(
-#     case_when(grepl("B25014_002|B25014_003|B25014_004|B25014_005|B25014_006|B25014_007", variable) ~ "Owner",
-#               grepl("B25014_008|B25014_009|B25014_010|B25014_011|B25014_012|B25014_013", variable) ~ "Renter",
-#               TRUE ~ as.character(variable)))) %>%
-#   dplyr::select(GEOID, name, variable, per_bedroom, type, estimate, moe) #%>% #simplify table
-# # dplyr::filter(type != 'Owner')    #this can be commented out for inclusion of both Owners and Renters
+# county_data <- county_acs_data_per %>% 
+#   dplyr::select(name,estimate) %>% #to simplify table
+#   dplyr::rename(cnty_estimate=estimate) %>% #to distinguish between tract and county values
+#   mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
+
+# getting data by region from PUMS
+# pums_data <- get_psrc_pums(span = 5,
+#                            dyear = 2021,
+#                            level = "p",
+#                            vars = c("PRIVCOV", "PUBCOV"))
 # 
-# county_reg_data_aggregate <- county_reg_data_rename %>%
-#   dplyr::group_by(GEOID, name, per_bedroom) %>% #add 'type' if want to distinguish b/t Owners and Renters
-#   dplyr::summarise(estimate=sum(estimate), .groups='drop')
+# reg_median <- psrc_pums_median(pums_data, stat_var = c("PRIVCOV", "PUBCOV"))
 # 
-# # pivot data to calculate percentage by census tract
-# county_reg_data_group <- county_reg_data_aggregate %>%
-#   pivot_wider(names_from = per_bedroom, values_from = estimate) %>%
-#   dplyr::mutate(overcrowding_perc = ((Overcrowding/Total)*100),
-#                 county_name=str_split(name, " ", simplify = TRUE)[,1]) #for join to tract level data
-
-# county_data <- county_reg_data_group %>% 
-#   dplyr::filter(name != "Region") %>% 
-#   dplyr::rename(cnty_estimate=overcrowding_perc) %>% #to distinguish between tract and county values
-#   dplyr::select(county_name, cnty_estimate) #simplify table
-
-# # getting data by region
-# region_data <- county_reg_data_group %>% 
-#   dplyr::filter(name == "Region") %>% 
-#   dplyr::rename(reg_estimate=overcrowding_perc) %>% #to distinguish between tract and county values
-#   dplyr::select(county_name, reg_estimate) #simplify table
-
-# # getting data by region
-# region_data <- county_reg_data_group %>% 
-#   dplyr::filter(GEOID == "Region") %>% 
-#   dplyr::mutate(overcrowding_perc = ((Overcrowding/Total)*100)) %>% 
-#   dplyr::rename(reg_estimate=overcrowding_perc) %>% #to distinguish between tract and county values
-#   dplyr::select(county_name, reg_estimate) #simplify table
-
 # # add region median to county data
 # county_reg_data <- county_data %>% 
-#   mutate(reg_estimate=region_data$reg_estimate)
-
-# add region to county data
-# region_data <- acs_data %>% 
-#   dplyr::filter(county_name=="Region") %>% 
-#   dplyr::mutate(reg_estimate=estimate)
-
-
+#   mutate(reg_estimate=reg_median$POVPIP_median)
+# 
 # # merge tract, county, and region data into one data set 
-# acs_data_tract <- merge(acs_data_merge, county_reg_data,
+# acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
 #                         by.x="county_name",
 #                         by.y="county_name",
 #                         all.x=TRUE)
 
-# merge county and region data into one data set 
-# acs_data_tract <- cbind(acs_data_merge, region_data$reg_estimate) %>% 
-#   dplyr::rename(reg_estimate=region_data.reg_estimate)
+
+# county transformations
+# county_overcrowding <- county_acs_data %>% 
+#   dplyr::filter(variable=="S2201_C03_001",
+#                 name!="Region") %>% 
+#   dplyr::select(name, estimate) %>% 
+#   dplyr::rename(overcrowding=estimate)
+# county_pop <- county_acs_data %>% 
+#   dplyr::filter(variable=="S2201_C01_001",
+#                 name!="Region") %>% 
+#   dplyr::select(name, estimate) %>% 
+#   dplyr::rename(pop_overcrowding=estimate)
+
+# county_merge <- merge(county_overcrowding, county_pop,
+#                       by.x="name",
+#                       by.y="name",
+#                       all.x=TRUE)
+# county_data_simp <- county_merge %>% 
+#   dplyr::mutate(cnty_estimate=overcrowding/pop_overcrowding) %>% 
+#   dplyr::mutate(county_name=str_split(name, " ", simplify = TRUE)[,1]) %>% #for join to tract level data
+#   dplyr::select(county_name,cnty_estimate) #to simplify table
+# 
+# # region transformations
+# reg_overcrowding <- county_acs_data %>% 
+#   dplyr::filter(variable=="S2201_C03_001",
+#                 name=="Region") %>% 
+#   dplyr::select(name, estimate) %>% 
+#   dplyr::rename(overcrowding=estimate)
+# reg_pop <- county_acs_data %>% 
+#   dplyr::filter(variable=="S2201_C01_001",
+#                 name=="Region") %>% 
+#   dplyr::select(name, estimate) %>% 
+#   dplyr::rename(pop_overcrowding=estimate)
+# 
+# reg_merge <- merge(reg_overcrowding, reg_pop,
+#                       by.x="name",
+#                       by.y="name",
+#                       all.x=TRUE)
+# reg_data <- reg_merge %>% 
+#   dplyr::mutate(reg_estimate=overcrowding/pop_overcrowding) %>% 
+#   dplyr::select(name,reg_estimate)
+# 
+# # add region median to county data
+# county_reg_data <- county_data_simp %>% 
+#   mutate(reg_estimate=reg_data$reg_estimate)
+
+# merge tract, county, and region data into one data set 
+# acs_data_tract <- merge(acs_data_tract_merge, county_reg_data,
+#                         by.x="county_name",
+#                         by.y="county_name",
+#                         all.x=TRUE)
 ```
 
 ### Explore map/acs data
-```{r map legend settings, include=FALSE}
-# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
-addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 9, colors, 
-		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
-		  title = NULL, className = "info legend", layerId = NULL, 
-		  group = NULL, data = getMapData(map), decreasing = FALSE) {
-	position <- match.arg(position)
-	type <- "unknown"
-	na.color <- NULL
-	extra <- NULL
-	if (!missing(pal)) {
-		if (!missing(colors)) 
-			stop("You must provide either 'pal' or 'colors' (not both)")
-		if (missing(title) && inherits(values, "formula")) 
-			title <- deparse(values[[2]])
-		values <- evalFormula(values, data)
-		type <- attr(pal, "colorType", exact = TRUE)
-		args <- attr(pal, "colorArgs", exact = TRUE)
-		na.color <- args$na.color
-		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
-		    0) {
-			na.color <- NULL
-		}
-		if (type != "numeric" && !missing(bins)) 
-			warning("'bins' is ignored because the palette type is not numeric")
-		if (type == "numeric") {
-			cuts <- if (length(bins) == 1) 
-				pretty(values, bins)
-			else bins	
-			
-			if (length(bins) > 2) 
-				if (!all(abs(diff(bins, differences = 2)) <= 
-				         sqrt(.Machine$double.eps))) 
-					stop("The vector of breaks 'bins' must be equally spaced")
-			n <- length(cuts)
-			r <- range(values, na.rm = TRUE)
-			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
-			n <- length(cuts)
-			p <- (cuts - r[1])/(r[2] - r[1])
-			extra <- list(p_1 = p[1], p_n = p[n])
-			p <- c("", paste0(100 * p, "%"), "")
-			if (decreasing == TRUE){
-				colors <- pal(rev(c(r[1], cuts, r[2])))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}else{
-				colors <- pal(c(r[1], cuts, r[2]))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}
-			colors <- paste(colors, p, sep = " ", collapse = ", ")
-			
-		}
-		else if (type == "bin") {
-			cuts <- args$bins
-			n <- length(cuts)
-			mids <- (cuts[-1] + cuts[-n])/2
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "bin", cuts))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "bin", cuts)
-			}
-			
-		}
-		else if (type == "quantile") {
-			p <- args$probs
-			n <- length(p)
-			cuts <- quantile(values, probs = p, na.rm = TRUE)
-			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
-				 na.rm = TRUE)
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "quantile", cuts, p))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "quantile", cuts, p)
-			}
-		}
-		else if (type == "factor") {
-			v <- sort(unique(na.omit(values)))
-			colors <- pal(v)
-			labels <- labFormat(type = "factor", v)
-			if (decreasing == TRUE){
-				colors <- pal(rev(v))
-				labels <- rev(labFormat(type = "factor", v))
-			}else{
-				colors <- pal(v)
-				labels <- labFormat(type = "factor", v)
-			}
-		}
-		else stop("Palette function not supported")
-		if (!any(is.na(values))) 
-			na.color <- NULL
-	}
-	else {
-		if (length(colors) != length(labels)) 
-			stop("'colors' and 'labels' must be of the same length")
-	}
-	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
-	               na_color = na.color, na_label = na.label, opacity = opacity, 
-	               position = position, type = type, title = title, extra = extra, 
-	               layerId = layerId, className = className, group = group)
-	invokeMethod(map, data, "addLegend", legend)
-}
-```
-
-```{r test map, include=FALSE,eval=FALSE}
-# # load puma shapefile
-# puma20.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_PUMAS_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
-# 
-# puma20.lyr<-st_read(puma20.url)
-# 
-# nrow(puma20.lyr) #34
-# 
-# # merge puma shapefile to puma level data
-# acs_data_tract_merge <- merge(puma20.lyr, acs_data,
-#                               by.x="pumace20",
-#                               by.y="PUMA5CE",
-#                               all.x=TRUE)
-# 
-# reliability_order <- c("good",
-#                        "fair",
-#                        "use with caution",
-#                        "use with extreme caution")
-# 
-# acs_data_tract <- acs_data_tract_merge %>% 
-#   dplyr::mutate(reliability_ord = factor(reliability, levels = reliability_order))
-
-# set map extent
-map.lat<- 47.615
-map.lon<- -122.257
-map.zoom<- 8.5
-
-# set up palettes
-psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
-                                      domain = acs_data_place$estimate)
-# psrc_palette <- leaflet::colorFactor(palette=psrc_colors$purples_inc,
-#                                       domain = acs_data_tract$reliability_ord)
-
-# set the variable
-var_name <- "Overcrowding (% of hh's with >1.5 persons)"
-
-# map settings
-tract_map <- leaflet() %>%
-  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
-  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
-  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
-  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
-                            options = leaflet::leafletOptions(pane = "maplabels"),
-                            group = "Labels") %>%
-  addPolygons(data=acs_data_place,
-              fillColor = psrc_palette(acs_data_place$estimate),
-              stroke=FALSE, 
-              smoothFactor = 0.2,
-              fillOpacity = 0.7,
-              group = var_name,
-              label = round(acs_data_place$estimate, digits=1)) %>%
-
-  # legends
-  addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_place$estimate,
-                       position = "bottomright",
-                       title = var_name,
-                       group = var_name,
-                       opacity = 0.7,
-                       decreasing = TRUE,
-                       labFormat = labelFormat()) %>% 
-  
-  #set view extent
-  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
-  addEasyButton(easyButton(
-    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
-    title ="Region",
-    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
-
-# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
-css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
-html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
-tract_map %<>% htmlwidgets::prependContent(html_fix)
-
-# print map
-tract_map
-```
-
-```{r explore map, include=FALSE, eval=FALSE}
-# set map extent
-map.lat<- 47.615
-map.lon<- -122.257
-map.zoom<- 8.5
+```{r explore map}
+# map settings and legend function in equity-tracker-supplemental-script.R
 
 # set up palettes
 psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
                                       domain = acs_data_tract$estimate)
 
 # set the variable
-var_name <- "Overcrowding (% of hh's with >1.5 persons)"
+var_name <- "Overcrowding"
 
 # map settings
 tract_map <- leaflet() %>%
@@ -1395,7 +749,7 @@ tract_map <- leaflet() %>%
               label = round(acs_data_tract$estimate, digits=1)) %>%
 
   # legends
-  addLegend_decreasing(pal = psrc_palette,
+  addLegend_decreasing(pal = psrc_palette, #included in equity-tracker-supplemental-script.R
                        values = acs_data_tract$estimate,
                        position = "bottomright",
                        title = var_name,
@@ -1425,14 +779,13 @@ Save final data set (.rda) for map
 ```{r}
 # This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
 
-# set folder structure
-file_name <- 'e04-overcrowding-map-data'
-
 # save final data set as .rda
-save(acs_data, file = file.path(base_dir,
-                                      theme_dir,
-                                      ind_dir, "rda-data",
-                                      paste0(file_name,'.rda')))
+save(acs_data_tract, file = file.path(file_names$base_dir,
+                                      file_names$theme_dir,
+                                      file_names$ind_dir, 
+                                      "update",
+                                      "rda-data",
+                                      paste0(file_names$map,'.rda')))
 ```
 
 <a href="#top">Back to top of the page</a>
