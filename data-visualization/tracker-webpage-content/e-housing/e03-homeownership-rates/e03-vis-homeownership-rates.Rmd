@@ -218,7 +218,7 @@ sort <- data %>%
 #### Insights & Analysis
 
 * Kitsap County has the highest homeownership rates (70%), followed by Snohomish (69%), Pierce (65%), and King (56%)
-* The five census tracts tied with the highest rates of homeownership (99-98%) are in Snohomish County (Woodway and Edmonds Waterfront, Maltby, east of Silver Lake), Pierce County (Lake Tapps), and King County (Sammamish)
+* The five census tracts tied with the highest rates of homeownership (98-99%) are in Snohomish County (Woodway and Edmonds Waterfront, Maltby, east of Silver Lake), Pierce County (Lake Tapps), and King County (Sammamish)
 * Snohomish County is the only county that does not have any census tracts with 0% homeownership, while there are 4 tracts in King, 2 in Kitsap, and 2 in Pierce. The census tract with the lowest homeownership rate in Snohomish (14%) is in Everett, east of Paine Field.
 
 \
