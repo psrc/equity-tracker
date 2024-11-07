@@ -4,14 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Mary Richards, updated by Kristin Mitchell"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-    word_document:
+  html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-    html_document: 
-       
+    word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -46,8 +45,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+#output_type <- "word"
+output_type <- "html"
 ```
 
 ```{r variables setup}
@@ -146,7 +145,8 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_plus_zero),
+              fillColor = psrc_palette(acs_data_tract$estimate),
+              # psrc_palette(acs_data_plus_zero),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
