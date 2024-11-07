@@ -259,10 +259,16 @@ calc <- data_2022pop %>%
 # 50+ 
 calc_50plus <- calc %>% 
   dplyr::filter(estimate>=50) %>% 
-  dplyr::arrange(estimate)
+  dplyr::arrange(estimate) #409
 
 calc_50minus <- calc %>% 
-  dplyr::filter(estimate<50)
+  dplyr::filter(estimate<50) #510
+
+table(calc_50plus$county_name)
+# King: 201/409
+# Kitsap: 28/409
+# Pierce: 97/409
+# Snohomish: 83/409
 
 median(calc_50plus$pop_acres) #6.965862
 median(calc_50minus$pop_acres) #6.452537
@@ -281,7 +287,7 @@ quartile_burden <- calc %>%
 
 1. 48%: Regional share of renter households who are cost burdened
 2. 3/5: Almost three-fifths of households with limited English proficiency and households with older adults are rent cost burdened
-3. 23%: The gap in the regional share of renter cost burden between people with and without disabilities decreased by 23% between 2012 and 2022
+3. 19%: The gap in the regional share of renter cost burden between people with and without disabilities decreased by 19% between 2012 and 2022
 
 \
 
