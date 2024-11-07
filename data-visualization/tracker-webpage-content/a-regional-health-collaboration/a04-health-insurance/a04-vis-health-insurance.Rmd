@@ -90,8 +90,8 @@ load(file=file.path(file_names$base_dir,
 
 # move the decimal point for reg_estimate and cnty_estimate
 acs_data_tract <- acs_data_tract %>%
-   mutate(reg_estimate = (reg_estimate*100)) %>%
-   mutate(cnty_estimate = (cnty_estimate*100))
+   mutate(reg_estimate = round((reg_estimate*100), 1)) %>%
+   mutate(cnty_estimate = round((cnty_estimate*100),1))
 ```
 
 
@@ -240,21 +240,16 @@ tracts_low_cov_map <- leaflet() %>%
     title ="Region",
     onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
 
-
-
 ```
 
 \
 
 #### Insights & Analysis
 
-1. Kitsap County has the highest average for health insurance coverage (94.9%), followed by King (94.7%), Pierce (94.0%), and Snohomish (93.8%).
-
-2. There are 7 census tracts with 100% health insurance coverage: 5 in King County, and 1 each in Kitsap, and Pierce Counties.
-
-3. The five census tracts with the lowest health insurance coverage, Edmonds (77.5), Lake Stickney near Everett (77.7), Alderton, between Sumner and Orting (78.0), Lynnwood (78.9), South Tacoma (79.1).
-
-4. The national average health insurance coverage in 2022 is 92%.
+* Kitsap County has the highest average for health insurance coverage (94.9%), followed by King (94.7%), Pierce (94.0%), and Snohomish (93.8%).
+* There are 7 census tracts with 100% health insurance coverage: 5 in King County, and 1 each in Kitsap, and Pierce counties.
+* The five census tracts with the lowest health insurance coverage, Edmonds (77.5%), Lake Stickney near Everett (77.7%), Alderton, between Sumner and Orting (78.0%), Lynnwood (78.9%), South Tacoma (79.1%).
+* The national average health insurance coverage in 2022 is 92%.
 
 \
 \
@@ -294,7 +289,7 @@ x = "focus_attribute_ord"
 y = "fact_value"
 facet = "focus_type_ord"
 fill = "focus_attribute_ord"
-y_min = .60
+y_min = .50
 y_max = 1
 dec = 0
 esttype = "percent"
@@ -479,11 +474,10 @@ filter <- data_clean_column %>%
 
 #### Insights & Analysis
 
-1. Health care coverage for households with limited English proficiency in Pierce County is 17 percentage points less than households proficient in English, the largest such disparity in the region.
-
-2. The largest disparity in health care coverage between people of color and white non-Hispanic people is 6 percentage points in Snohomish County and in the region.
-
-3. Coverage for households with lower income in King County, Snohomish County, and the region are each 8 percentage points less than other households.
+* Health care coverage for households with limited English proficiency in Pierce County is 17 percentage points less than households proficient in English, the largest such disparity in the region across all communities and geographies.
+* The largest disparity in health care coverage between people of color and white non-Hispanic people is 6 percentage points in Snohomish County and in the region
+* Coverage for households with lower income in King County, Snohomish County, and the region are each 8 percentage points less than other households.
+* Coverage is 6 percentage points less for people of color in the region than for white non-Hispanic people.
 
 
 \
@@ -663,20 +657,19 @@ filter <- disparity_df_wide |>
   filter(county == "Region" & focus_type == "POC_cat")
 # column disparity_share = -.544
 
+filter <- data_clean |> 
+  filter(county == "Snohomish" & focus_type == "LEP_cat")
 ```
 \
 
 #### Insights & Analysis
 
-1. Households with older adults 65+ and people with disabilities have higher health insurance coverage due to programs like Medicare and Medicaid.
-
-2. From 2017 to 2022, households in Kitsap County with older adults 65+ experienced a 1 percentage point drop in health insurance coverage.
-
-3. The largest disparity in health care coverage is between households with limited English proficiency and households proficient in English. Kitsap County experienced increased health coverage for households with limited English proficiency by 30 percentage points between 2012 and 2017, however between 2017 and 2022, it dropped 8 percentage points.  
-
-4. Health coverage for households with lower income in the region increased by 27% between 2012 and 2022. The disparity between households with lower income versus other households in the region dropped by 65%.
-
-5. The gap between people of color and white non-Hispanic people in the region declined by 54% between 2012 and 2022.
+* From 2012 to 2022, health insurance coverage increased for all groups.
+* The gap between people of color and white non-Hispanic people in the region declined by 50% between 2012 and 2022.
+* Health coverage for households with lower income in the region increased by 29% between 2012 and 2022. The disparity between households with lower income versus other households in the region dropped by 67%.
+* The largest disparity in health care coverage is between households with limited English proficiency and households proficient in English. Kitsap County experienced increased health coverage for households with limited English proficiency by 29 percentage points between 2012 and 2017, however between 2017 and 2022, it dropped 8 percentage points.
+* Households with older adults 65+ and people with disabilities have higher health insurance coverage due to programs like Medicare and Medicaid.
+* From 2012 to 2022, households with older adults 65+ in King, Pierce, and Snohomish counties experienced a three percentage point increase in health insurance coverage, while those in Kitsap County experienced a two percentage point increase. 
 \
 \
 
