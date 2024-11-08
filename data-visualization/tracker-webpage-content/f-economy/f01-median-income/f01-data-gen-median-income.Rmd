@@ -337,7 +337,7 @@ check_region_facet <- function(df, year) {
                             y = "fact_value",
                             fill = "vulnerability", 
                             facet = "focus_type_ord",
-                            est = "percent",
+                            est = "currency",
                             scales = "fixed",
                             color = "psrc_pairs", 
                             ncol = 3,
@@ -407,9 +407,10 @@ walk(data_clean_plots, ~print(.x))
 head(data_clean) # make sure this is the correct data set
 
 # make any additional edits 
+# make any additional edits 
 data_clean <- data_clean %>% 
   mutate(fact_value_notrounded=fact_value) %>% #create column to retain full median income values
-  mutate(fact_value=round(fact_value, digits=2)) #round median income value to hundreds and set retain consistent name - if you are not working with $ you will need to change this to the correct number of digits you would like to round to (for example, if using decimals, you may want to set digits=2 or if you using whole numbers you may want to set digits=0)
+  mutate(fact_value=round(fact_value, digits=-2)) #round median income value to hundreds - retain consistent name
 
 data_clean #check to make sure the rounding worked for your indicator - if not will need to go back to generate data set in chunk around line 245
 ```
@@ -484,7 +485,7 @@ county_data <- county_acs_data %>%
 
 # getting data by region from PUMS
 pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
+                           dyear = as.numeric(pums_ospi_year),
                            level = "h",
                            vars = "HINCP")
 reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")

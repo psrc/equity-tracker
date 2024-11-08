@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (PUMS data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -85,9 +85,9 @@ load(file=file.path(file_names$base_dir,
 
 ```{r data format - map, include=FALSE}
 # move the decimal point for reg_estimate and cnty_estimate
-acs_data_tract <- acs_data_tract %>%
-   mutate(reg_estimate = (reg_estimate*100)) %>%
-   mutate(cnty_estimate = (cnty_estimate*100))
+# acs_data_tract <- acs_data_tract %>%
+#    mutate(reg_estimate = (reg_estimate*100)) %>%
+#    mutate(cnty_estimate = (cnty_estimate*100))
 ```
 
 
@@ -97,7 +97,7 @@ source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 
 # check maximum value of data
 # summary(acs_data_tract$estimate) # max is 250001, so rounding to 260000 makes sense
-max_value <- 60 # this value will be the max value in the legend
+max_value <- 260000 # this value will be the max value in the legend
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
@@ -109,7 +109,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # setting the legend/label variables
-var_name <- "SNAP" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Median Income" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
@@ -125,15 +125,6 @@ labels <- sprintf(
                   big.mark = ","), paste0("(",acs_data_tract$county_name," County)"))) %>%
   lapply(htmltools::HTML)
 
-# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
-# labels <- sprintf(
-#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
-#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
-#               big.mark = ","), #this wouldn't be necessary to include for %s    
-#         '%')) %>%
-#   lapply(htmltools::HTML)
-
-
 # map settings
 acs_map <- leaflet() %>%
   leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
@@ -143,7 +134,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_plus_zero),
+              fillColor = psrc_palette(acs_data_tract$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -196,35 +187,43 @@ data <- acs_data_tract %>%
   st_drop_geometry()
 
 # calculate call out information
-sort <- data %>% 
+sort <- data %>%
+  select(county_name, geoid20, estimate, cnty_estimate, reg_estimate) %>% 
   dplyr::arrange(desc(estimate))
-# Highest percentage of SNAP participation is 53053940006 (east Tacoma where two low income housing complexes are - 49.4%), 53053061601 (downtown Tacoma - 44.1%), 53033029004 (southeast Des Moines - 39.3%), 53033029604 (southeast Kent - 35.8%), 53053063301 (east Tacoma just south of 53053940006 - 35.0%)
+
+filter <- sort %>% 
+  filter(estimate > 250000)
+# Highest median income is 250001 (9 tracts in King County)	- 53033004101 (Laurelhurst), 53033023902 (southwest Bellevue along the lakeshore), 53033024100 (Clyde Hill/Hunts Point/Yarrow Point), 53033024500 (Mercer), 53033024601 (Mercer), 53033024602 (Mercer), 53033024905 (Hilltop neighborhood in Bellevue), 53033032215 (east Sammamish), 53033032321 (Woodinville and Cottage Lake)
+
+sort <- data %>% 
+  select(county_name, geoid20, estimate, cnty_estimate, reg_estimate) %>% 
+  dplyr::arrange(estimate)
+# 2 census tracts below $30k in King: 53033005304 (19375) and 53033005305 (23201) - UW
+# 5 census tracts $30-40k in King (4) and Pierce (1): 53033030501 (30327) - Auburn, 53053061601 (32740) - Tacoma, 53033005303 (35875) - UW, 53033009100 (36857) - Chinatown/ID, 53033005307 (37989)  
 
 # national average
-# acs table: S2201, https://data.census.gov/table/ACSST5Y2022.S2201?q=S2201
-
-sort <- data %>% 
-  dplyr::arrange(estimate)
-
-filter <- data %>% 
-  filter(estimate==0)
-# There are 38 census tracts with a 0% participation. 
-table(filter$county_name)
-# 30 tracts in King County, 2 in Kitsap, 2 in Pierce, and 4 in Snohomish 
+# acs table: B19013, https://data.census.gov/table?q=B19013 
 ```
 
-1. 9.0%: The region’s average SNAP participation
-2. 49.4%: The highest average SNAP participation at the census tract level in the region
-3. 3.5x: People with a disability are more than 3.5 times more likely to participate in SNAP
+1. \$106,100: Regional median household income
+2. \$49,900: Households with limited English proficiency in the region have median income that is $52,300 lower than households proficient in English
+3. 18%: Regionally, people of color have median household income $12,800 lower than white non-Hispanic people, a gap which has decreased 18% in the last ten years
 
 \
 
 #### Insights & Analysis
 
-* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.8%), Kitsap (10.0%), and Pierce (11.7%).
-* There are 38 census tracts with no SNAP participation with 30 tracts in King County, two in Kitsap, two in Pierce, and four in Snohomish.
-* The four census tracts with the highest participation include one tract in the Eastside neighborhood of Tacoma (49.4%), Downtown Tacoma (44.1%), southeast Des Moines (39.3%), and southeast Kent (35.8%).
-* The national average SNAP participation is 11.5%.
+* King County has the highest median household income (\$116,300), followed by Snohomish (\$104,100), Kitsap (\$93,700), and Pierce (\$91,500).
+
+* Highest median household income at the census tract level is \$250,000.
+
+* Nine census tracts tied with the highest median household income ($250,000) are all in King County. Six are around Lake Washington: one tract in southwest Bellevue along the lakeshore, one in Clyde Hill/Hunts Point/Yarrow Point, three on the southern half of Mercer Island, and one in Seattle’s Laurelhurst neighborhood. The remaining three are in the Hilltop neighborhood in Bellevue, east Sammamish, and between Woodinville and Cottage Lake. 
+
+* Lowest median household income at the census tract level is $19,400.
+
+* Seven census tracts with median household incomes below \$40,000 are in Seattle's University District (\$19,400 and \$23,200), Auburn along Route 167 (\$30,300), Downtown Tacoma (\$32,700), around Seattle's University of Washington campus (\$35,900 and \$38,000), and in Seattle's Chinatown and International District (\$36,900).
+
+* The national median household income is \$77,700.
 
 \
 \
@@ -395,12 +394,17 @@ filter <- data_clean_column %>%
 
 #### Insights & Analysis
 
-* In King County, households with limited English proficiency are more than three times as likely to participate in SNAP.
-* As a region, 32% of households with lower income participate in SNAP, leaving room for increased participation. 
-* SNAP uses an income threshold of 200% of the federal poverty level for qualification, the same definition used here to identify households with lower income.
-* 4% of non-lower income households in the region reported participating in SNAP, which is likely a data anomaly due to how the Census Bureau asks about household income.
-* Households with limited English proficiency are over twice as likely to participate in SNAP.
-* People of color are almost twice as likely to participate in SNAP.
+* Regional median household income for those living below 200% of federal poverty level (i.e., households with lower income) is \$23,200.
+
+* Regional median household income for those with youth is $38,700 higher than those without.
+
+* Snohomish County has the smallest difference in median household income by race and ethnicity, where white non-Hispanic households earn \$1,600 more than households of color, while Pierce County has the largest difference (\$18,100) with white non-Hispanic households earning more than households of color.
+
+* For households with lower income, the median household income is lowest in King County (\$22,100), followed by Snohomish and Kitsap (\$23,800), and Pierce (\$25,300).
+
+* The largest difference in median household income by disability status is in King County, where people with a disability earn \$50,000 less than those without, while the smallest difference is in Kitsap County (\$16,500).
+
+* For households with limited English proficiency, Snohomish County is the only county where the median income (\$64,000) is higher than the region’s median (\$56,900).
 
 
 \
@@ -596,10 +600,15 @@ filter <- data_clean %>%
 
 #### Insights & Analysis
 
-* Regionally, people of color have consistently been almost twice as likely to participate in SNAP compared to the white non-Hispanic population; however, the disparity between these two groups decreased in all counties - Snohomish (-50%), King (-40%), Kitsap (-33%), Pierce (-22%).
-* SNAP participation decreased in all counties for households with limited English proficiency between 2012 and 2022, except for Pierce County where participation for the same group increased from 21% in 2012 to 23% in 2022.
-* SNAP participation among people with disabilities in the region either stayed the same (Kitsap and Pierce counties) or decreased (King and Snohomish counties) from 2012 to 2022.
-* The share of participating lower income households reached 40% in 2017, the highest for any group in the past decade; however, between 2012 and 2022, there was a three percentage point decrease in SNAP participation for households with lower income across the region
+* In 2022, households in the region with lower income made $103,200 less than other households, a 30% larger gap than in 2012.
+
+* The regional median household income for those with older adults is $38,500 lower than those without in 2022, a 33% larger gap than in 2012.
+
+* The differences in median household income between people of color and white non-Hispanic people from 2012 to 2022 has changed across counties: decreasing in King County (decreased 34%) and Snohomish County (decreased 84%), and increasing in Kitsap County (increased 39%) and Pierce County (increased 27%).
+
+* The median household income for households with lower income stayed relatively static over time, while the median household income for other households increased between 2012 and 2022, especially in King County (increased by \$28,500) and Snohomish County (increased by \$20,600).
+
+* The difference in median household income for those with a disability compared to those without between 2012 and 2022 decreased in Kitsap County (-21%) slightly increased in Pierce and Snohomish counties (+10% and +13%, respectively), and increased to a larger extent in King County (+36%), where the disparity increased by \$13,200).
 
 
 \
@@ -733,7 +742,8 @@ current_folder <- file.path(file_names$base_dir,
                             'webpage-html-outputs')
 
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-new.folder <- file.path(web.base.folder,theme_dir)
+new.folder <- file.path(web.base.folder,
+                        file_names$theme_dir)
 
 list.of.files <- list.files(current_folder, 
                             full.names = T)
