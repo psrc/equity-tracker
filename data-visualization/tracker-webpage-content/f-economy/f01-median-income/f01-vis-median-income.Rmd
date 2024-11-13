@@ -400,7 +400,7 @@ filter <- data_clean_column %>%
 
 * Snohomish County has the smallest difference in median household income by race and ethnicity, where white non-Hispanic households earn \$1,600 more than households of color, while Pierce County has the largest difference (\$18,100) with white non-Hispanic households earning more than households of color.
 
-* For households with lower income, the median household income is lowest in King County (\$22,100), followed by Snohomish and Kitsap (\$23,800), and Pierce (\$25,300).
+* For households with lower income, the median household income is lowest in King County (\$22,100), followed by Snohomish (\$23,800), Kitsap (\$24,000), and Pierce (\$25,300).
 
 * The largest difference in median household income by disability status is in King County, where people with a disability earn \$50,000 less than those without, while the smallest difference is in Kitsap County (\$16,500).
 
@@ -604,11 +604,11 @@ filter <- data_clean %>%
 
 * The regional median household income for those with older adults is $38,500 lower than those without in 2022, a 33% larger gap than in 2012.
 
-* The differences in median household income between people of color and white non-Hispanic people from 2012 to 2022 has changed across counties: decreasing in King County (decreased 34%) and Snohomish County (decreased 84%), and increasing in Kitsap County (increased 39%) and Pierce County (increased 27%).
+* The differences in median household income between people of color and white non-Hispanic people from 2012 to 2022 has changed across counties: decreasing in King County (-34%) and Snohomish County (-84%), and increasing in Kitsap County (+1%) and Pierce County (+27%).
 
 * The median household income for households with lower income stayed relatively static over time, while the median household income for other households increased between 2012 and 2022, especially in King County (increased by \$28,500) and Snohomish County (increased by \$20,600).
 
-* The difference in median household income for those with a disability compared to those without between 2012 and 2022 decreased in Kitsap County (-21%) slightly increased in Pierce and Snohomish counties (+10% and +13%, respectively), and increased to a larger extent in King County (+36%), where the disparity increased by \$13,200).
+* The difference in median household income for those with a disability compared to those without between 2012 and 2022 decreased in Kitsap County (-21%) slightly increased in Pierce and Snohomish counties (+7% and +13%, respectively), and increased to a larger extent in King County (+36%), where the disparity increased by \$13,200.
 
 
 \
