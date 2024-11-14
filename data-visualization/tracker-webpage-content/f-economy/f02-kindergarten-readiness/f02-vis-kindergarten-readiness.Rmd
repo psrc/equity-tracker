@@ -167,6 +167,7 @@ htmlwidgets::saveWidget(ospi_map,
 \
 \
 
+#### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
 data <- ospi_data_tract %>%
