@@ -45,8 +45,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-#output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 
 ```{r variables setup}
@@ -194,6 +194,7 @@ htmlwidgets::saveWidget(acs_map,
 \
 \
 
+#### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
 data <- acs_data_tract %>%
@@ -398,13 +399,13 @@ filter <- data_clean_column %>%
 
 #### Insights & Analysis
 
-* A greater share of renters of color experience overcrowding compared to white non-Hispanic renters. The difference is highest in King County (eight percentage points), followed by Snohomish County (seven percentage points) while Kitsap and Pierce counties have much smaller differences (three and two percentage points, respectively).
+* A greater share of renters of color experience overcrowding compared to white non-Hispanic renters. The difference is highest in King County (eight percentage points), followed by Snohomish County (seven percentage points) while Kitsap and Pierce counties have much smaller differences (two and three percentage points, respectively).
 
 * The share of the region’s renter households with lower income experiencing overcrowding is 10%, twice as high as other renter households - King County has the highest rate of overcrowding among renter households with lower income (11%), followed by Snohomish (10%), Pierce (9%), and Kitsap (5%).
 
-* The regional share of renter households with limited English proficiency experiencing overcrowding is 15%, two and half times higher than renter households proficient in English (6%).
+* The regional share of renter households with limited English proficiency experiencing overcrowding is 15%, over two and a half times higher than renter households proficient in English (6%).
 
-* Renter households with limited English proficiency have the highest rates of overcrowding across almost all of demographic groups, regardless of county, with the exception of being renter households with youth in King, Kitsap, or Snohomish County.
+* Renter households with limited English proficiency have the highest rates of overcrowding across almost all of demographic groups, regardless of county, with the exception of renter households with youth in King, Kitsap, or Snohomish counties.
 
 
 \
@@ -600,7 +601,7 @@ filter <- data_clean %>%
 
 #### Insights & Analysis
 
-* Regionally, the share of overcrowded renter households of color remained the same (10%) between 2012 and 2022, while the overcrowding for white, non-Hispanic renter households increased from 2% to 4%.
+* Regionally, the share of overcrowded renter households of color remained the same (10%) between 2012 and 2022, with a slight increase in 2017, while the overcrowding for white, non-Hispanic renter households increased from 2% to 4%.
 
 * Renters of color have consistently experienced higher rates of overcrowding compared to white non-Hispanic renter households; however, between 2012 and 2022, the differences between these two groups decreased across most of the region: decreasing in Kitsap (-60%), Pierce (-50%), and King (-20%) counties while staying the same in Snohomish County.
 
@@ -610,9 +611,9 @@ filter <- data_clean %>%
 
 * Overcrowding experienced by renters with a disability stayed the same in King County (6%) between 2012 to 2022, while it increased two percentage points in Kitsap County (going from 3% to 5%), increased one percentage point in Pierce County (going from 5% to 6%), and increased two percentage points in Snohomish County (going from 6% to 8%).
 
-* A higher share of renter households with limited English proficiency live in overcrowded housing than those proficient in English. Between 2012 and 2022, the difference between the two groups decreased in King and (-25%) and Snohomish (-9%) counties and increased in Pierce (+29%) and Kitsap (+100%) counties. 
+* A higher share of renter households with limited English proficiency live in overcrowded housing than those proficient in English. Between 2012 and 2022, the difference between the two groups decreased in King (-25%) and Snohomish (-9%) counties and increased in Pierce (+29%) and Kitsap (+100%) counties. 
 
-* The share of overcrowding for renter households with youth increased between 2012 and 2022 the most in Snohomish County (five percentage points), followed by two percentage points in each of King, Kitsap, and Pierce counties. 
+* The share of overcrowding for renter households with youth increased between 2012 and 2022 the most in Snohomish County (five percentage points), followed by an increase of two percentage points in King, Kitsap, and Pierce counties. 
 
 
 \

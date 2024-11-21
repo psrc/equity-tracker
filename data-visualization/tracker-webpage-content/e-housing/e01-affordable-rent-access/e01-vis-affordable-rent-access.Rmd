@@ -178,6 +178,7 @@ htmlwidgets::saveWidget(acs_map,
 \
 \
 
+#### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
 data <- acs_data_tract %>%
@@ -246,23 +247,19 @@ highest_mgr_map_sno <- create_map(highest_mgr_cnty|> filter(county_name == 'Snoh
 # highest_mgr_map_sno
 ```
 
-Data callout 1:
-
-42%: Share of tracts in the region where rent is affordable based on the regional median household income
+1. 42%: Share of tracts in the region where rent is affordable based on the regional median household income
+2. 1%: Regionally, 1% of census tracts are affordable to renter households with limited English proficiency, 46X less than the what is affordable to English-proficient renter households (46%)
+3. 2.5X: The share of tracts with affordable rent decreased 45% for renters of color between 2012 and 2022, about 2.5 times more than the decrease for white non-Hispanic renters (38%)
 
 \
 
 #### Insights & Analysis
 
-1. Regional affordability threshold for monthly rent, based on 30% of the regional median household income for renters (\$71,91000/year), is \$1,800.
-
-2. Access to affordable rent is highest in Pierce (65% of tracts), followed by Kitsap County (64%), Snohomish (43%), and King (31%).
-
-3. Ten census tracts tied with the highest median gross rent ($3,500) are all in King County: one is in Seattle (Montlake neighborhood), two are in southern Mercer Island, two are in Clyde Hill/Hunts Point/Medina/Yarrow Point, four are in Bellevue, one is in Auburn (West Hill).
-  
-4. The highest median gross rent in Kitsap, Pierce, and Snohomish County are in: the southeastern portion of Bainbridge Island (\$2,720), Tehaleh community south of Bonney Lake (\$3,090), and the Edmonds/southern Mukilteo area (\$3,280), respectively. 
-
-5. Relatively affordable areas are in south Seattle, south King County, Tacoma/central Pierce County, along the I-5 corridor in Snohomish County and in communities farther out from the region’s urban centers.
+* Regional affordability threshold for monthly rent, based on 30% of the regional median household income for renters (\$71,91000/year), is \$1,800.
+* Access to affordable rent is highest in Pierce (65% of tracts), followed by Kitsap County (64%), Snohomish (43%), and King (31%).
+* Ten census tracts tied with the highest median gross rent ($3,500) are all in King County: one is in Seattle (Montlake neighborhood), two are in southern Mercer Island, two are in Clyde Hill/Hunts Point/Medina/Yarrow Point, four are in Bellevue, one is in Auburn (West Hill).
+* The highest median gross rent in Kitsap, Pierce, and Snohomish County are in: the southeastern portion of Bainbridge Island (\$2,720), Tehaleh community south of Bonney Lake (\$3,090), and the Edmonds/southern Mukilteo area (\$3,280), respectively. 
+* Relatively affordable areas are in south Seattle, south King County, Tacoma/central Pierce County, along the I-5 corridor in Snohomish County and in communities farther out from the region’s urban centers.
 
 \
 \
@@ -418,26 +415,16 @@ o_df_wide <- o_df |>
 # insights-analysis-charts.R
 
 ```
-
-Data callout 2: 
-
-1%: Regionally, 1% of census tracts are affordable to renter households with limited English proficiency, 46X less than the what is affordable to English-proficient renter households (46%)
-
 \
 
 #### Insights & Analysis
 
-1. Renters with a disability have access to affordable rent in 3% of the region’s census tracts. 
-
-2. There is a 53 percentage point difference in the regional share of affordable tracts between renter households with older adults (1%) and other renter households (54%).
-
-3. Renters of color in King County have access to affordable rent in 32% of the census tracts, while white non-Hispanic renters may find 57% of the tracts to be affordable, the largest difference among the counties.
-
-4. While the renter affordability gap between people of color and white non-Hispanic people is notable, it is likely even bigger for some racial subgroups (more information about the way in which housing opportunities are different among racial subgroups is available in the Regional Housing Strategy: 2023 Monitoring Report.
-
-5. For households living below 200% of poverty level, there is no access to affordable rent.
-
-6. The disparity in access to affordable rent between households with older adults and other households is greatest in King County (60%), followed by Kitsap (48%), Pierce (42%), and Snohomish (37%).
+* Renters with a disability have access to affordable rent in 3% of the region’s census tracts. 
+* There is a 53 percentage point difference in the regional share of affordable tracts between renter households with older adults (1%) and other renter households (54%).
+* Renters of color in King County have access to affordable rent in 32% of the census tracts, while white non-Hispanic renters may find 57% of the tracts to be affordable, the largest difference among the counties.
+* While the renter affordability gap between people of color and white non-Hispanic people is notable, it is likely even bigger for some racial subgroups (more information about the way in which housing opportunities are different among racial subgroups is available in the Regional Housing Strategy: 2023 Monitoring Report.
+* For households living below 200% of poverty level, there is no access to affordable rent.
+* The disparity in access to affordable rent between households with older adults and other households is greatest in King County (60%), followed by Kitsap (48%), Pierce (42%), and Snohomish (37%).
 
 \
 \
@@ -654,23 +641,15 @@ delta_df_wide |>
 # insights-analysis-map.R
 # insights-analysis-charts.R
 ```
-Data callout 3: 
-
-2.5X: The share of tracts with affordable rent decreased 45% for renters of color between 2012 and 2022, about 2.5 times more than the decrease for white non-Hispanic renters (38%)
-
 \
 
 #### Insights & Analysis
 
-1. The difference in regional access to affordable rent between renter households with lower income and other renter households decreased 12 percentage points because the number of affordable tracts for other renter households decreased by 28. 
-
-2. The disparity in access to affordable rent between those with and without a disability decreased over time for most counties, with the greatest difference in Snohomish (41%), followed by Kitsap (33%) and King (14%). The disparity in Pierce grew by 5%.
-
-3. The regional share of affordable tracts for renter households with limited English proficiency decreased 86% between 2012 and 2022, a 2.2x larger decrease than for English proficient renter households (-39%).
-
-4. The disparity in access to affordable rent between households with limited English proficiency and English proficient households decreased in Snohomish (40 percentage points), followed by King (23 percentage points), and Pierce (18 percentage points), while the disparity greatly increased in Kitsap. 
-
-5. Snohomish is the only county where access to affordable rent for households with older adults stayed the same over time, compared to the other counties, where access decreased over time: Pierce (17 percentage points), King (6 percentage points), and Kitsap (4 percentage points).
+* The difference in regional access to affordable rent between renter households with lower income and other renter households decreased 12 percentage points because the number of affordable tracts for other renter households decreased by 28. 
+* The disparity in access to affordable rent between those with and without a disability decreased over time for most counties, with the greatest difference in Snohomish (41%), followed by Kitsap (33%) and King (14%). The disparity in Pierce grew by 5%.
+* The regional share of affordable tracts for renter households with limited English proficiency decreased 86% between 2012 and 2022, a 2.2x larger decrease than for English proficient renter households (-39%).
+* The disparity in access to affordable rent between households with limited English proficiency and English proficient households decreased in Snohomish (40 percentage points), followed by King (23 percentage points), and Pierce (18 percentage points), while the disparity greatly increased in Kitsap. 
+* Snohomish is the only county where access to affordable rent for households with older adults stayed the same over time, compared to the other counties, where access decreased over time: Pierce (17 percentage points), King (6 percentage points), and Kitsap (4 percentage points).
 \
 \
 

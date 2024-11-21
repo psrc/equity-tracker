@@ -1,16 +1,16 @@
 ---
 title: "Health Insurance"
-subtitle: "Visuals for Equity Tracker (PUMS data)"
+subtitle: Visuals for Equity Tracker (PUMS data)
 author: "Kristin Mitchell, updated by Christy Lam"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
   word_document:
-  # html_document:
-  #   keep_md: yes
-  #   df_print: paged
-  #   toc: yes
-  #   toc_depth: 6
-  #   toc_float: yes
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -45,8 +45,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 
 ```{r variables setup}
@@ -146,7 +146,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_plus_zero),
+              fillColor = psrc_palette(acs_data_tract$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -193,6 +193,7 @@ htmlwidgets::saveWidget(acs_map,
 \
 \
 
+#### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
 data <- acs_data_tract %>%
@@ -241,6 +242,10 @@ tracts_low_cov_map <- leaflet() %>%
     onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
 
 ```
+
+1. 94.4%: The region’s average health insurance coverage
+2. 77.5%: The lowest average health insurance coverage at census tract level in the region
+3. 13%: The regional health insurance coverage is 13 percentage points lower for households with limited English proficiency compared to households proficient in English
 
 \
 
@@ -464,18 +469,12 @@ filter <- data_clean_column %>%
          vulnerability=="high vulnerability") %>% 
   dplyr::arrange(desc(fact_value))
 ```
-1. 94.4%: The region’s average health insurance coverage
-
-2. 77.5%: The lowest average health insurance coverage at census tract level in the region
-
-3. 13%: The regional health insurance coverage is 13 percentage points lower for households with limited English proficiency compared to households proficient in English
-
 \
 
 #### Insights & Analysis
 
 * Health care coverage for households with limited English proficiency in Pierce County is 17 percentage points less than households proficient in English, the largest such disparity in the region across all communities and geographies.
-* The largest disparity in health care coverage between people of color and white non-Hispanic people is 6 percentage points in Snohomish County and in the region
+* The largest disparity in health care coverage between people of color and white non-Hispanic people is 6 percentage points in Snohomish County and in the region.
 * Coverage for households with lower income in King County, Snohomish County, and the region are each 8 percentage points less than other households.
 * Coverage is 6 percentage points less for people of color in the region than for white non-Hispanic people.
 
