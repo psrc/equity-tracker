@@ -305,7 +305,7 @@ sumtable(data_refined,
 ```{r}
 # wrap/order labels ----
 # variable ordering and label function in equity-tracker-supplemental-script.R
-data_clean <- transform_data_labels(data_full)
+data_clean <- transform_data_labels_pums(data_full)
 ```
 
 ```{r}
