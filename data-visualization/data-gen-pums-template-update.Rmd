@@ -55,14 +55,11 @@ library(here)
 ```
 
 ```{r sources}
-# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
-
 # reference supplemental script with supporting settings/functions
 source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 ```
 
 ```{r variables setup}
-
 file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    theme_dir = 'a-regional-health-collaboration',
                    ind_dir = 'a05-snap',
@@ -302,7 +299,7 @@ sumtable(data_refined,
 ```{r}
 # wrap/order labels ----
 # variable ordering and label function in equity-tracker-supplemental-script.R
-data_clean <- transform_data_labels(data_full)
+data_clean <- transform_data_labels_pums(data_full)
 ```
 
 ```{r}
@@ -618,7 +615,7 @@ tract_map
 # **MAP .rda**
 Save final data set (.rda) for map
 ```{r}
-# This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
+# This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. 
 
 # save final data set as .rda
 save(acs_data_tract, file = file.path(file_names$base_dir,
