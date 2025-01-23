@@ -58,6 +58,9 @@ file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    map_name = 'e03-homeownership-rates-map.html',
                    column_chart_name = 'e03-homeownership-rates-column',
                    line_chart_name = 'e03-homeownership-rates-line')
+
+# set most recent year
+year <- "2022"
 ```
 
 # 3 visuals for webpage
@@ -250,7 +253,7 @@ load(file=file.path(file_names$base_dir,
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2022") #filter on most recent year
+  dplyr::filter(data_year==year) #filter on most recent year
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column

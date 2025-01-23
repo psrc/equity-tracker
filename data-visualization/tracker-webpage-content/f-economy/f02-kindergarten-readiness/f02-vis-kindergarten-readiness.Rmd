@@ -58,6 +58,9 @@ file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    map_name = 'f02-kindergarten-readiness-map.html',
                    column_chart_name = 'f02-kindergarten-readiness-column',
                    line_chart_name = 'f02-kindergarten-readiness-line')
+
+# set most recent year
+year <- "2023"
 ```
 
 # 3 visuals for webpage
@@ -263,7 +266,7 @@ load(file=file.path(file_names$base_dir,
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2023") #filter on most recent year
+  dplyr::filter(data_year==year) #filter on most recent year
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column

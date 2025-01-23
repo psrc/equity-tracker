@@ -56,6 +56,9 @@ file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    map_name = 'e01-affordable-rent-access-map.html',
                    column_chart_name = 'e01-affordable-rent-access-column',
                    line_chart_name = 'e01-affordable-rent-access-line')
+
+# set most recent year
+year <- "2022"
 ```
 
 # 3 visuals for webpage
