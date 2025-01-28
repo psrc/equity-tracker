@@ -63,9 +63,9 @@ source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 
 file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    theme_dir = 'd-community-and-health',
-                   ind_dir = 'd01-life-expectancy',
-                   chart = 'd01-life-expectancy-chart-data',
-                   map = 'd01-life-expectancy-map-data')
+                   ind_dir = 'd02-cardiovascular-disease-mortality',
+                   chart = 'd02-cardiovascular-disease-mortality-chart-data',
+                   map = 'd02-cardiovascular-disease-mortality-map-data')
 
 folder_path <- file.path(file_names$base_dir,
                          file_names$theme_dir,
@@ -73,27 +73,27 @@ folder_path <- file.path(file_names$base_dir,
                          "raw-data")
 
 # create list of separate CSVs - OPTIONAL depending on format of data, if in one file this step is unnecessary and you can save the one csv file, like in commented out code
-raw_data <- list("Life_Expectancy_at_Birth_2010tracts_08_12.csv",
-                 "Life_Expectancy_at_Birth_2010tracts_13_17.csv",
-                 "Life_Expectancy_at_Birth_2020tracts_18_22.csv")
+raw_data <- list("Cardiovascular_Disease_Mortality_2010tracts_08_12.csv",
+                 "Cardiovascular_Disease_Mortality_2010tracts_13_17.csv",
+                 "Cardiovascular_Disease_Mortality_2020tracts_18_22.csv")
 
-# raw_data <- "Life_Expectancy_at_Birth_2020tracts_18_22.csv"
+# raw_data <- "Cardiovascular_Disease_Mortality_2020tracts_18_22.csv"
 
 # set the variables
-var_name <- "Life Expectancy"
+var_name <- "Cardiovascular Disease Mortality"
 year <- 2022
 years <- c(2012, 2017, 2022)
 data <- 1:3 #number of datasets in raw_data list - to iterate through
 ```
 
-**Life Expectancy at Birth**
+**Cardiovascular Disease Mortality**
 
 # Download data 
 ## Primary data 
-These data comes from [WTN](https://fortress.wa.gov/doh/wtn/WTNPortal/?preview=true/#!q0=8967). Separate CSVs at the census tract geography are available (manual download) for 5y time spans at 1y increments, starting in 2000. The data are available at 2010 and 2020 geographies, depending on the year. The raw data sets have been saved in the corresponding Y drive project folder - folder address included above. [Please replace this text with a description of your data and data source here to maintain a record for future updates.]
+These data comes from [WTN](https://fortress.wa.gov/doh/wtn/WTNPortal#!q0=821). Separate CSVs at the census tract geography are available (manual download) for 5y time spans at 1y increments, starting in 2000. The data are available at 2010 and 2020 geographies, depending on the year. The raw data sets have been saved in the corresponding Y drive project folder - folder address included above. [Please replace this text with a description of your data and data source here to maintain a record for future updates.]
 ```{r}
 
-# this function was created because the indicator data are in separate CSV files that were downloaded from the WTN. [If your data source if one csv, you can ignore/comment out this step and skip to the bottom of this code chunk - use the commented out example code.]
+# this function was created because the indicator data are in separate CSV files that were downloaded from the WTN. [If your data source is one csv, you can ignore/comment out this step and skip to the bottom of this code chunk - use the commented out example code.]
 read_data <- function(order){
   
   # read csv files 
@@ -111,7 +111,7 @@ df_raw_data <- map_dfr(data, ~read_data(order=.x))
 ```
 
 ### Look at raw data
-Use this space to explore the raw data - the values and format. Are all of the census tracts included? Are the years of interest correct?Are there data that are not necessary to keep? This step will determine how the data may need to be cleaned and transformed in the next steps. 
+Use this space to explore the raw data - the values and format. Are all of the census tracts included? Are the years of interest correct? Are there data that are not necessary to keep? This step will determine how the data may need to be cleaned and transformed in the next steps. 
 ```{r}
 # print data set to see field names and field types
 df_raw_data
@@ -134,22 +134,16 @@ df_psrc_data <- df_raw_data %>%
            County.Name == "Pierce" |
            County.Name == "Snohomish") %>% 
   # there are 2 census tract fields - because of the 2 different census tract vintages (2010 and 2020) 
-  mutate(GEOID= case_when(is.na(Census.Tract)~Census.Tract.2020,
-                          is.na(Census.Tract.2020)~Census.Tract))
+  mutate(GEOID= case_when(#is.na(Census.Tract)~Census.Tract.2020, #inconsistency with WTN data
+                          # is.na(Census.Tract.2020)~Census.Tract, #inconsistency with WTN data
+                          is.na(Census.Tract)~X2020.Census.Tract,
+                          is.na(X2020.Census.Tract)~Census.Tract))
 
 # check data
 str(df_psrc_data)
-# there are 2,614 observations when there should be about 2,471 [776 census tracts X 2 (2012 and 2017 data) + 919 census tracts (2022)]
+# there are 2,471 observations [776 census tracts X 2 (2012 and 2017 data) + 919 census tracts (2022)]
 table(df_psrc_data$data_year)
 # there are the expected number of rows for 2012 and 2017, but there are extra in the 2022 data set
-
-test_2022 <- df_psrc_data %>% 
-  filter(data_year=="2022")
-
-length(unique(test_2022$Census.Tract.2020)) #1062 rows in 2022, when there should be 919 or 923, so about 140 additional records
-
-table(test_2022$County.Name)
-# Based on the shapefile (downloaded below, there should be King: 494, Kitsap: 59, Pierce: 193, Snohomish: 173), so there are extra census tracts in all counties. This should be taken care of when joining to the equity quintiles (for the charts) or the spatial file (for the map). But curious about the extra tracts in the WTN data set.
 ```
 
 ## Additional data
@@ -174,24 +168,6 @@ crosswalk_10_20 <- get_table(schema="census",
                              tbl_name="v_geo_relationships_tracts")
 ```
 
-### Weighting data (OPTIONAL - data dependent)
-This step is only necessary for data sets that require normalization or weighting. For example, life expectancy at the tract-level is the average number of years a newborn is expected to live by census tract. This number for each census tract would need to be weighted by the population of each census tract to better understand trends at the county-level and throughout the region. 
-```{r, include=FALSE}
-
-# getting census population data by tract
-tracts_pop_acs <- get_acs_recs(geography ='tract', 
-                           table.names = 'B01003',
-                           years = years, # refers to the list of years that was set above
-                           acs.type = 'acs5') 
-
-# simplify data set
-tracts_pop <- tracts_pop_acs %>% 
-  select(GEOID, estimate, year) 
-
-# check data set
-table(tracts_pop$year)
-```
-
 ### Geographic tract file
 This spatial file is required to map the most recent year's data. It includes all of the census tracts within the PSRC region. Depending on the most recent indicator data, the 2010 census tract spatial file may be needed. 
 ```{r census tract spatial data - for tract data, include=FALSE}
@@ -208,39 +184,44 @@ nrow(tracts20.lyr) #919
 nrow(tracts10.lyr) #773
 ```
 
-# Create dataset
-This step is optional depending on the format of the indicator.
+# Create dataset [OPTIONAL]
+This step is optional depending on the format of the indicator. You may need to weight the data or transform it in some way. If not, this code chunk can be commented out or deleted. 
 ```{r}
-# indicator data set
-df_psrc_data
-# weighting data set - ACS population data
-tracts_pop
-
-# need to combine
-df_psrc_data_pop <- df_psrc_data %>% 
-  inner_join(tracts_pop, join_by("GEOID"=="GEOID", "data_year"=="year"))
-
-# check issues with extra census tracts in 2022
-# test22 <- df_psrc_data_pop %>% 
-#   filter(data_year==2022)
-# nrow(test22)
-# table(test22$County.Name)
-
-# simplify data and calculate weighted estimates
-df_psrc_data_pop_simp <- df_psrc_data_pop %>% 
-  select(County.Name, Life.Expectancy, data_year, GEOID, estimate) %>% 
-  # rename 'estimate' to population for clarity
-  rename(population=estimate)
+# # indicator data set
+# df_psrc_data
+# # weighting data set - ACS population data
+# tracts_pop
+# 
+# # need to combine
+# df_psrc_data_pop <- df_psrc_data %>% 
+#   inner_join(tracts_pop, join_by("GEOID"=="GEOID", "data_year"=="year"))
+# 
+# # check issues with extra census tracts in 2022
+# # test22 <- df_psrc_data_pop %>% 
+# #   filter(data_year==2022)
+# # nrow(test22)
+# # table(test22$County.Name)
+# 
+# # simplify data and calculate weighted estimates
+# df_psrc_data_pop_simp <- df_psrc_data_pop %>% 
+#   select(County.Name, Life.Expectancy, data_year, GEOID, estimate) %>% 
+#   # rename 'estimate' to population for clarity
+#   rename(population=estimate)
 ```
 
 # Finalize data set
-This step is included so that the data set and variable of interest and year variable are named in a consistent way for downstream processing. 
+This step is included so that the data set and variable of interest and year variable are named in a consistent way for downstream processing. Review the field names in your data set to insert into the code below. You may need to add additional pipes to make any adjustments.
 ```{r}
-tract_indicator <- df_psrc_data_pop_simp %>% # insert the name of your data set
-  rename(variable_value=Life.Expectancy, # insert the name of your indicator variable
+# the input data set is the most updated data set from above - if you didn't need to weight or transform, it would be 'df_psrc_data' and if you did make any transformations, you would use that as the input
+
+tract_indicator <- df_psrc_data %>% # insert the name of your data set
+  rename(variable_value=Age.Adjusted.Rate.per.100.000, # insert the name of your indicator variable
          data_year=data_year, # insert the name of your year variable
          geoid=GEOID) %>% # insert the name of your census tract or geography variable
-  mutate(variable_value=as.numeric(variable_value)) # ensure the indicator variable is numeric so it can be mapped/visualized
+  mutate(reliability=case_when(grepl("(NR)", variable_value) ~ "Not reliable",
+                               TRUE~"Reliable")) %>% #cardiovascular disease mortality includes '(NR)' within the 'Age.Adjusted.Rate.per.100.000' character field, so they need to be removed so they can be transformed into numeric
+  mutate(var = gsub('[(NR)]', '', variable_value)) %>% #remove '(NR)' so values can be converted to numeric
+  mutate(variable_value=as.numeric(var)) #ensure the indicator variable is numeric so it can be mapped/visualized
 ```
 
 Use this space to make sure the final data set is formatted correctly (includes GEOID, year, variable of interest) with the consistent variable names. Depending on the number of years that are available and the geography vintage (2010 or 2020 census tracts), the number of rows will vary, but there should be rows for each census tract and each year. 
@@ -327,7 +308,7 @@ Life expectancy calculations can fluctuate considerably in smaller populations o
 data_tract_na <- data_tract %>% 
   filter(is.na(variable_value))
 
-nrow(data_tract_na) #5 tracts
+nrow(data_tract_na) #39 tracts
 ```
 
 ```{r missing tract map}
@@ -399,24 +380,28 @@ data_tract_nona <- data_tract %>%
 summary(data_tract_nona$variable_value)
 ```
 
-**When weighted by tract populations.** 
+**When weighted by tract populations.** [OPTIONAL]
+The code chunk below uses population data (retrieved from the ACS). If your variable doesn't require weighting, delete or comment out this code chunk and move to the histogram. 
 ```{r, include=FALSE}
-data_tract_nona_weight <- data_tract_nona %>% 
-  mutate(tot_age = variable_value*population,
-         reg_tot = sum(tot_age),
-         tot_pop = sum(population),
-         est_weight_avg = reg_tot/tot_pop)
-
-distrib <- rep(data_tract_nona$variable_value, data_tract_nona$population)
-
-avg.value <- data_tract_nona_weight$est_weight_avg[1] #80.43404
-med.value <- median(distrib) #80.16
+# data_tract_nona_weight <- data_tract_nona %>% 
+#   mutate(tot_age = variable_value*population, 
+#          reg_tot = sum(tot_age),
+#          tot_pop = sum(population),
+#          est_weight_avg = reg_tot/tot_pop)
+# 
+# distrib <- rep(data_tract_nona$variable_value, data_tract_nona$population)
+# 
+# avg.value <- data_tract_nona_weight$est_weight_avg[1] #80.43404
+# med.value <- median(distrib) #80.16
 ```
 \
 
 ### Histogram
 A histogram is a visual representation of the distribution of a dataset...The y-axis shows how frequently the values on the x-axis occur in the data, while the bars group ranges of values or continuous categories on the x-axis [(source)](https://www.datacamp.com/tutorial/make-histogram-basic-r).  
 ```{r}
+# if you skipped the optional weighting step above (because you didn't need to apply a population weight), you'll need to create a distribution
+distrib <- rep(data_tract_nona$variable_value) # this should be commented out if you are weighting your variable
+
 hist(distrib)
 ```
 \
@@ -434,7 +419,7 @@ The IQR criterion means that all observations above or below the first and third
 outliers <- boxplot.stats(distrib)$out
 outlier_rle <- rle(outliers)
 outlier_df <- data.frame(unclass(outlier_rle)) %>% 
-  rename(population = lengths,
+  rename(number = lengths,
          indicator = values) %>% 
   arrange(indicator)
 
@@ -443,16 +428,24 @@ outlier_df
 \
 
 #### *Check outliers* (OPTIONAL)
-The following steps are specific to the life expectancy data set and may or may not be applicable depending on the data.
+The following steps are specific to the life expectancy data set and may or may not be applicable depending on the data. It uses the data set that was created by weighting life expectancy. If you did not weight your data you will need to adjust the code below to make sure you are using the correct data set. 
 
 ##### Identify census tracts with outliers
 ```{r include=FALSE}
+# to identify the outlier values
 outlier_values <- outlier_df[,2]
 
-data_tract_nona_weight_outliers <- data_tract_nona_weight %>% 
+# # if you weighted your data set -----
+# data_tract_outliers <- data_tract_nona_weight %>% 
+#   dplyr::filter(variable_value %in% outlier_values)
+# 
+# num_outliers <- nrow(data_tract_nona_weight_outliers) #16
+
+# if you did not weight your data set -----
+data_tract_outliers <- data_tract_nona %>% 
   dplyr::filter(variable_value %in% outlier_values)
 
-num_outliers <- nrow(data_tract_nona_weight_outliers) #21
+num_outliers <- nrow(data_tract_nona_weight_outliers) #16
 ```
 \
 
@@ -475,21 +468,21 @@ displacement_simp <- displacement.lyr %>%
 ```
 
 ```{r, include=FALSE}
-data_tract_nona_weight_outliers <- data_tract_nona_weight_outliers %<>% 
+tract_outliers <- data_tract_outliers %<>% 
   dplyr::mutate(geoid=trimws(geoid20))
 
 # join outlier tract datas to spatial dispalcement tract data to isolate tracts with outlier data
 data_tract_risk_outliers <- merge(x=displacement_simp, 
-                                      y=data_tract_nona_weight_outliers,
-                                      by.x="geoid10",
-                                      by.y="geoid",
-                                      all.y=TRUE)
+                                  y=tract_outliers,
+                                  by.x="geoid10",
+                                  by.y="geoid",
+                                  all.y=TRUE)
 head(data_tract_risk_outliers)
 # class(data_tract_risk_outliers)
 # plot(data_tract_risk_outliers$geometry)
-nrow(data_tract_risk_outliers) #21
-pop_outliers <- as.numeric(sum(data_tract_risk_outliers$population, na.rm = T)) #76,772
-# There are 76,772 people (2022 ACS 5y population) in these outlier tracts.
+nrow(data_tract_risk_outliers) #16
+pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop20, na.rm = T)) #67,978
+# There are approx. 67,978 people (2020 population) in these outlier tracts - just for a broad estimate.
 ```
 
 \
@@ -506,14 +499,14 @@ plot(data_tract_risk_outliers$risk_score,
 
 # outlier #1
 data_tract_outliers_1 <- data_tract_risk_outliers %>% 
-  filter(risk_score > 30)
+  filter(risk_score > 35)
 
 # code to look at the scores and census tracts that are outliers
 data_tract_outliers_1
 
 # outlier #2
 data_tract_outliers_2 <- data_tract_risk_outliers %>% 
-  filter(variable_value < 75)
+  filter(variable_value < 100)
 
 # code to look at the scores and census tracts that are outliers
 data_tract_outliers_2
@@ -532,36 +525,60 @@ str(data_tract)
 ```
 
 ## Region and County numbers
-Because the measure (life expectancy) does not account for the population of the tract, it hasn't been normalized and needs to be weighted in order to aggregate to the region/county level - these values will be referred to in the code and visualized on the map for regional context. 
-
-Depending on the indicator, weighting by population may not be necessary, but region and county numbers should be calculated, if possible. If your data set doesn't require weighting, a simple average for the region and counties could be calculated. 
+Depending on the indicator, weighting by population may not be necessary, but region and county numbers should be calculated, if possible. If your data set doesn't require weighting, a simple average for the region and counties could be calculated. The code chunk below is divided into whether you need to weight or you don't - comment out or delete whichever doesn't fit your data set. The final data set after this step will be saved as the .rda for the map. 
 ```{r, region and county numbers for map labels}
+# # if you weighted your data set -----
+# # calculating data by county 
+# county_tract_data <- data_tract %>% 
+#   st_drop_geometry() %>%  #to remove spatial component
+#   dplyr::select(county_name, variable_value, population) %>% #to simplify table to necessary fields
+#   dplyr::group_by(county_name) %>% 
+#   dplyr::mutate(cnty_estimate=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>% #calculate weighted value by county
+#   dplyr::distinct(county_name, cnty_estimate)
+# 
+# # calculating data by region
+# reg_tract_data <- data_tract %>% 
+#   st_drop_geometry() %>%  #to remove spatial component
+#   dplyr::select(variable_value, population) %>% #to simplify table to necessary fields
+#   dplyr::mutate(reg_estimate=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>% #calculate weighted value for region
+#   dplyr::distinct(reg_estimate)
+# 
+# # combine region and county data
+# county_reg_data <- county_tract_data %>% 
+#   mutate(reg_estimate=reg_tract_data$reg_estimate)
+# 
+# # merge tract, county, and region data into one data set 
+# data_tract <- merge(data_tract, county_reg_data,
+#                     by="county_name",
+#                     all.x=TRUE)
+
+# if you did not weight your data set -----
 # calculating data by county 
 county_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
-  dplyr::select(County.Name, variable_value, population) %>% #to simplify table to necessary fields
-  dplyr::group_by(County.Name) %>% 
-  dplyr::mutate(cnty_estimate=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>% #calculate weighted value by county
-  dplyr::distinct(County.Name, cnty_estimate)
+  dplyr::group_by(county_name) %>% 
+  dplyr::mutate(cnty_estimate=mean(variable_value, na.rm=TRUE)) %>% #calculate average value by county
+  dplyr::distinct(county_name, cnty_estimate)
 
 # calculating data by region
 reg_tract_data <- data_tract %>% 
   st_drop_geometry() %>%  #to remove spatial component
-  dplyr::select(variable_value, population) %>% #to simplify table to necessary fields
-  dplyr::mutate(reg_estimate=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>% #calculate weighted value for region
+  dplyr::select(variable_value) %>% #to simplify table to necessary fields
+  dplyr::mutate(reg_estimate=mean(variable_value, na.rm=TRUE)) %>% #calculate average value for region
   dplyr::distinct(reg_estimate)
 
-# combine region and county data
+# add region data to county data
 county_reg_data <- county_tract_data %>% 
   mutate(reg_estimate=reg_tract_data$reg_estimate)
 
 # merge tract, county, and region data into one data set 
 data_tract <- merge(data_tract, county_reg_data,
-                    by="County.Name",
+                    by="county_name",
                     all.x=TRUE)
 ```
 
 ## Save final data set (.rda) for map
+Check the indicator folder on the Y drive to make sure that the correct folder exists. There should be an 'update' folder (Y:/Equity Indicators/tracker-webpage-content/d-community-and-health/d01-life-expectancy/update) with two internal folders: 'rda-data' and 'webpage-html-outputs' - these folders are necessary for the next code chunk to run and for the map .rda to be saved. Refer to this documentation if you need additional clarification: https://github.com/psrc/equity-tracker/wiki/PUMS-update-process#only-required-for-first-update. 
 ```{r}
 # save final data set as .rda
 save(data_tract, file = file.path(file_names$base_dir,
@@ -591,7 +608,7 @@ This data set should include rows for each census tracts twice (once as part of 
 
 
 ## Transform and pivot
-The data set need to be cleaned and pivoted to a longer table so that there is only one field for the 6 different equity categories, instead of one field for each.
+The data set needs to be cleaned and pivoted to a longer table so that there is only one field for the equity categories, instead of 6 fields.
 ```{r, include=FALSE}
 str(data_equity_tracts)
 
@@ -617,19 +634,32 @@ These data sets should include records for:
 
 
 ## Calculations
-### Calculate by region (weighted)
-The data are available at the census tract level, but we want to calculate the regional average. For life expectancy we also want to weight the values using the ACS population estimates. 
+### Calculate by region (weighted or not)
+The data are available at the census tract level, but we want to calculate the regional average. For some indicators, such as life expectancy, we may also want to weight the values using the ACS population estimates. 
 
-The step of calculating by region is important for all data sets because the region is one of the visualization options (radio buttons), along with each county. The weighting by population is optional depending on the data set. 
+The step of calculating by region is important for all data sets because the region is one of the visualization options (radio buttons), along with each county. The weighting by population is optional depending on the data set - comment out or delete whichever doesn't fit your data set. 
+
+The cardiovascular disease mortality rate values are available at the census tract level. We don't need to calculate the weighted values by the 6 equity/5 quintile groups, using the census bureau's tract-level population estimates. 
 ```{r}
-data_equity_wt_region <- data_equity_pivot %>% 
+# # if you weighted your data set -----
+# data_equity_region <- data_equity_pivot %>%
+#   filter(!is.na(quintile)) %>% #missing lep and disability data
+#   dplyr::group_by(equity_group, quintile, data_year) %>%
+#   summarise(variable_value=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>%
+#   mutate(county="Region")
+# 
+# # check data set
+# nrow(data_equity_region)
+
+# if you did not weight your data set -----
+data_equity_region <- data_equity_pivot %>%
   filter(!is.na(quintile)) %>% #missing lep and disability data
   dplyr::group_by(equity_group, quintile, data_year) %>%
-  summarise(variable_value_wt=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>% 
-  mutate(County.Name="Region")
+  summarise(variable_value=mean(variable_value, na.rm=TRUE)) %>% #calculate average value by county
+  mutate(county="Region")
 
 # check data set
-nrow(data_equity_wt_region)
+nrow(data_equity_region)
 ```
 
 These data sets should include records for:
@@ -641,25 +671,37 @@ These data sets should include records for:
 
 
 ### Calculate by county
-The data are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups. For life expectancy we also want to weight the values using the ACS population estimates. 
+The data are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups. For some indicators, such as life expectancy, we may also want to weight the values using the ACS population estimates. 
 
-The step of calculating by county/equity group/quintile is important for all data sets. The weighting by population is optional depending on the data set. 
+The step of calculating by county/equity group/quintile is important for all data sets. The weighting by population is optional depending on the data set - comment out or delete whichever doesn't fit your data set. 
 ```{r}
+# # if you weighted your data set -----
+# # calculations to get weighted average values
+# data_equity_county <- data_equity_pivot %>%
+#   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
+#   mutate(total_risk_tract=variable_value*population) %>%
+#   group_by(county, data_year, equity_group, quintile) %>%
+#   summarise(tracts=length(geoid),
+#             total_variable=(sum(total_risk_tract, na.rm = TRUE)),
+#             total_pop=(sum(population, na.rm = TRUE)),
+#             .groups = "drop") %>%
+#   mutate(variable_value=total_variable/total_pop)
+# 
+# # check data set
+# nrow(data_equity_county)
+# table(data_equity_county$data_year)
 
-# calculations to get weighted average life expectancy
-data_equity_wt_county <- data_equity_pivot %>% 
+# if you did not weight your data set -----
+data_equity_county <- data_equity_pivot %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-  mutate(total_risk_tract=variable_value*population) %>% 
-  group_by(County.Name, data_year, equity_group, quintile) %>%
+  group_by(county, data_year, equity_group, quintile) %>%
   summarise(tracts=length(geoid),
-            total_variable=(sum(total_risk_tract, na.rm = TRUE)),
-            total_pop=(sum(population, na.rm = TRUE)),
-            .groups = "drop") %>% 
-  mutate(variable_value_wt=total_variable/total_pop)
+            variable_value=mean(variable_value, na.rm=TRUE), #calculate average value by county
+            .groups = "drop")
 
 # check data set
-nrow(data_equity_wt_county)
-table(data_equity_wt_county$data_year)
+nrow(data_equity_county)
+table(data_equity_county$data_year)
 ```
 
 This data sets should include records for:
@@ -667,17 +709,14 @@ This data sets should include records for:
 * 4 geographies: 4 PSRC counties
 * 6 equity focus groups (disability is not available in for 2010, but is for 2012; lep is not available in 2012)
 * 5 equity quintiles 
-* 3 years
 
 
 ### Combine region and county data
 ```{r}
-data_tract <- as.data.frame(rbind(data_equity_wt_region,
-                                  data_equity_wt_county)) %>% 
-  dplyr::select(-total_variable, -total_pop, -tracts) %>% 
-  filter(!is.na(quintile)) %>% 
-  rename(variable_value=variable_value_wt,
-         county=County.Name) # rename to make sure data is consistent with the supporting functions
+data_tract <- as.data.frame(rbind(data_equity_region,
+                                  data_equity_county)) %>% 
+  dplyr::select(county, data_year, equity_group, quintile, variable_value) %>% 
+  filter(!is.na(quintile))
 
 # check data set
 str(data_tract)
@@ -721,11 +760,11 @@ other_data <- data_tract %>%
 # nrow(other_data) #425
 
 data_tract_comb <- rbind(low_lowmed, #4
-                    other_data) #425
+                         other_data) #506
 
-# nrow(data_tract) #429 - should be fewer because of duplicates - low and low medium present in data set because of aggregation/calculations in previous steps - need to be removed and replaced with averaged values
-# table(data_tract$quintile_original, data_tract$county) # should not have extra in low and low medium quintile categories
-# unique(data_tract$quintile) #5 quintiles
+# nrow(data_tract_comb) #510 - this number should be smaller but there are duplicates - low and low medium present in data set because of aggregation/calculations in previous steps - so the extras need to be removed and replaced with averaged values
+# table(data_tract_comb$quintile_original, data_tract_comb$county) # should not have extra in low and low medium quintile categories
+# unique(data_tract_comb$quintile) #5 quintiles
 
 # remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
 data_full <- data_tract_comb %>% 
@@ -736,8 +775,8 @@ data_full <- data_tract_comb %>%
              quintile_original=="Low Medium"))) %>% 
   select(-quintile_original) # not needed for visualization, originally kept for checking
 
-# nrow(data_tract) #425
-# table(data_tract$quintile, data_tract$county) #should not have extra in low and low medium quintile categories
+# nrow(data_full) #510
+# table(data_full$quintile, data_full$county) #should not have extra in low and low medium quintile categories
 ```
 
 ## Rename and factor
