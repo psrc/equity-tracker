@@ -260,7 +260,7 @@ num_colors = 5
 color_rev = FALSE
 title = "Cardiovascular Disease Mortality by Community"
 subtitle = "Age adjusted rate per 100,000"
-source = "Washington State Department of Health, 2016-2020 Washington Tracking Network, Cardiovascular Disease Mortality - Age Adjusted Rate per 100,000; U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
+source = "Washington State Department of Health, 2018-2022 Washington Tracking Network, Cardiovascular Disease Mortality - Age Adjusted Rate per 100,000; U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -489,8 +489,8 @@ y_min = 0
 y_max = 300
 color = "blues"
 title = "Cardiovascular Disease Mortality Trend by Community"
-subtitle = "Age adjusted rate per 100,000, in 5-year spans between 2010 and 2020"
-source = "Washington State Department of Health, 2006-2010, 2011-2015, 2016-2020 Washington Tracking Network, Cardiovascular Disease Mortality - Age Adjusted Rate per 100,000; U.S. Census Bureau, 2006-2010, 2011-2015, 2016-2020 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
+subtitle = "Age adjusted rate per 100,000, in 5-year spans between 2012 and 2022"
+source = "Washington State Department of Health, 2008-2012, 2013-2017, 2018-2022 Washington Tracking Network, Cardiovascular Disease Mortality - Age Adjusted Rate per 100,000; U.S. Census Bureau, 2008-2012, 2013-2017, 2018-2022 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
