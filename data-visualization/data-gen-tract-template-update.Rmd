@@ -656,51 +656,17 @@ These data sets should include records for:
 
 
 ## Calculations
-### Calculate by region (weighted or not)
-The data are available at the census tract level, but we want to calculate the regional average. For some indicators, such as life expectancy, we may also want to weight the values using the ACS population estimates. 
-
-The step of calculating by region is important for all data sets because the region is one of the visualization options (radio buttons), along with each county. The weighting by population is optional depending on the data set - comment out or delete whichever doesn't fit your data set. 
-```{r}
-# if you weighted your data set -----
-data_equity_region <- data_equity_pivot %>%
-  filter(!is.na(quintile)) %>% #missing lep and disability data
-  dplyr::group_by(equity_group, quintile, data_year) %>%
-  summarise(variable_value=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>%
-  mutate(county="Region")
-
-# check data set
-nrow(data_equity_region)
-
-# # if you did not weight your data set -----
-# data_equity_region <- data_equity_pivot %>% 
-#   filter(!is.na(quintile)) %>% #missing lep and disability data
-#   dplyr::group_by(equity_group, quintile, data_year) %>%
-#   summarise(variable_value=mean(variable_value, na.rm=TRUE)) %>% #calculate average value by county
-#   mutate(County.Name="Region")
-# 
-# # check data set
-# nrow(data_equity_region)
-```
-
-These data sets should include records for:
-
-* 1 geography: region
-* 6 equity focus groups (disability and lep are not available in for 2010, lep not available in 2015)
-* 5 equity quintiles 
-* 3 years (this is dependent on the indicator data set)
-
-
-### Calculate by county
-The data are available at the census tract level but we want to calculate the weighted values by the 6 equity/5 quintile groups. For some indicators, such as life expectancy, we may also want to weight the values using the ACS population estimates. 
+### Calculate by county and region
+The data are available at the census tract level but we want to calculate the average values across the census tracts grouping by the 6 equity/5 quintile groups/5 geographies (4 counties + region). For some indicators, such as life expectancy, we may also want to weight the values using the ACS population estimates. 
 
 The step of calculating by county/equity group/quintile is important for all data sets. The weighting by population is optional depending on the data set - comment out or delete whichever doesn't fit your data set. 
 ```{r}
 # if you weighted your data set -----
 # calculations to get weighted average values
-data_equity_county <- data_equity_pivot %>%
+data_tract <- data_equity_pivot %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
   mutate(total_risk_tract=variable_value*population) %>%
-  group_by(county, data_year, equity_group, quintile) %>%
+  group_by(county, data_year, equity_group, quintile) %>% # county field includes region
   summarise(tracts=length(geoid),
             total_variable=(sum(total_risk_tract, na.rm = TRUE)),
             total_pop=(sum(population, na.rm = TRUE)),
@@ -708,39 +674,22 @@ data_equity_county <- data_equity_pivot %>%
   mutate(variable_value=total_variable/total_pop)
 
 # check data set
-nrow(data_equity_county)
-table(data_equity_county$data_year)
+nrow(data_tract)
+table(data_tract$data_year)
 
 # # if you did not weight your data set -----
-# data_equity_county <- data_equity_pivot %>% 
+# data_tract <- data_equity_pivot %>%
 #   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-#   group_by(county, data_year, equity_group, quintile) %>%
+#   group_by(county, data_year, equity_group, quintile) %>% # county field includes region
 #   summarise(tracts=length(geoid),
-#             variable_value=mean(variable_value, na.rm=TRUE), #calculate average value by county
+#             variable_value=mean(variable_value, na.rm=TRUE), # calculate average value by county and region
 #             .groups = "drop")
 # 
 # # check data set
-# nrow(data_equity_county)
-# table(data_equity_county$data_year)
+# nrow(data_tract) #4
+# table(data_tract$data_year)
 ```
 
-This data sets should include records for:
-
-* 4 geographies: 4 PSRC counties
-* 6 equity focus groups (disability is not available in for 2010, but is for 2012; lep is not available in 2012)
-* 5 equity quintiles 
-
-
-### Combine region and county data
-```{r}
-data_tract <- as.data.frame(rbind(data_equity_region,
-                                  data_equity_county)) %>% 
-  dplyr::select(county, data_year, equity_group, quintile, variable_value) %>% 
-  filter(!is.na(quintile))
-
-# check data set
-str(data_tract)
-```
 This data set should include records for: 
 
 * 5 geographies: 4 PSRC counties + region
@@ -780,9 +729,9 @@ other_data <- data_tract %>%
 # nrow(other_data) #425
 
 data_tract_comb <- rbind(low_lowmed, #4
-                         other_data) #506
+                         other_data) #421
 
-# nrow(data_tract_comb) #510 - this number should be smaller but there are duplicates - low and low medium present in data set because of aggregation/calculations in previous steps - so the extras need to be removed and replaced with averaged values
+# nrow(data_tract_comb) #425 - this number should be smaller but there are duplicates - low and low medium present in data set because of aggregation/calculations in previous steps - so the extras need to be removed and replaced with averaged values
 # table(data_tract_comb$quintile_original, data_tract_comb$county) # should not have extra in low and low medium quintile categories
 # unique(data_tract_comb$quintile) #5 quintiles
 
@@ -795,7 +744,7 @@ data_full <- data_tract_comb %>%
              quintile_original=="Low Medium"))) %>% 
   select(-quintile_original) # not needed for visualization, originally kept for checking
 
-# nrow(data_full) #510
+# nrow(data_full) #425
 # table(data_full$quintile, data_full$county) #should not have extra in low and low medium quintile categories
 ```
 

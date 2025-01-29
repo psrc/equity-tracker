@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -45,8 +45,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 
 ```{r variables setup}
