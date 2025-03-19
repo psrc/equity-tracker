@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -45,8 +45,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-# output_type <- "word"
-output_type <- "html"
+output_type <- "word"
+# output_type <- "html"
 ```
 
 ```{r variables setup}
@@ -191,28 +191,26 @@ data <- data_tract %>%
 # calculate call out information
 sort <- data %>% 
   dplyr::arrange(desc(variable_value))
-# 3 highest: 53053072801 (DuPont) Pierce (99.40), 53033007101 (Uptown Seattle) King (96.63), 53033022803 (Redmond) King (95.82)
+# 3 highest: 53033029407 (Kent) King (479.49), 53053073115 (Elk Plain) Pierce (465.37), 53053061602 (downtown Tacoma) Pierce (456.13)
 
 sort <- data %>% 
   dplyr::arrange(variable_value)
-# lowest by county: 53053061900 (South End, Tacoma) Pierce (68.43), 53033005303 (UW) King (68.51), 53033031101 (Auburn, south of SR18) King (71.65), 53061940002 (Tulalip Reservation) Snohomish (69.97), 53035081100 (Charleston, Bremerton) kitsap (73.16)
+# lowest not counting 'not reliable' values: 53061050502 (Edmonds) Snohomish (73.63), 53033022803 (Redmond) King (73.67), 53033004102 (Laurelhurst and Windmere neighborhoods) King (74.17)
 
-# difference between highest and lowest
-99.40-68.43=30.97
+# % difference between highest and lowest
+((74-479)/(74))*100=547.29% difference
 ```
-
-1. 80 years: The region's average life expectancy
-2. 78.6 years: The regional life expectancy of communities with high concentrations of people of color, compared to 80.8 in communities with low concentrations, a difference of 2.2 years
-3. 30 years: The difference in the number of years between those living in the census tracts with the highest and lowest life expectancy
+* 198: The region’s average cardiovascular disease mortality rate (per 100,000)
+* 234: Pierce County has the highest rate of deaths due to heart disease and stroke among PSRC’s four counties
+* 547%: The census tract with the highest rate (479) is 547% higher than the one with the lowest rate (74)
 
 \
 
 #### Insights & Analysis
 
-* King County has the highest life expectancy (80.8 years), followed by Kitsap (80.6 years), Snohomish (79.8 years), and Pierce (78.2 years)
-* Communities with the highest life expectancy are in DuPont, Pierce County (99.4 years); the Uptown neighborhood in Seattle, King County (96.6 years); Redmond, King County (95.8 years)
-* Among the communities with the lowest life expectancy are the South End neighborhood in Tacoma, Pierce County (68.4 years); Auburn, King County (71.7 years); Tulalip Reservation, Snohomish County (70.0 years); the Charleston neighborhood in Bremerton, Kitsap County (73.2 years)
-* There is a 2.6 year difference between life expectancy in King and Pierce counties, counties with the highest and lowest countywide averages, respectively.
+* Kitsap County has the lowest cardiovascular disease mortality rate (182 per 100,000), followed by King (186), Snohomish (195), and Pierce (234).
+* Communities with the lowest cardiovascular disease mortality rate (per 100,000) are in Edmonds, Snohomish County (74); Redmond, King County (74); Laurelhurst/Windmere neighborhoods (Seattle), King County (74).
+* Communities with the highest cardiovascular disease mortality rate (per 100,000) are in Kent, King County (479); Elk Plain, Pierce County (465); downtown Tacoma, Pierce County (456).
 
 \
 \
@@ -252,7 +250,7 @@ y = "variable_value"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0
-y_max = 300
+y_max = 400
 dec = 0
 esttype = "number"
 color = "oranges"
@@ -348,75 +346,51 @@ if (output_type == "html") {
 ```{r column facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 
-# data call out (#2) from above 
-filter <- data_clean_column %>% 
-  filter(county=="Region",
-         equity_group=="poc_quintile")
-
-# region low quintile poc households: 80.75294	
-# region high quintile poc households: 78.58048
-# 80.75294-78.58048=2.17246
-
 filter <- data_clean_column %>% 
   filter(equity_group=="income_quintile",
          quintile=="Low"|
            quintile=="High",
          county!="Region")
 
-# king low-high quintile low income households: 82.30115-	77.81201=4.48914
-# kitsap low-high quintile low income households: 83.36568-78.39460=4.97108
-# pierce low-high quintile low income households: 81.40780-75.06289=6.34491
-# snohomish low-high quintile low income households: 81.37299-78.03709=3.3359
+# king high-low quintile low income households: 216.3261-	167.7928=48.5333
+# kitsap high-low quintile low income households: 200.9060-154.2092=46.6968
+# pierce high-low quintile low income households: 267.5472-205.8453=61.7019
+# snohomish high-low quintile low income households: 219.1714-187.4982=31.6732
 
 filter <- data_clean_column %>% 
-  filter(equity_group=="lep_quintile",
+  filter(equity_group=="poc_quintile",
          quintile=="Low"|
            quintile=="High",
-         county!="Region")
+         county=="Region")
 
-# king dif bt high/low quintiles for lep: 82.61406-79.57669=3.03737
-# kitsap dif bt high/low quintiles for lep: 80.75554-79.68579=1.06975
-# pierce dif bt high/low quintiles for lep: 79.19723-76.27642=2.92081
-# snohomish dif bt high/low quintiles for lep: 79.25054-78.99658=0.25396
-
-
-filter <- data_clean_column %>% 
-  filter(equity_group=="disability_quintile",
-         quintile=="Low"|
-           quintile=="High")
-# region dif bt low/high quintiles for disability: 81.42043-77.88053=3.5399
-
-filter <- data_clean_column %>% 
-  filter(county!="Region",
-         equity_group=="youth_quintile",
-         quintile=="Low"|
-           quintile=="High")
-# king dif bt high/low quintiles for income: 80.94906-79.57012=1.37894
-# kitsap dif bt high/low quintiles for income: 81.29869-80.12047=1.17822
-# pierce dif bt high/low quintiles for income: 78.64674-78.50646=0.14028
-# snohomish dif bt high/low quintiles for income: 81.13082-79.70847=1.42235
+# region dif bt high/low quintiles for poc: 205.4468-190.0173=15.4295
+# ((205.4468-190.0173)/((205.4468+190.0173)/2))*100=7.8% difference
 
 
 filter <- data_clean_column %>% 
   filter(equity_group=="income_quintile",
-         quintile=="Low"|
-           quintile=="High")
-
-# region dif bt high/low quintiles for income: 81.99937-77.20026=4.79911
-# king dif bt high/low quintiles for income: 82.30115-77.81201=4.48914
-# kitsap dif bt high/low quintiles for income: 83.36568-78.39460=4.97108
-# pierce dif bt high/low quintiles for income: 81.40780-75.06289=6.34491
-# snohomish dif bt high/low quintiles for income: 81.37299-78.03709=3.3359
+         quintile=="High",
+         county!="Region")
+# regional average: 198
+# king: 216.3261
+# ((216.3261-198)/((216.3261+198)/2))*100=8.8% difference
+# Kitsap:200.9060
+# ((200.9060-198)/((200.9060+198)/2))*100=1.5%
+# Pierce: 267.5472
+# ((267.5472-198)/((267.5472+198)/2))*100=29.9%
+# Snohomish: 219.1714
+# ((219.1714-198)/((219.1714+198)/2))*100=10.1%
 ```
 \
 
 #### Insights & Analysis
 
-* The smallest difference in life expectancy between communities with high and low concentrations of households with lower income is in Snohomish County (3.3 years), while the largest difference is in Pierce County (6.3 years).
-* The life expectancy of communities with high concentrations of households with limited English proficiency is lower in all counties - ranging from Pierce (76.3 years), with the lowest life expectancy, to Kitsap (79.7 years), with the highest life expectancy.
-* Regionally, communities with higher concentrations of people with disabilities have lower life expectancies than those without disabilities by 3.5 years.
-* Communities with high concentrations of households with youth have life expectancies 1.4 years longer than households without youth in 3 of the counties: King, Kitsap, and Snohomish. The difference in Pierce County is almost negligible (0.1 year).
-* The life expectancy of communities with high concentrations of households with lower income is shortest in Pierce County at 75.1 years- 2.1 fewer years than the regional average for communities with high concentrations of households with lower income (77.2 years).
+* The smallest difference in the cardiovascular disease mortality rate between communities with high and low concentrations of households with lower income is in Snohomish County (32 per 100,000), followed by Kitsap County (47), King County (49), and Pierce County (62).
+* The rate of heart disease and stroke-related deaths is highest in areas with high concentrations of people with disabilities in all the counties; however, the rate varies from 209 per 100,000 in Snohomish County to 252 per 100,000 in Pierce County.
+* Across the region, the rate of heart disease and stroke-related deaths slightly increases in areas with higher concentrations of households with limited English proficiency; however the difference is relatively small - a difference of 15 deaths (per 100,000) between the communities with the lowest and highest concentrations.
+* Communities with high concentrations of households with children have higher rates of cardiovascular disease mortality in King County, while there is no clear trend in Kitsap, Pierce, and Snohomish Counties.
+* The cardiovascular disease mortality rate is 205 (per 100,000) for communities with high concentrations of people of color, which is 8% higher than those with low concentrations (190).
+* In Pierce County, the rate of heart disease and stroke-related deaths for communities with high concentrations of households with lower income is 30% higher than the regional average.
 
 \
 \
@@ -486,7 +460,7 @@ df = dplyr::filter(df2, data_year %in% years)
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
 y_min = 0
-y_max = 300
+y_max = 400
 color = "blues"
 title = "Cardiovascular Disease Mortality Trend by Community"
 subtitle = "Age adjusted rate per 100,000, in 5-year spans between 2012 and 2022"
@@ -582,47 +556,41 @@ if (output_type == "html") {
 ```{r line facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 filter <- data_clean %>% 
-  filter(county=="Region",
+  filter(county!="Region",
          equity_group=="poc_quintile",
-         quintile=="Low" | 
-           quintile=="High",
+         quintile=="High",
          data_year=="2012" |
            data_year=="2022")
 
-# 2010 region low quintile poc households: 80.54142	
-# 2010 region high quintile poc households: 76.64042
-# 80.54142-76.64042=3.901
-# 2020 region low quintile poc households: 81.19030
-# 2020 region high quintile poc households: 76.67422
-# 81.19030-76.67422=4.51608
-# ((4.51608-3.901)/(3.901))*100: 15.8% change
-
-filter <- data_clean %>% 
-  filter(county=="Snohomish",
-         equity_group=="income_quintile",
-         quintile=="Low" | 
-           quintile=="High",
-         data_year=="2012" |
-           data_year=="2022")
-
-# 2012 king low-high quintile income: 79.07988-74.11040=4.96948	
-# 2022 king low-high quintile income: 82.30115-77.81201=4.48914
-# 4.96948-4.48914=0.48034
-# 2012 kitsap low-high quintile income: 78.34657-63.55216=14.79441
-# 2022 kitsap low-high quintile income: 83.36568-78.39460=4.97108
-# 14.79441-4.97108=9.82333
-# 2012 pierce low-high quintile income: 79.83607-68.12831=11.70776
-# 2022 pierce low-high quintile income: 81.40780-75.06289=6.34491
-# 11.70776-6.34491=5.36286
-# 2012 snohomish low-high quintile income: 79.68945-78.47776=1.21169
-# 2022 snohomish low-high quintile income: 81.37299-78.03709=3.3359
-# 1.21169-3.3359=-2.12421
+# king high quintile-2022-2012 poc: 204.8824-	207.6089=-2.7265
+# kitsap high quintile-2022-2012 poc: 173.0790-169.7960=3.283
+# pierce high quintile-2022-2012 poc: 254.5062-294.1253=-39.6191
+# snohomish high quintile-2022-2012 poc: 201.5631-213.7537=-12.1906
+# ((173.0790-169.7960)/(169.7960))*100: 1.9% change
 
 filter <- data_clean %>% 
   filter(county!="Region",
-         equity_group=="lep_quintile", 
+         equity_group=="income_quintile",
          quintile=="High",
-         data_year=="2022")
+         data_year=="2012" |
+           data_year=="2022")
+
+# King high quintile-2022-2012 income: 216.3261-219.9441=-3.618
+# Kitsap high quintile-2022-2012 income: 200.9060-220.1478=-19.2418
+# Pierce high quintile-2022-2012 income: 267.5472-292.1881=-24.6409
+# Snohomish high quintile-2022-2012 income: 219.1714-235.0633=-15.8919
+
+filter <- data_clean %>% 
+  filter(county!="Region",
+         equity_group=="disability_quintile", 
+         quintile=="High",
+         data_year=="2022" |
+           data_year=="2012")
+
+# King high quintile-2022-2012 dis: 218.2866-217.2103=1.0763
+# Kitsap high quintile-2022-2012 dis: 212.7042-197.4100=15.2942
+# Pierce high quintile-2022-2012 dis: 252.4236-257.0782=-4.6546
+# Snohomish high quintile-2022-2012 dis: 209.1674-237.0070=-27.8396
 
 
 filter <- data_clean %>% 
@@ -632,9 +600,9 @@ filter <- data_clean %>%
            quintile=="High",
          data_year=="2012" |
            data_year=="2022")
-# 2012 low-high poc: 80.25792-77.01544=3.24248
-# 2022 low-high poc: 80.75294-78.58048=2.17246
-# ((2.17246-3.24248)/3.24248)*100=-33%
+# 2012 high-low poc: 220.8834-194.1031= 26.7803
+# 2022 high-low poc: 205.4468-190.0173= 15.4295
+# ((15.4295-26.7803)/26.7803)*100= 42.38489% decrease
 
 filter <- data_clean %>% 
   filter(county=="Region",
@@ -644,32 +612,32 @@ filter <- data_clean %>%
          data_year=="2012" |
            data_year=="2022")
 
-# 2012 low-high low income: 79.28106-72.72990=6.55116
-# 2022 low-high low income: 81.99937-77.20026=4.79911
-# ((4.79911-6.55116)/6.55116)*100=-26.74412%
+# 2012 high-low low income: 242.2497-169.1512=73.0985
+# 2022 high-low low income: 232.1198-174.1866=57.9332
+# ((57.9332-73.0985)/73.0985)*100= 20.74639% decrease
 
 filter <- data_clean %>% 
   filter(county=="Region",
-         equity_group=="disability_quintile",
+         equity_group=="youth_quintile",
          quintile=="Low" | 
            quintile=="High",
          data_year=="2012" |
            data_year=="2022")
 
-# 2012 low-high dis: 76.94577-77.51709=-0.57132
-# 2022 low-high dis: 81.42043-77.88053=3.5399
-# ((3.5399--0.57132)/0.57132)*100=719.6%
+# 2012 high-low youth: 211.7690-203.8520=7.917
+# 2022 high-low youth: 204.1380-182.4591=21.6789
+# ((21.6789-7.917)/7.917)*100=173.8272%
 ```
 \
 
 #### Insights & Analysis
 
-* Snohomish County is the only county in the region where the life expectancy of communities with high concentrations of people of color is similar to or slightly higher than the life expectancy of communities with low concentrations of people of color, a trend consistent over most of the past decade.
-* The life expectancy gaps between areas with high and low concentrations of households with lower income decreased in King (-0.5 years), Kitsap (-9.8 years), and Pierce (-5.4 years) counties between 2012 and 2022. In Snohomish County the gap increased from 1.2 years in 2012 to 3.3 years in 2022.
-* The 2022 life expectancy of communities with high concentrations of households with limited English proficiency is shortest in Pierce County (76.3 years), compared to Kitsap (79.7 years), King (79.6 years), and Snohomish (79 years).
-* The regional life expectancy gap is 2.2 years between communities with high and low concentrations of people of color in 2022, a 33% smaller gap than in 2012.
-* The regional life expectancy gap decreased 27% between areas with high and low concentrations of households with lower income between 2012 and 2022.
-*  In 2022, communities with high concentrations of individuals with a disability had a lower life expectancy (77.9 years) than communities with low concentrations of individuals without a disability (81.4 years). 
+* For areas with high concentrations of people of color, Kitsap County is the only county in the region where the cardiovascular disease mortality rate increased over the past decade (by 2%).
+* Although deaths related to heart disease and stroke have decreased over time for communities with high concentrations of households with lower income in all counties, the rate has remained the highest in Pierce County (267 per 100,000) - compared to Snohomish Couny (2019), King County (216), and Kitsap County (201).
+* For areas with high concentrations of people with disabilities, the cardiovascular disease mortality rate has decreased over time in Snohomish County (-28 per 100,000) and Pierce County (-5 per 100,000), while the rate has very slightly increased in King County (+1 per 100,000) and Kitsap County (+15 per 100,000).
+* The regional cardiovascular disease mortality rate for communities with high concentrations of people of color is larger than that for communities with low concentration – the disparity is 42% smaller in 2022 than in 2012.
+* Communities with high concentrations of households with lower income have larger cardiovascular disease mortality rates than those with low concentrations (difference: 58/100,000) - the disparity is 21% smaller in 2022 than in 2012.
+* The regional cardiovascular disease mortality rate for communities with high concentrations of households with youth is larger than communities with small concentrations - the disparity has increased 174% between 2012 and 2022.
 
 \
 \

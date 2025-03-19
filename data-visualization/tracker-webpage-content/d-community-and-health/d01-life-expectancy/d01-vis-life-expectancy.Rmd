@@ -277,7 +277,7 @@ num_colors = 5
 color_rev = FALSE
 title = "Life Expectancy by Community"
 subtitle = "Number of years a newborn can be expected to live based on current conditions"
-source = "Washington State Department of Health, 2016-2020 Washington Tracking Network, Life Expectancy at Birth; U.S. Census Bureau, 2016-2020 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
+source = "Washington State Department of Health, 2018-2022 Washington Tracking Network, Life Expectancy at Birth; U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
