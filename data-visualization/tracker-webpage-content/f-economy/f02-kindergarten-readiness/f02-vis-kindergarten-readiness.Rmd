@@ -123,7 +123,7 @@ ospi_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=ospi_data_tract,
-              fillColor = psrc_palette(ospi_data_plus_zero),
+              fillColor = psrc_palette(ospi_data_tract$Percent_num),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
