@@ -6,8 +6,8 @@ Clone this repository to a local directory.* Open an Anaconda prompt and change 
 *If you have been working on this project, you will have likely already cloned this repository to a local directory. 
 
 _As an example:_
-![image](![Capture](https://github.com/user-attachments/assets/a96ae4bd-e3fc-4199-9000-02125087181a)
-)
+
+![Capture](https://github.com/user-attachments/assets/a96ae4bd-e3fc-4199-9000-02125087181a)
 
 ## Virtual Environment
 From the Anaconda prompt in the equity-tracker directory root, enter the following to install a virtual environment that includes all required versions of Python libraries:
