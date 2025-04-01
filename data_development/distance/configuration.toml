@@ -1,4 +1,4 @@
-analysis_year_list = [2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023]
+analysis_year_list = [2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024]
 
 output_dir = "Y:/Equity Indicators/access"
 
@@ -6,7 +6,7 @@ base_year = 2018   # used only for parcel geography and lookup definitions
 crs = 'EPSG:2285'
 
 elmergeo_conn_string = 'AWS-Prod-SQL\Sockeye'
-elmer_conn_string = 'DRIVER={ODBC Driver 17 for SQL Server}; SERVER=AWS-PROD-SQL\Sockeye; DATABASE=Elmer; trusted_connection=yes'
+elmer_conn_string = 'DRIVER={ODBC Driver 17 for SQL Server}; SERVER=SQLserver; DATABASE=Elmer; trusted_connection=yes'
 
 # Location of regional GTFS data, with a folder for each year
 # If analysis year > available GTFS, script will use newest available
@@ -27,11 +27,13 @@ hct_submode_list = [0,2,4]
 
 # brt route list
 [brt_routes]
-'KC_100512' = 'A Line'
-'KC_102548' = 'B Line'
-'KC_102576' = 'C Line'
-'KC_102581' = 'D Line'
-'KC_102615' = 'E Line'
-'CT_701' = 'Swift Blue'
-'CT_702' = 'Swift Green'
+'kc_100512' = 'A Line'
+'kc_102548' = 'B Line'
+'kc_102576' = 'C Line'
+'kc_102581' = 'D Line'
+'kc_102615' = 'E Line'
+'kc_102619' = 'F Line'
+'kc_102736' = 'H Line'
+'ct_701' = 'Swift Blue'
+'ct_702' = 'Swift Green'
 
