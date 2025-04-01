@@ -11,11 +11,11 @@ _As an example:_
 
 ## Virtual Environment
 From the Anaconda prompt in the equity-tracker directory root, enter the following to install a virtual environment that includes all required versions of Python libraries:
- - `conda env create -f data_development/distance/environment.yml`
+ - `conda env create -f data_development\distance\environment.yml`
 
 After install is complete enter: 
-- `conda activate equity_tracker`. 
-You should see (equity_tracker) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
+- `conda activate equity_tracker_env`. 
+You should see (equity_tracker_env) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
 
 ## Elmer Connections
 Most Data staff should already have access to work with Elmer databases. Check that the ODBC driver is installed on your workspace by searching for it in Windows - it should show up as ODBC Data Sources (64-bit). If not, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults. If there are problems connecting with Elmer, contact Brice or Chris Peak. 
@@ -65,7 +65,7 @@ This file reports the average weighted miles to a variety of HCT stations within
 **The various year fields can be confusing because they may not match the `analysis_year`. The `ofm_estimate_year` (year data is from) should match the `analysis_year` (whichever year you're trying to get the data from). The only time that those two would be different is if an ofm estimate isn't available for that analysis year. `ofm_estimate_year` is different from `ofm_vintage` (which represents the year from which the `ofm_estimate_year` was produced). There are multiple OFM vintages of when the data was published, but this script searches for the when the newest available vintage was released, so the year is sometimes more recent than the `ofm_estimate_year`.
 
 Once the individual years are produced, this script can be run to combine all years into a single file:
-- `python data/development/distance/compile_results.py`
+- `python data\development\distance\compile_results.py`
 
 This script concatenates all yearly output files into a single file named **tract_hct_distance_compiled.csv**, which should serve as the primary method for accessing this data. 
 
