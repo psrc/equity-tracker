@@ -226,10 +226,10 @@ sort <- data %>%
 
 #### Insights & Analysis
 
-* King County has the highest life expectancy (80.8 years), followed by Kitsap (80.6 years), Snohomish (79.8 years), and Pierce (78.2 years)
-* Communities with the highest life expectancy are in DuPont, Pierce County (99.4 years); the Uptown neighborhood in Seattle, King County (96.6 years); Redmond, King County (95.8 years)
-* Among the communities with the lowest life expectancy are the South End neighborhood in Tacoma, Pierce County (68.4 years); Auburn, King County (71.7 years); Tulalip Reservation, Snohomish County (70.0 years); the Charleston neighborhood in Bremerton, Kitsap County (73.2 years)
+* King County has the highest life expectancy (80.8 years), followed by Kitsap (80.6 years), Snohomish (79.8 years), and Pierce (78.2 years).
 * There is a 2.6 year difference between life expectancy in King and Pierce counties, counties with the highest and lowest countywide averages, respectively.
+* Communities with the highest life expectancy are in DuPont, Pierce County (99.4 years); the Uptown neighborhood in Seattle, King County (96.6 years); Redmond, King County (95.8 years).
+* Among the communities with the lowest life expectancy are the South End neighborhood in Tacoma, Pierce County (68.4 years); Auburn, King County (71.7 years); Tulalip Reservation, Snohomish County (70.0 years); the Charleston neighborhood in Bremerton, Kitsap County (73.2 years).
 
 \
 \
@@ -429,7 +429,7 @@ filter <- data_clean_column %>%
 
 #### Insights & Analysis
 
-* The smallest difference in life expectancy between communities with high and low concentrations of households with lower income is in Snohomish County (3.3 years), while the largest difference is in Pierce County (6.3 years).
+* Communities with high concentrations of households with lower income have lower life expectancy than those with low concentrations; the smallest difference is in Snohomish County (3.3 years) and the largest difference is in Pierce County (6.3 years).
 * The life expectancy of communities with high concentrations of households with limited English proficiency is lower in all counties - ranging from Pierce (76.3 years), with the lowest life expectancy, to Kitsap (79.7 years), with the highest life expectancy.
 * Regionally, communities with higher concentrations of people with disabilities have lower life expectancies than those without disabilities by 3.5 years.
 * Communities with high concentrations of households with youth have life expectancies 1.4 years longer than households without youth in 3 of the counties: King, Kitsap, and Snohomish. The difference in Pierce County is almost negligible (0.1 year).
