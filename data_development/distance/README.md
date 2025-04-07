@@ -1,20 +1,21 @@
 This method calculates average weighted distance to high capacity transit (HCT) stations for each tract in the region, using parcel-level household population as weights. The setup, usage, and calculation methods are described below. 
 
 # Setup
-Clone this repository to a local directory.* Open an Anaconda prompt and change directory to the location of the local repository (equity-tracker/data_development/distance). 
+Clone this repository to a local directory.* Open an Anaconda prompt and change directory to the location of the local equity-tracker repository. 
 
 *If you have been working on this project, you will have likely already cloned this repository to a local directory. 
 
 _As an example:_
-![image](https://github.com/psrc/equity-tracker/assets/72169299/c1609ec5-b914-4697-8d34-88b10dd9dc69)
+
+![Capture](https://github.com/user-attachments/assets/a96ae4bd-e3fc-4199-9000-02125087181a)
 
 ## Virtual Environment
-From the Anaconda prompt in this project directory root, enter the following to install a virtual environment that includes all required versions of Python libraries:
- - `conda env create -f environment.yml`
+From the Anaconda prompt in the equity-tracker directory root, enter the following to install a virtual environment that includes all required versions of Python libraries:
+ - `conda env create -f data_development\distance\environment.yml`
 
 After install is complete enter: 
-- `conda activate equity_tracker`. 
-You should see (equity_tracker) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
+- `conda activate equity_tracker_env`. 
+You should see (equity_tracker_env) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
 
 ## Elmer Connections
 Most Data staff should already have access to work with Elmer databases. Check that the ODBC driver is installed on your workspace by searching for it in Windows - it should show up as ODBC Data Sources (64-bit). If not, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults. If there are problems connecting with Elmer, contact Brice or Chris Peak. 
@@ -31,19 +32,21 @@ In addition to ensuring GTFS data is available for the analyis year, users shoul
 
 Ensure that no new BRT routes should be included to the following. If so, check the routes.txt file in the GTFS data to determine the route ID and name and add to the **brt_routes** list.
 
-- 'KC_100512' = 'A Line'
-- 'KC_102548' = 'B Line'
-- 'KC_102576' = 'C Line'
-- 'KC_102581' = 'D Line'
-- 'KC_102615' = 'E Line'
-- 'CT_701' = 'Swift Blue'
-- 'CT_702' = 'Swift Green'
+'kc_100512' = 'A Line'
+'kc_102548' = 'B Line'
+'kc_102576' = 'C Line'
+'kc_102581' = 'D Line'
+'kc_102615' = 'E Line'
+'kc_102619' = 'F Line'
+'kc_102736' = 'H Line'
+'ct_701' = 'Swift Blue'
+'ct_702' = 'Swift Green'
 
 Note that this list is applicable to all years, before these were all in service. The script selects the lines from GTFS only if they're available, so the list should be as current as possible regardless of which is being processed.
 
 ## Scripts
 The main script is controlled through `generate_indicators.py`, which can be run after verifying settings in `configuration.toml` by running:
-- `python generate_indicators.py` (with the equity-tracker virtual environment activated)
+- `python data_development/distance/generate_indicators.py` (with the equity-tracker virtual environment activated)
 
 This script will process the list of analysis years and store results at the specified output directory. A folder is generated for each analysis year with a file inside named `tract_hct_distance.csv`. 
 
@@ -62,7 +65,7 @@ This file reports the average weighted miles to a variety of HCT stations within
 **The various year fields can be confusing because they may not match the `analysis_year`. The `ofm_estimate_year` (year data is from) should match the `analysis_year` (whichever year you're trying to get the data from). The only time that those two would be different is if an ofm estimate isn't available for that analysis year. `ofm_estimate_year` is different from `ofm_vintage` (which represents the year from which the `ofm_estimate_year` was produced). There are multiple OFM vintages of when the data was published, but this script searches for the when the newest available vintage was released, so the year is sometimes more recent than the `ofm_estimate_year`.
 
 Once the individual years are produced, this script can be run to combine all years into a single file:
-- `python compile_results.py`
+- `python data_development\distance\compile_results.py`
 
 This script concatenates all yearly output files into a single file named **tract_hct_distance_compiled.csv**, which should serve as the primary method for accessing this data. 
 

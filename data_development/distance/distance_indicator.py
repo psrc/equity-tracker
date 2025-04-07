@@ -2,18 +2,11 @@ import os, sys, time
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-import sqlalchemy
-from shapely import wkt
 from scipy.spatial import cKDTree
-from shapely.geometry import Point
-from sqlalchemy.engine import URL
-from pymssql import connect
+# from pymssql import connect
 import warnings
 import transit_service_analyst as tsa
 warnings.filterwarnings('ignore')
-import toml
-
-config = toml.load("configuration.toml")
 
 def find_nearest(gdA, gdB):
     """ Find nearest value between two geodataframes.
@@ -66,22 +59,23 @@ def aggregate_results(results_dict, geog_level, analysis_year,
         df['gtfs_year'] = gtfs_year
         df['ofm_estimate_year'] = ofm_estimate
         df['ofm_vintage'] = ofm_vintage
-        df['geoid_value'] = geog_level
+        df['geoid_value'] = geog_level.split('_')[-1]
         df['analysis_year'] = analysis_year
         full_output_df = pd.concat([full_output_df,df.reset_index()])
 
     return full_output_df
 
-def fetch_gtfs(hct_submode_list, analysis_year):
+def fetch_gtfs(config, analysis_year):
     """Load transit stop and route data from GTFS and return selected high-capacity submodes stops."""
 
     gtfs_dir = os.path.join(config["gtfs_path"], str(analysis_year))
     # GTFS only available back to 2015; if earlier, use older available year
     available_gtfs_years = []
-    for entry_name in os.listdir(config["gtfs_path"]):
-        entry_path = os.path.join(config["gtfs_path"], entry_name)
-        if os.path.isdir(entry_path):
-            available_gtfs_years.append(int(entry_name))
+    for entry_name in config["analysis_year_list"]:
+        if str(entry_name) in os.listdir(config["gtfs_path"]):
+            entry_path = os.path.join(config["gtfs_path"], str(entry_name))
+            if os.path.isdir(entry_path):
+                available_gtfs_years.append(int(entry_name))
 
     # Get closest available GTFS data 
     gtfs_year = return_max_min(analysis_year, available_gtfs_years)
@@ -95,11 +89,15 @@ def fetch_gtfs(hct_submode_list, analysis_year):
 
     transit_analyst = tsa.load_gtfs(gtfs_dir, service_date)
     route_lines = transit_analyst.get_lines_gdf()
+    # Ensure all route ID's are lowercase
+    route_lines['route_id'] = route_lines['route_id'].apply(lambda x: x.lower())
     # Routes include both directions; choose the first instance
     route_lines = route_lines.groupby('route_id').first().reset_index()
     # Route is HCT submode OR is in list of BRT routes (and classified as generic bus route type)
-    hct_routes = route_lines[route_lines['route_type'].isin(hct_submode_list) | route_lines['route_id'].isin(config['brt_routes'].keys())]
+    hct_routes = route_lines[route_lines['route_type'].isin(config["hct_submode_list"]) | route_lines['route_id'].isin(config['brt_routes'].keys())]
     route_stops = transit_analyst.get_line_stops_gdf()
+    # Ensure all route ID's are lowercase
+    route_stops['route_id'] = route_stops['route_id'].apply(lambda x: x.lower())
 
     gdf = route_stops[route_stops['route_id'].isin(hct_routes['route_id'])]
     gdf = gdf.merge(hct_routes[['route_id','route_type']], on='route_id', how='left')
@@ -115,7 +113,7 @@ def fetch_gtfs(hct_submode_list, analysis_year):
 # Calculate average weighted distance to features
 #######################################################
 
-def load_parcel_data(elmer_engine):
+def load_parcel_data(config, elmer_engine):
     """Load parcel data as geodataframe. This is a large dataset and gets reused as we iterate through analysis years."""
 
     parcel_geog_df = pd.read_sql(sql='select parcel_id, tract_geoid10, tract_geoid20, \
@@ -143,7 +141,7 @@ def return_max_min(requested_value, available_value_list):
 
     return returned_value
 
-def calc_hct_distance(analysis_year, parcels_gdf, elmer_engine):
+def calc_hct_distance(config, analysis_year, parcels_gdf, elmer_engine):
      
     start_time = time.time()
 
@@ -154,7 +152,7 @@ def calc_hct_distance(analysis_year, parcels_gdf, elmer_engine):
         geoid = "geoid10"
 
     # Load GTFS data and return HCT data
-    hct_gdf, gtfs_year = fetch_gtfs(config['hct_submode_list'], analysis_year)  
+    hct_gdf, gtfs_year = fetch_gtfs(config, analysis_year)  
     
     # Use household population per parcel as a weight
     # Load this from OFM estimates (using the same estimate year and OFM vintage year, 
@@ -202,20 +200,25 @@ def calc_hct_distance(analysis_year, parcels_gdf, elmer_engine):
 
     # Iterate through submodes and calculate nearest stop (by submode) for each parcel
     results_dict_tract = {}
-    for submode, df in submode_dict.items():
+    for submode, gdf in submode_dict.items():
         print(submode)
-        if len(df) > 0:
-            results_dict_tract[submode] = find_nearest(parcels_gdf, df)
+        if len(gdf) > 0:
+            results_dict_tract[submode] = find_nearest(parcels_gdf, gdf)
             results_dict_tract[submode]['miles'] = results_dict_tract[submode]['dist']/5280.0
         else:
             print('no routes for submode: '+ submode)
+
+        # Write gdf to file
+        if len(gdf) > 0:
+            gdf_out = gdf.groupby(['stop_id','route_id']).first()
+            gdf_out.to_file(os.path.join(config['output_dir'], str(analysis_year), f"{submode}.shp"))
 
     # Aggregate parcel-level distances to population-weighted averages at the tract level
     tract_output_df = aggregate_results(results_dict_tract, 'tract_'+geoid, analysis_year, 
                                         gtfs_year, ofm_estimate, ofm_vintage)
 
     # Explicitly label distance as miles
-    tract_output_df.rename(columns={'wt_avg': 'wt_avg_miles'}, inplace=True)
+    tract_output_df.rename(columns={'wt_avg': 'wt_avg_miles', 'tract_'+geoid: 'tract_geoid'}, inplace=True)
 
     return tract_output_df
 

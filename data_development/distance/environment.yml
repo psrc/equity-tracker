@@ -1,4 +1,4 @@
-name: equity_tracker
+name: equity_tracker_env
 channels:
   - conda-forge
   - defaults
