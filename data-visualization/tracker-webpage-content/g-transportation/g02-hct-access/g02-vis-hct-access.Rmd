@@ -177,6 +177,14 @@ ind_dir <- 'g02-hct-access'
 rda <- 'g02-hct-access-map-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+
+# load hct station shapefile
+hct_stations <- read_sf(file.path("Y:/Equity Indicators/access/2023", #adjust this based on data_year from data-gen script
+                                  "all_hct.shp")) %>% 
+  mutate(submode_exp= case_when(submode=="brt"~ "bus rapid transit",
+                                submode=="light_rail"~ "light rail or streetcar",
+                                submode=="commuter_rail"~ "commuter rail",
+                                submode=="ferry" ~"ferry"))
 ``` 
 
 ```{r tract data map}
@@ -210,6 +218,12 @@ labels <- sprintf(
         paste0("(",data_tract$county_name," County)"))) %>% 
   lapply(htmltools::HTML)
 
+labels_hct <- sprintf(
+  "Census tract: <em>%s</em><br/><body>%s</bodyD>", hct_stations$submode_exp,
+  paste("Station name: ", hct_stations$stop_name)) %>% 
+  lapply(htmltools::HTML)
+
+
 # map settings
 tract_map <- leaflet() %>%
   leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
@@ -226,6 +240,17 @@ tract_map <- leaflet() %>%
               group = var_name,
               # label = round(data_tract$estimate, digits=1),
               label = labels) %>%
+  addCircleMarkers(data=hct_stations,
+                   lng = ~stop_lon, 
+                   lat = ~stop_lat,
+                   stroke=FALSE,
+                   radius = 5,
+                   opacity = 0.5,
+                   fill = TRUE,
+                   fillColor = "#F05A28",
+                   fillOpacity = 0.2,
+                   # group = var_name,
+                   label = labels_hct) %>% 
 
   # legends
   addLegend_decreasing(pal = psrc_palette,
@@ -236,6 +261,12 @@ tract_map <- leaflet() %>%
                        opacity = 0.7,
                        decreasing = TRUE,
                        labFormat = labelFormat()) %>% 
+  addLegend(data = hct_stations,
+            position = "topright",
+            colors = "#F05A28",
+            opacity = 0.7,
+            labels = "HCT station") %>% 
+  
   
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
