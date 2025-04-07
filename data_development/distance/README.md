@@ -46,7 +46,7 @@ Note that this list is applicable to all years, before these were all in service
 
 ## Scripts
 The main script is controlled through `generate_indicators.py`, which can be run after verifying settings in `configuration.toml` by running:
-- `python data/development/distance/generate_indicators.py` (with the equity-tracker virtual environment activated)
+- `python data_development/distance/generate_indicators.py` (with the equity-tracker virtual environment activated)
 
 This script will process the list of analysis years and store results at the specified output directory. A folder is generated for each analysis year with a file inside named `tract_hct_distance.csv`. 
 
