@@ -65,7 +65,7 @@ This file reports the average weighted miles to a variety of HCT stations within
 **The various year fields can be confusing because they may not match the `analysis_year`. The `ofm_estimate_year` (year data is from) should match the `analysis_year` (whichever year you're trying to get the data from). The only time that those two would be different is if an ofm estimate isn't available for that analysis year. `ofm_estimate_year` is different from `ofm_vintage` (which represents the year from which the `ofm_estimate_year` was produced). There are multiple OFM vintages of when the data was published, but this script searches for the when the newest available vintage was released, so the year is sometimes more recent than the `ofm_estimate_year`.
 
 Once the individual years are produced, this script can be run to combine all years into a single file:
-- `python data\development\distance\compile_results.py`
+- `python data_development\distance\compile_results.py`
 
 This script concatenates all yearly output files into a single file named **tract_hct_distance_compiled.csv**, which should serve as the primary method for accessing this data. 
 
