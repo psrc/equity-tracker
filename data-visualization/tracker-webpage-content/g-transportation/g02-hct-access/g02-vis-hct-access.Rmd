@@ -219,7 +219,7 @@ labels <- sprintf(
   lapply(htmltools::HTML)
 
 labels_hct <- sprintf(
-  "Census tract: <em>%s</em><br/><body>%s</bodyD>", hct_stations$submode_exp,
+  "Transit type: <em>%s</em><br/><body>%s</bodyD>", hct_stations$submode_exp,
   paste("Station name: ", hct_stations$stop_name)) %>% 
   lapply(htmltools::HTML)
 
