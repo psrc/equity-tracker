@@ -456,7 +456,7 @@ nrow(tracts10.lyr) #773
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
                               table.names = 'S1501', #subject table code
-                              years = c(2022),
+                              years = c(as.numeric(pums_ospi_year)),
                               acs.type = 'acs5')
 
 bach_plus_data <- base_acs_data %>% 
@@ -464,17 +464,6 @@ bach_plus_data <- base_acs_data %>%
   dplyr::select(GEOID, estimate, moe) %>% 
   dplyr::rename(bach_plus_estimate=estimate,
                 bach_plus_moe=moe)
-
-pop_25_plus_data <- base_acs_data %>% 
-  dplyr::filter(variable=="S1501_C01_006") %>% 
-  dplyr::select(GEOID, estimate, moe) %>% 
-  dplyr::rename(pop_25_estimate=estimate,
-                pop_25_moe=moe)
-
-merge_data <- merge(bach_plus_data, pop_25_plus_data,
-                    by.x="GEOID",
-                    by.y="GEOID",
-                    all.x=TRUE)
 
 pop_25_plus_data <- base_acs_data %>% 
   dplyr::filter(variable=="S1501_C01_006") %>% 
