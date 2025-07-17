@@ -1,0 +1,785 @@
+---
+title: "Cardiovascular Disease Mortality"
+subtitle: "Visuals for Equity Tracker (tract data)"
+author: "Mary Richards"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  word_document:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+
+# to reference chart functions in Github
+# knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
+library(psrcplot)
+library(tidyverse)
+library(magrittr)
+
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+
+library(echarts4r)
+library(webshot2) #static image creation
+library(here)
+```
+
+```{r, choose output type}
+output_type <- "word"
+# output_type <- "html"
+```
+
+```{r variables setup}
+file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
+                   theme_dir = 'd-community-and-health',
+                   ind_dir = 'd02-cardiovascular-disease-mortality',
+                   map = 'd02-cardiovascular-disease-mortality-map-data',
+                   chart = 'd02-cardiovascular-disease-mortality-chart-data',
+                   map_name = 'd02-cardiovascular-disease-mortality-map.html',
+                   column_chart_name = 'd02-cardiovascular-disease-mortality-column',
+                   line_chart_name = 'd02-cardiovascular-disease-mortality-line')
+
+# set most recent year
+year <- "2022"
+years <- c(2012, 2017, 2022)
+```
+
+# 3 visuals for webpage
+This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
+\
+\
+**If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+
+## Indicator Explanation
+The cardiovascular disease mortality rate provides a way to understand a population's overall health. Cardiovascular disease can be caused by diet, lack of exercise, smoking, and environmental risk factors. Differences between groups of people can highlight differing access to healthcare and public services, adequate nutrition, and living conditions, all which impact a population's susceptibility to cardiovascular disease. For this measure, we are defining cardiovascular disease mortality as an age-adjusted rate of deaths per 100,000 due to cardiovascular disease, such as coronary heart disease, strokes, aortic disease, and peripheral arterial disease.
+
+## 1. Map of most recent data
+
+### Create Visual
+```{r map .rda}
+
+# load map .rda
+load(file=file.path(file_names$base_dir,
+                    file_names$theme_dir,
+                    file_names$ind_dir,
+                    "update",
+                    "rda-data",
+                    paste0(file_names$map,'.rda')))
+``` 
+
+To map data in this form, there should be a value corresponding to each census tract. Depending on the year or source of the data, this could be about 700 rows for data at the 2010 census tract resolution, or about 900 rows for data at the 2020 census tract resolution. 
+```{r data format - map, include=FALSE}
+# This space is for any data transformations that may be needed before the final visualizations are generated. This code may or may not be necessary depending on the way the data were formatted in the data-gen script and saved in the rda.
+
+# check data set
+str(data_tract)
+```
+
+
+```{r tract data map}
+# reference addLegend_decreasing function
+source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
+
+# check maximum value of data
+# summary(data_tract$variable_value) # max is 95.39, so rounding to 100 makes sense
+max_value <- 500 # this value will be the max value in the legend
+
+# set up palettes
+psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
+# tract_data_plus_zero<-append(data_tract$variable_value,0)
+# 
+
+# psrc_palette <- leaflet::colorNumeric(palette=psrc_purple_plus,
+#                                       domain = data_tract$variable_value) # this is the value field
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(data_tract$variable_value,na.rm = TRUE),max_value, NA)) # this is the value field
+
+# set the variable
+var_name <- "Cardiovascular Disease <br> Mortality Rate (per 100,000)"
+
+labels <- sprintf(
+  "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 
+  paste("Tract value: ", prettyNum((round(data_tract$variable_value, digits=0)))),
+  paste("Region value: ", prettyNum((round(data_tract$reg_estimate, digits=0)))),
+  paste("County value: ", prettyNum((round(data_tract$cnty_estimate, digits=0))), 
+        paste0("(",data_tract$county_name," County)"))) %>% 
+  lapply(htmltools::HTML)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=data_tract,
+              fillColor = psrc_palette(data_tract$variable_value), #tract_data_plus_zero
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              # label = round(data_tract$variable_value, digits=1),
+              label = labels) %>%
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = c(min(data_tract$variable_value,na.rm = TRUE),max_value, NA),
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat()) %>% 
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+Source(s): Washington State Department of Health, 2018-2022 Washington Tracking Network, Cardiovascular Disease Mortality - Age Adjusted Rate per 100,000; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+```{r generate tract map html, include=FALSE}
+# to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+  
+# interactive webpage output process
+htmlwidgets::saveWidget(tract_map,
+                        file=file.path(file_names$base_dir,
+                                       file_names$theme_dir,
+                                       file_names$ind_dir, 
+                                       'update/webpage-html-outputs', 
+                                       file_names$map_name))
+```
+\
+\
+
+#### Data call outs
+```{r map calculations - tract, include=FALSE, eval=FALSE}
+# simplify data set
+data <- data_tract %>%
+  st_drop_geometry()
+
+# calculate call out information
+sort <- data %>% 
+  dplyr::arrange(desc(variable_value))
+# 3 highest: 53033029407 (Kent) King (479.49), 53053073115 (Elk Plain) Pierce (465.37), 53053061602 (downtown Tacoma) Pierce (456.13)
+
+sort <- data %>% 
+  dplyr::arrange(variable_value)
+# lowest not counting 'not reliable' values: 53061050502 (Edmonds) Snohomish (73.63), 53033022803 (Redmond) King (73.67), 53033004102 (Laurelhurst and Windmere neighborhoods) King (74.17)
+
+# % difference between highest and lowest
+((74-479)/(74))*100=547.29% difference
+```
+* 198: The region’s average cardiovascular disease mortality rate (per 100,000)
+* 234: Pierce County has the highest rate of deaths due to heart disease and stroke among PSRC’s four counties
+* 547%: The census tract with the highest rate (479) is 547% higher than the one with the lowest rate (74)
+
+\
+
+#### Insights & Analysis
+
+* Kitsap County has the lowest cardiovascular disease mortality rate (182 per 100,000), followed by King (186), Snohomish (195), and Pierce (234).
+* Communities with the lowest cardiovascular disease mortality rate (per 100,000) are in Edmonds, Snohomish County (74); Redmond, King County (74); Laurelhurst/Windmere neighborhoods (Seattle), King County (74).
+* Communities with the highest cardiovascular disease mortality rate (per 100,000) are in Kent, King County (479); Elk Plain, Pierce County (465); downtown Tacoma, Pierce County (456).
+
+\
+\
+
+## 2. Facet of most recent data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r load rda for chart, include=FALSE}
+# load visualization functions for charts
+source(here::here('data-visualization/equity-tracker-chart-functions.R'))
+
+# load chart .rda
+load(file=file.path(file_names$base_dir,
+                    file_names$theme_dir,
+                    file_names$ind_dir,
+                    "update",
+                    "rda-data",
+                    paste0(file_names$chart,'.rda')))
+```
+
+```{r column facet - tract}
+# Create Facet Column Chart
+data_clean_column <- data_clean %>% 
+  dplyr::filter(data_year==year) #filter on most recent year
+
+# set variables - adjust as needed (y_min, y_max, dec, esttype, title, subtitle, source)
+df = data_clean_column
+geo = "county"
+x = "quintile_ord"
+y = "variable_value"
+facet = "equity_group_ord"
+fill = "quintile_ord"
+y_min = 0
+y_max = 400
+dec = 0
+esttype = "number"
+color = "oranges"
+num_colors = 5
+color_rev = FALSE
+title = "Cardiovascular Disease Mortality by Community"
+subtitle = "Age adjusted rate per 100,000"
+source = "Washington State Department of Health, 2018-2022 Washington Tracking Network, Cardiovascular Disease Mortality - Age Adjusted Rate per 100,000; U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
+
+column_chart <- equity_tracker_column_facet(df = df,
+                                            geo = geo,
+                                            x = x,
+                                            y = y,
+                                            facet = facet,
+                                            title = title,
+                                            y_min = y_min,
+                                            y_max = y_max,
+                                            dec = dec,
+                                            esttype = esttype,
+                                            color = color,
+                                            num_colors = num_colors,
+                                            color_rev = color_rev)
+```
+
+```{r output final column chart - tract, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\d-regional-health-collaboration\d01-life-expectancy\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\d-regional-health-collaboration\static-images
+
+# Column Chart - html for interactive
+rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                # source = source,
+                                subtitle = subtitle),
+                  output_file = paste0(file_names$column_chart_name, '.html'),
+                  output_dir = file.path(file_names$base_dir,
+                                         file_names$theme_dir,
+                                         file_names$ind_dir,'update/webpage-html-outputs'))
+
+# Column Chart - png for use in static file
+# need to create a 'static-images' sub-folder in theme sub-folder if not already existing
+webshot2::webshot(url = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir,
+                                  'update/webpage-html-outputs', 
+                                  paste0(file_names$column_chart_name, '.html')), 
+                  file = file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   'static-images', 
+                                   paste0(file_names$column_chart_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r column chart output - tract, echo=FALSE}
+
+if (output_type == "html") {
+
+  column_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(file_names$base_dir,
+                                    file_names$theme_dir,
+                                    'static-images', 
+                                    paste0(file_names$column_chart_name, '.png')))
+  
+}
+
+# column_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r column facet calculations - tract, include=FALSE, eval=FALSE}
+# calculate call out information
+
+filter <- data_clean_column %>% 
+  filter(equity_group=="income_quintile",
+         quintile=="Low"|
+           quintile=="High",
+         county!="Region")
+
+# king high-low quintile low income households: 216.3261-	167.7928=48.5333
+# kitsap high-low quintile low income households: 200.9060-154.2092=46.6968
+# pierce high-low quintile low income households: 267.5472-205.8453=61.7019
+# snohomish high-low quintile low income households: 219.1714-187.4982=31.6732
+
+filter <- data_clean_column %>% 
+  filter(equity_group=="poc_quintile",
+         quintile=="Low"|
+           quintile=="High",
+         county=="Region")
+
+# region dif bt high/low quintiles for poc: 205.4468-190.0173=15.4295
+# ((205.4468-190.0173)/((205.4468+190.0173)/2))*100=7.8% difference
+
+
+filter <- data_clean_column %>% 
+  filter(equity_group=="income_quintile",
+         quintile=="High",
+         county!="Region")
+# regional average: 198
+# king: 216.3261
+# ((216.3261-198)/((216.3261+198)/2))*100=8.8% difference
+# Kitsap:200.9060
+# ((200.9060-198)/((200.9060+198)/2))*100=1.5%
+# Pierce: 267.5472
+# ((267.5472-198)/((267.5472+198)/2))*100=29.9%
+# Snohomish: 219.1714
+# ((219.1714-198)/((219.1714+198)/2))*100=10.1%
+```
+\
+
+#### Insights & Analysis
+
+* The smallest difference in the cardiovascular disease mortality rate between communities with high and low concentrations of households with lower income is in Snohomish County (32 per 100,000), followed by Kitsap County (47), King County (49), and Pierce County (62).
+* The rate of heart disease and stroke-related deaths is highest in areas with high concentrations of people with disabilities in all the counties; however, the rate varies from 209 per 100,000 in Snohomish County to 252 per 100,000 in Pierce County.
+* Across the region, the rate of heart disease and stroke-related deaths slightly increases in areas with higher concentrations of households with limited English proficiency; however the difference is relatively small - a difference of 15 deaths (per 100,000) between the communities with the lowest and highest concentrations.
+* Communities with high concentrations of households with children have higher rates of cardiovascular disease mortality in King County, while there is no clear trend in Kitsap, Pierce, and Snohomish Counties.
+* The cardiovascular disease mortality rate is 205 (per 100,000) for communities with high concentrations of people of color, which is 8% higher than those with low concentrations (190).
+* In Pierce County, the rate of heart disease and stroke-related deaths for communities with high concentrations of households with lower income is 30% higher than the regional average.
+
+\
+\
+
+
+## 3. Facet of trend data
+### Create Visual
+<style type="text/css">
+.main-container {
+  max-width: 100% !important;
+  margin: auto;
+}
+</style>
+
+```{r insert nulls for line chart, include=FALSE}
+
+# insert null records ----
+standard_base_year <- 2012 # earliest data year
+
+## main table
+df_base <- data_clean %>% 
+  mutate(data_year_num = as.numeric(data_year))
+
+## set-up columns to identify missing years by the unique categories/geography
+d <- df_base %>% 
+  group_by(county, equity_group, quintile, equity_group_ord, quintile_ord) %>% 
+  summarise(avail_years = list(unique(as.numeric(data_year))),
+            num_unique_years = length(unique(data_year)),
+            start_year = as.numeric(min(unique(data_year))),
+            end_year = as.numeric(max(unique(data_year))),
+            .groups = "drop") %>% 
+  mutate(base_year = standard_base_year)
+
+## create list-column, a vector of missing years in a cell
+d_calc <- d %>% 
+  rowwise() %>% 
+  mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
+
+## create list-column, a vector of missing years in a cell
+d_calc <- d %>% 
+  rowwise() %>% 
+  mutate(missing_years = list(setdiff(seq(base_year, end_year), avail_years)))
+
+## unpack so each missing year is a row of its own
+d_unnest <- d_calc %>% 
+  unnest(missing_years) 
+
+## create table with null records for chart
+df_nulls <- d_unnest %>% 
+  dplyr::select(county, equity_group, quintile, equity_group_ord, quintile_ord, data_year_num = missing_years) %>% 
+  mutate(wt_Avg_Per = NA, estimate = NA, data_year = as.character(data_year_num))
+
+## assemble main table  
+df <- bind_rows(df_base, df_nulls) %>% 
+  arrange(county, equity_group_ord, quintile_ord, data_year_num)
+
+# filter for relevant years
+df2 <- df %>% 
+  filter(data_year_num %in% years)
+```
+
+```{r line facet - tract, include=FALSE}
+# Create Facet Line Chart
+
+# set variables
+df = dplyr::filter(df2, data_year %in% years)
+x = "data_year" # different from variables for facet column
+fill = "quintile_ord" # different from variables for facet column
+y_min = 0
+y_max = 400
+color = "blues"
+title = "Cardiovascular Disease Mortality Trend by Community"
+subtitle = "Age adjusted rate per 100,000, in 5-year spans between 2012 and 2022"
+source = "Washington State Department of Health, 2008-2012, 2013-2017, 2018-2022 Washington Tracking Network, Cardiovascular Disease Mortality - Age Adjusted Rate per 100,000; U.S. Census Bureau, 2008-2012, 2013-2017, 2018-2022 American Community Survey 5-Year Estimates, Tables B02001, C17002, B22010, B11005, B11007, C16002"
+
+line_chart <- equity_tracker_line_facet(df = df,
+                                        geo = geo,
+                                        x = x,
+                                        y = y,
+                                        fill = fill,
+                                        facet = facet,
+                                        y_min = y_min,
+                                        y_max = y_max,
+                                        dec = dec,
+                                        esttype = esttype,
+                                        color = color,
+                                        num_colors = num_colors,
+                                        color_rev = color_rev,
+                                        width = '420px',
+                                        height = '380px')
+```
+
+```{r output final line chart - tract, include=FALSE}
+# to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
+# to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\a-regional-health-collaboration\static-images
+
+# Line Chart - html for interactive
+rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
+                  params = list(df = df,
+                                geo = geo,
+                                x = x,
+                                y = y,
+                                fill = fill,
+                                facet = facet,
+                                y_min = y_min,
+                                y_max = y_max,
+                                dec = dec,
+                                esttype = esttype,
+                                color = color,
+                                num_colors = num_colors,
+                                color_rev = color_rev,
+                                title = title,
+                                # source = source,
+                                subtitle = subtitle,
+                                width = '420px',
+                                height = '380px',
+                                charttype = "line"),
+                  output_file = paste0(file_names$line_chart_name, '.html'),
+                  output_dir = file.path(file_names$base_dir,
+                                         file_names$theme_dir,
+                                         file_names$ind_dir,
+                                         'update/webpage-html-outputs'))
+
+# Line Chart - png for use in static file
+webshot2::webshot(url = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir,
+                                  'update/webpage-html-outputs', 
+                                  paste0(file_names$line_chart_name, '.html')), 
+                  file = file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   'static-images', 
+                                   paste0(file_names$line_chart_name, '.png')), 
+                  vwidth = 1920, vheight = 1080)
+```
+
+<p style="font-family: Poppins; font-size:14pt; font-weight:bold">
+`r title`
+</p>
+<p style="font-family: Poppins; font-size:12pt; font-weight:normal">
+`r subtitle`
+</p>
+```{r line chart - tract, echo=FALSE}
+if (output_type == "html") {
+
+  line_chart  
+  
+} else {
+  
+  knitr::include_graphics(file.path(file_names$base_dir,
+                                    file_names$theme_dir,
+                                    'static-images', 
+                                    paste0(file_names$line_chart_name, '.png')))
+  
+}
+# line_chart
+```
+<p style="font-family: Poppins; font-size:10pt; font-style:italic">
+`r source`
+</p> 
+
+#### Data call outs
+```{r line facet calculations - tract, include=FALSE, eval=FALSE}
+# calculate call out information
+filter <- data_clean %>% 
+  filter(county!="Region",
+         equity_group=="poc_quintile",
+         quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
+
+# king high quintile-2022-2012 poc: 204.8824-	207.6089=-2.7265
+# kitsap high quintile-2022-2012 poc: 173.0790-169.7960=3.283
+# pierce high quintile-2022-2012 poc: 254.5062-294.1253=-39.6191
+# snohomish high quintile-2022-2012 poc: 201.5631-213.7537=-12.1906
+# ((173.0790-169.7960)/(169.7960))*100: 1.9% change
+
+filter <- data_clean %>% 
+  filter(county!="Region",
+         equity_group=="income_quintile",
+         quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
+
+# King high quintile-2022-2012 income: 216.3261-219.9441=-3.618
+# Kitsap high quintile-2022-2012 income: 200.9060-220.1478=-19.2418
+# Pierce high quintile-2022-2012 income: 267.5472-292.1881=-24.6409
+# Snohomish high quintile-2022-2012 income: 219.1714-235.0633=-15.8919
+
+filter <- data_clean %>% 
+  filter(county!="Region",
+         equity_group=="disability_quintile", 
+         quintile=="High",
+         data_year=="2022" |
+           data_year=="2012")
+
+# King high quintile-2022-2012 dis: 218.2866-217.2103=1.0763
+# Kitsap high quintile-2022-2012 dis: 212.7042-197.4100=15.2942
+# Pierce high quintile-2022-2012 dis: 252.4236-257.0782=-4.6546
+# Snohomish high quintile-2022-2012 dis: 209.1674-237.0070=-27.8396
+
+
+filter <- data_clean %>% 
+  filter(county=="Region",
+         equity_group=="poc_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
+# 2012 high-low poc: 220.8834-194.1031= 26.7803
+# 2022 high-low poc: 205.4468-190.0173= 15.4295
+# ((15.4295-26.7803)/26.7803)*100= 42.38489% decrease
+
+filter <- data_clean %>% 
+  filter(county=="Region",
+         equity_group=="income_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
+
+# 2012 high-low low income: 242.2497-169.1512=73.0985
+# 2022 high-low low income: 232.1198-174.1866=57.9332
+# ((57.9332-73.0985)/73.0985)*100= 20.74639% decrease
+
+filter <- data_clean %>% 
+  filter(county=="Region",
+         equity_group=="youth_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
+
+# 2012 high-low youth: 211.7690-203.8520=7.917
+# 2022 high-low youth: 204.1380-182.4591=21.6789
+# ((21.6789-7.917)/7.917)*100=173.8272%
+```
+\
+
+#### Insights & Analysis
+
+* For areas with high concentrations of people of color, Kitsap County is the only county in the region where the cardiovascular disease mortality rate increased over the past decade (by 2%).
+* Although deaths related to heart disease and stroke have decreased over time for communities with high concentrations of households with lower income in all counties, the rate has remained the highest in Pierce County (267 per 100,000) - compared to Snohomish Couny (2019), King County (216), and Kitsap County (201).
+* For areas with high concentrations of people with disabilities, the cardiovascular disease mortality rate has decreased over time in Snohomish County (-28 per 100,000) and Pierce County (-5 per 100,000), while the rate has very slightly increased in King County (+1 per 100,000) and Kitsap County (+15 per 100,000).
+* The regional cardiovascular disease mortality rate for communities with high concentrations of people of color is larger than that for communities with low concentration – the disparity is 42% smaller in 2022 than in 2012.
+* Communities with high concentrations of households with lower income have larger cardiovascular disease mortality rates than those with low concentrations (difference: 58/100,000) - the disparity is 21% smaller in 2022 than in 2012.
+* The regional cardiovascular disease mortality rate for communities with high concentrations of households with youth is larger than communities with small concentrations - the disparity has increased 174% between 2012 and 2022.
+
+\
+\
+
+# Transfer files
+## Copy files from Github > Y drive/update folder
+This step will transfer all of the Rmd output files (html and docx) to the network for review. It will keep the Rmd files within GitHub so that code is kept in a central place. 
+```{r to y drive, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(getwd())
+y.drive.folder.update <- file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   file_names$ind_dir,
+                                   'update')
+
+# isolate files in Github
+list.of.files <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$")
+
+# copy the files to the new folder
+file.copy(from=list.of.files,
+          to=y.drive.folder.update,
+          overwrite = TRUE,
+          recursive = TRUE)
+
+# keep only .Rmd files in Github (cleaner)
+files.in.dir <- list.files(current_folder, 
+                            full.names = T)
+files.to.keep <- list.files(current_folder, 
+                            full.names = T,
+                            pattern = "\\.Rmd$")
+files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.keep, collapse = "|"),
+                                                              files.in.dir, value=TRUE))])
+do.call(unlink, files.to.remove)
+```
+
+## Copy files from Y drive/indicator folder > Y drive/indicator/archive folder
+This step will transfer the previous data and files to the archive folder. This step is meant to retain the older versions in case they are needed for reference. 
+```{r to archive, include=FALSE, eval=FALSE}
+# set folder structure
+y.drive.folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir)
+archive.folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir,'archive')
+
+# isolate old files/directories
+list.of.files <- list.files(y.drive.folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$|rda-data|webpage-html-outputs")
+
+# copy the files to the archive folder
+file.copy(from=list.of.files,
+          to=archive.folder,
+          overwrite = TRUE,
+          recursive = TRUE)
+```
+
+### Delete old files from indicator folder
+This step will clean the indicator folder to make room for the new versions.
+```{r clean indicator folder, include=FALSE, eval=FALSE}
+# identify html and docx files to remove
+list.of.files <- list.files(y.drive.folder,  
+                            full.names = T,
+                            pattern = "\\.(html|docx)$",
+                            recursive=F)
+# clean the files from the update folder
+files.to.remove <- list(list.of.files)
+do.call(unlink, files.to.remove)
+
+# # identify map_files sub-directory, wanted to keep the rda-data and webpage-html-outputs folders
+# map.files.dir <- list.dirs(file.path(y.drive.folder, 'webpage-html-outputs'),
+#                            full.names = T,
+#                            recursive=F)
+# 
+# # clean the files from the update folder
+# dir.to.remove <- list(map.files.dir)
+# unlink(dir.to.remove, recursive=T)
+```
+
+## Copy new files from Y drive/update folder > Y drive/indicator folder
+This step will move all of the updated data/files to the general indicator folder. They should be moved from the update (draft staging directory) to the parent folder so that the htmls can be copied to the webpage folder (outside the firewall).
+```{r update to indicator folder, include=FALSE, eval=FALSE}
+# isolate old files/directories
+list.of.files <- list.files(y.drive.folder.update, 
+                            full.names = T)
+
+# copy the files to the new folder
+file.copy(from=list.of.files,
+          to=y.drive.folder,
+          overwrite = TRUE,
+          recursive = TRUE)
+```
+
+## Clear Y drive/update folder
+This step will help keep the folders organized and ready for the next update. 
+```{r clear update, include=FALSE, eval=FALSE}
+# clean the map files from the indicator/webpage-html-outputs folders
+# identify files/data to remove
+list.of.files <- list.files(y.drive.folder.update, 
+                            full.names = T,
+                            pattern = "\\.(html|docx|rda)$",
+                            recursive=T)
+# clean the files from the update folder
+files.to.remove <- list(list.of.files)
+do.call(unlink, files.to.remove)
+
+# the webpage-html-output and rda files will get overwritten, but the map_files folder is still in the webpage-html-outputs folder
+
+# identify map_files sub-directory, wanted to keep the rda-data and webpage-html-outputs folders
+map.files.dir <- list.dirs(file.path(y.drive.folder.update, 'webpage-html-outputs'),
+                           full.names = T,
+                           recursive=F)
+
+# clean the files from the update folder
+dir.to.remove <- list(map.files.dir)
+unlink(dir.to.remove, recursive=T)
+```
+
+## Copy files from Y drive/indicator folder > website folder
+This step copies the htmls for the webpage (3 visuals) from the network to the folder outside the firewall- this 'external' folder connects directly to the webpage.
+```{r to web dev folder, include=FALSE, eval=FALSE}
+# set folder structure
+current_folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir,
+                            'webpage-html-outputs')
+
+web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
+new.folder <- file.path(web.base.folder,
+                        file_names$theme_dir)
+
+list.of.files <- list.files(current_folder, 
+                            full.names = T)
+# list.of.files
+
+# copy the files to the new folder
+file.copy(list.of.files,
+          new.folder,
+          overwrite = T)
+```
+
+<a href="#top">Back to top of the page</a>

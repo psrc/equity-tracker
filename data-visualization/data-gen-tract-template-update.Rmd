@@ -1,0 +1,771 @@
+---
+title: "Life Expectancy"
+subtite: "Data Gen: Exploring, Cleaning, Transforming (tract data)"
+author: "Mary Richards"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  word_document:
+  html_document:
+    keep_md: yes
+    df_print: paged
+    toc: yes
+    toc_depth: 6
+    toc_float: yes
+---
+
+# Organize workspace
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcelmer",
+#                          force=TRUE)
+library(tidyverse)
+library(psrcelmer)
+library(psrccensus)
+library(psrcplot)
+library(rlang) #required for psrccensus
+library(emmeans) #required for rlang
+library(magrittr)
+
+library(vtable) #summary stats
+library(forcats) #for factor re-leveling
+
+library(odbc) #connect to ElmerGeo
+library(DBI) #connect to ElmerGeo
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+library(ggspatial)
+library(lubridate) #year formatting
+library(readxl)
+library(summarytools) ##freq/ctable functions
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+
+library(here)
+```
+
+```{r sources}
+
+# reference supplemental script with supporting settings/functions
+source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
+```
+
+```{r variables setup}
+
+file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
+                   theme_dir = 'd-community-and-health',
+                   ind_dir = 'd01-life-expectancy',
+                   chart = 'd01-life-expectancy-chart-data',
+                   map = 'd01-life-expectancy-map-data')
+
+folder_path <- file.path(file_names$base_dir,
+                         file_names$theme_dir,
+                         file_names$ind_dir,
+                         "raw-data")
+
+# create list of separate CSVs - OPTIONAL depending on format of data, if in one file this step is unnecessary and you can save the one csv file, like in commented out code
+raw_data <- list("Life_Expectancy_at_Birth_2010tracts_08_12.csv",
+                 "Life_Expectancy_at_Birth_2010tracts_13_17.csv",
+                 "Life_Expectancy_at_Birth_2020tracts_18_22.csv")
+
+# raw_data <- "Life_Expectancy_at_Birth_2020tracts_18_22.csv"
+
+# set the variables
+var_name <- "Life Expectancy"
+year <- 2022
+years <- c(2012, 2017, 2022)
+data <- 1:3 #number of datasets in raw_data list - to iterate through
+```
+
+**Life Expectancy at Birth**
+
+# Download data 
+## Primary data 
+These data comes from [WTN](https://fortress.wa.gov/doh/wtn/WTNPortal/?preview=true/#!q0=8967). Separate CSVs at the census tract geography are available (manual download) for 5y time spans at 1y increments, starting in 2000. The data are available at 2010 and 2020 geographies, depending on the year. The raw data sets have been saved in the corresponding Y drive project folder - folder address included above. [Please replace this text with a description of your data and data source here to maintain a record for future updates.]
+```{r}
+
+# this function was created because the indicator data are in separate CSV files that were downloaded from the WTN. [If your data source is one csv, you can ignore/comment out this step and skip to the bottom of this code chunk - use the commented out example code.]
+read_data <- function(order){
+  
+  # read csv files 
+  csv_data <- read.csv(file.path(folder_path, raw_data[order]))
+  
+  # add year field (step necessary because each data set was downloaded separately and there wasn't an existing year field)
+  data <- csv_data %>% 
+    mutate(data_year=years[order])
+}
+
+df_raw_data <- map_dfr(data, ~read_data(order=.x))
+
+# example code if data source is one csv -----
+# df_raw_data <- read.csv(file.path(folder_path, raw_data))
+```
+
+### Look at raw data
+Use this space to explore the raw data - the values and format. Are all of the census tracts included? Are the years of interest correct? Are there data that are not necessary to keep? This step will determine how the data may need to be cleaned and transformed in the next steps. 
+```{r}
+# print data set to see field names and field types
+df_raw_data
+
+# check data
+str(df_raw_data)
+# table(df_raw_data$data_year)
+```
+
+### Clean and format data
+This will step will require different cleaning and formatting steps depending on the data set.
+```{r}
+# For the WTN data, all of the state's counties are included in addition to a row for the indicator at a state-level. 
+
+# add year and filter to only PSRC counties
+df_psrc_data <- df_raw_data %>% 
+  # remove counties outside of PSRC region
+  filter(County.Name == "King" |
+           County.Name == "Kitsap" |
+           County.Name == "Pierce" |
+           County.Name == "Snohomish") %>% 
+  # there are 2 census tract fields - because of the 2 different census tract vintages (2010 and 2020) 
+  mutate(GEOID= case_when(is.na(Census.Tract)~Census.Tract.2020,
+                          is.na(Census.Tract.2020)~Census.Tract))
+
+# check data
+str(df_psrc_data)
+# there are 2,614 observations when there should be about 2,471 [776 census tracts X 2 (2012 and 2017 data) + 919 census tracts (2022)]
+table(df_psrc_data$data_year)
+# there are the expected number of rows for 2012 and 2017, but there are extra in the 2022 data set
+
+test_2022 <- df_psrc_data %>% 
+  filter(data_year=="2022")
+
+length(unique(test_2022$Census.Tract.2020)) #1062 rows in 2022, when there should be 919 or 923, so about 140 additional records
+
+table(test_2022$County.Name)
+# Based on the shapefile (downloaded below, there should be King: 494, Kitsap: 59, Pierce: 193, Snohomish: 173), so there are extra census tracts in all counties. This should be taken care of when joining to the equity quintiles (for the charts) or the spatial file (for the map). But curious about the extra tracts in the WTN data set.
+```
+
+## Additional data
+These additional data sets will help get the indicator data to the correct format for creating the maps and charts that are part of the Equity Tracker. They may not all be necessary depending on the indicator data set. 
+
+### Equity quintile tract-level data 
+This data set includes the quintile designation (low, low medium, etc.) for each equity focus group / year of interest / census tract - this data set is used to join to the indicator data by tract id and year. This is required for all tract-based data. 
+```{r, include=FALSE}
+
+# Elmer data sets - equity quintile tracts using psrcelmer() and crosswalk
+equity_tracts <- get_table(schema="equity", tbl_name="v_tract_shares")
+
+# to check
+str(equity_tracts)
+table(equity_tracts$data_year)
+```
+
+### 2010-20 crosswalk file (OPTIONAL - data dependent)
+This data set includes the relationship between the 2010 and 2020 census tract ids for indicator data sets that span the two time periods. If data includes the 2010 and 2020 tract geographies, this crosswalk may be necessary to join to the indicator data.
+```{r}
+crosswalk_10_20 <- get_table(schema="census",
+                             tbl_name="v_geo_relationships_tracts")
+```
+
+### Weighting data (OPTIONAL - data dependent)
+This step is only necessary for data sets that require normalization or weighting. For example, life expectancy at the tract-level is the average number of years a newborn is expected to live by census tract. This number for each census tract would need to be weighted by the population of each census tract to better understand trends at the county-level and throughout the region. 
+```{r, include=FALSE}
+
+# getting census population data by tract
+tracts_pop_acs <- get_acs_recs(geography ='tract', 
+                           table.names = 'B01003',
+                           years = years, # refers to the list of years that was set above
+                           acs.type = 'acs5') 
+
+# simplify data set
+tracts_pop <- tracts_pop_acs %>% 
+  select(GEOID, estimate, year) 
+
+# check data set
+table(tracts_pop$year)
+```
+
+### Geographic tract file
+This spatial file is required to map the most recent year's data. It includes all of the census tracts within the PSRC region. Depending on the most recent indicator data, the 2010 census tract spatial file may be needed. 
+```{r census tract spatial data - for tract data, include=FALSE}
+# Connecting to ElmerGeo for census geographies through Portal----
+arc_service <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services"
+
+tracts20.url <- file.path(arc_service, "Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
+tracts10.url <- file.path(arc_service, "Census_Tracts_2010/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
+
+tracts20.lyr <- st_read(tracts20.url)
+tracts10.lyr <- st_read(tracts10.url)
+
+nrow(tracts20.lyr) #919
+nrow(tracts10.lyr) #773
+```
+
+# Create dataset [OPTIONAL]
+This step is optional depending on the format of the indicator. You may need to weight the data or transform it in some way. If not, this code chunk can be commented out or deleted. 
+```{r}
+# indicator data set
+df_psrc_data
+# weighting data set - ACS population data
+tracts_pop
+
+# need to combine
+df_psrc_data_pop <- df_psrc_data %>% 
+  inner_join(tracts_pop, join_by("GEOID"=="GEOID", "data_year"=="year"))
+
+# check issues with extra census tracts in 2022
+# test22 <- df_psrc_data_pop %>% 
+#   filter(data_year==2022)
+# nrow(test22)
+# table(test22$County.Name)
+
+# simplify data and calculate weighted estimates
+df_psrc_data_pop_simp <- df_psrc_data_pop %>% 
+  select(County.Name, Life.Expectancy, data_year, GEOID, estimate) %>% 
+  # rename 'estimate' to population for clarity
+  rename(population=estimate)
+```
+
+# Finalize data set
+This step is included so that the data set and variable of interest and year variable are named in a consistent way for downstream processing. Review the field names in your data set to insert into the code below. You may need to add additional pipes to make any adjustments.
+```{r}
+# the input data set is the most updated data set from above - if you didn't need to weight or transform, it would be 'df_psrc_data' and if you did make any transformations, you would use that as the input
+
+tract_indicator <- df_psrc_data_pop_simp %>% # insert the name of your data set
+  rename(variable_value=Life.Expectancy, # insert the name of your indicator variable
+         data_year=data_year, # insert the name of your year variable
+         geoid=GEOID) %>% # insert the name of your census tract or geography variable
+  mutate(variable_value=as.numeric(variable_value)) # ensure the indicator variable is numeric so it can be mapped/visualized
+```
+
+Use this space to make sure the final data set is formatted correctly (includes GEOID, year, variable of interest) with the consistent variable names. Depending on the number of years that are available and the geography vintage (2010 or 2020 census tracts), the number of rows will vary, but there should be rows for each census tract and each year. 
+```{r, include=FALSE}
+nrow(tract_indicator)
+
+table(tract_indicator$data_year)
+
+# to check the field names and data class
+str(tract_indicator)
+```
+
+# Explore most recent data
+## Join recent primary data to spatial file
+```{r, include=FALSE}
+# refine data to most recent year
+tract_indicator_now <- tract_indicator %>% 
+  filter(data_year==year)
+
+# join most recent data to tract spatial file
+data_tract <- merge(tracts20.lyr, tract_indicator_now,
+                    by.x="geoid20",
+                    by.y="geoid", 
+                    all.x=TRUE)
+```
+
+## Visualize map
+```{r tract data map}
+# set map extent (in supplemental script)
+
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = data_tract$variable_value)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  addPolygons(data=data_tract,
+              fillColor = psrc_palette(data_tract$variable_value),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = round(data_tract$variable_value, digits=1)) %>%
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = data_tract$variable_value,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat()) %>% 
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+## Missing Data
+This step is dependent on your data set. If you have NAs you can use this step to visualize where in the region the NAs are occurring. If you do not have any NAs, you can skip this section and move on to the 'Descriptive Statistics' section.
+
+### Isolate NA or missing data
+Life expectancy calculations can fluctuate considerably in smaller populations or populations experiencing low or no deaths for the year(s) being calculated. Because of these issues the Life Expectancy at birth calculation for the Census Tract geographies is suppressed for Census Tracts with a population (for the 5 years combined) of <5000 or a result with a Standard Error >2 or a record of <50 deaths for the time period. The Washington Department of Health, Center for Health Statistics estimates data gathered from death certificates to be 99% complete.
+```{r}
+# join NA data to the shapefile to map
+data_tract_na <- data_tract %>% 
+  filter(is.na(variable_value))
+
+nrow(data_tract_na) #5 tracts
+```
+
+```{r missing tract map}
+
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = data_tract$variable_value)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  leaflet::addLayersControl(baseGroups = var_name,
+                   overlayGroups = "missing data",
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  
+  addPolygons(data=data_tract,
+              fillColor = psrc_palette(data_tract$variable_value),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = var_name,
+              label = round(data_tract$variable_value, digits=1)) %>%
+  addPolygons(data=data_tract_na,
+              color = "red",
+              stroke = TRUE, 
+              weight = 3,
+              smoothFactor = 0.5,
+              fillOpacity = 0,
+              group = "missing data") %>% 
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = data_tract$variable_value,
+                       position = "bottomright",
+                       title = var_name,
+                       group = var_name,
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat()) %>% 
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)   
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+## Descriptive Statistics
+The following descriptive statistics reflect the census tracts that have values - the census tracts with NAs have been removed. 
+```{r}
+data_tract_nona <- data_tract %>% 
+  filter(!is.na(variable_value))
+
+# The summary function treats each tract value as equal - doesn't account for any weighting
+summary(data_tract_nona$variable_value)
+```
+
+**When weighted by tract populations.** [OPTIONAL]
+The code chunk below uses population data (retrieved from the ACS). If your variable doesn't require weighting, delete or comment out this code chunk and move to the histogram. 
+```{r, include=FALSE}
+data_tract_nona_weight <- data_tract_nona %>% 
+  mutate(tot_age = variable_value*population, 
+         reg_tot = sum(tot_age),
+         tot_pop = sum(population),
+         est_weight_avg = reg_tot/tot_pop)
+
+distrib <- rep(data_tract_nona$variable_value, data_tract_nona$population)
+
+avg.value <- data_tract_nona_weight$est_weight_avg[1] #80.43404
+med.value <- median(distrib) #80.16
+```
+\
+
+### Histogram
+A histogram is a visual representation of the distribution of a dataset...The y-axis shows how frequently the values on the x-axis occur in the data, while the bars group ranges of values or continuous categories on the x-axis [(source)](https://www.datacamp.com/tutorial/make-histogram-basic-r).  
+```{r}
+# if you skipped the optional weighting step above (because you didn't need to apply a population weight), you'll need to create a distribution
+# distrib <- rep(data_tract_nona$variable_value) # this should be commented out if you are weighting your variable
+
+hist(distrib)
+```
+\
+
+### Boxplot
+A boxplot helps to visualize a quantitative variable by displaying five common location summary (minimum, median, first and third quartiles and maximum) and any observation that was classified as a suspected outlier using the interquartile range (IQR) criterion [(source)](https://statsandr.com/blog/outliers-detection-in-r/).  
+```{r}
+boxplot(distrib, horizontal = TRUE)
+```
+\
+
+### Outliers
+The IQR criterion means that all observations above or below the first and third quartile respectively are considered as potential outliers by R [(source)](https://statsandr.com/blog/outliers-detection-in-r/).  
+```{r}
+outliers <- boxplot.stats(distrib)$out
+outlier_rle <- rle(outliers)
+outlier_df <- data.frame(unclass(outlier_rle)) %>% 
+  rename(number = lengths,
+         indicator = values) %>% 
+  arrange(indicator)
+
+outlier_df
+```
+\
+
+#### *Check outliers* (OPTIONAL)
+The following steps are specific to the life expectancy data set and may or may not be applicable depending on the data. It uses the data set that was created by weighting life expectancy. If you did not weight your data you will need to adjust the code below to make sure you are using the correct data set. 
+
+##### Identify census tracts with outliers
+```{r include=FALSE}
+# to identify the outlier values
+outlier_values <- outlier_df[,2]
+
+# if you weighted your data set -----
+data_tract_outliers <- data_tract_nona_weight %>%
+  dplyr::filter(variable_value %in% outlier_values)
+
+num_outliers <- nrow(data_tract_nona_weight_outliers) #16
+
+# # if you did not weight your data set -----
+# data_tract_outliers <- data_tract_nona %>% 
+#   dplyr::filter(variable_value %in% outlier_values)
+# 
+# num_outliers <- nrow(data_tract_nona_weight_outliers) #16
+```
+\
+
+##### Outliers by Displacement Risk score
+This check uses the displacement risk data, which is mapped to 2010 census tracts. This will help determine if there is a connection between displacement risk and your indicator. This step may not apply to your data set. 
+```{r displacement risk data, inlcude=FALSE}
+# Connecting to Portal for displacement tract geographies ----
+displacement.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Displacement_Risk_Data/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+
+displacement.lyr <-st_read(displacement.url)
+# head(displacement.lyr)
+# plot(displacement.lyr$geometry)
+# class(displacement.lyr$geoid10)
+
+displacement_simp <- displacement.lyr %>%
+  dplyr::select(geoid10,
+                risk_score) %>% 
+  as_tibble() %>% 
+  dplyr::select(-geometry)
+```
+
+```{r, include=FALSE}
+tract_outliers <- data_tract_outliers %<>% 
+  dplyr::mutate(geoid=trimws(geoid20))
+
+# join outlier tract datas to spatial dispalcement tract data to isolate tracts with outlier data
+data_tract_risk_outliers <- merge(x=displacement_simp, 
+                                  y=tract_outliers,
+                                  by.x="geoid10",
+                                  by.y="geoid",
+                                  all.y=TRUE)
+head(data_tract_risk_outliers)
+# class(data_tract_risk_outliers)
+# plot(data_tract_risk_outliers$geometry)
+nrow(data_tract_risk_outliers) #21
+pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop20, na.rm = T)) #81,220
+# There are approx. 67,978 people (2020 population) in these outlier tracts - just for a broad estimate.
+```
+
+\
+\
+```{r}
+# compare the two measures
+plot(data_tract_risk_outliers$risk_score, 
+     data_tract_risk_outliers$variable_value)
+```
+
+```{r}
+# this will be different for each indicator - the code and the text included below...
+# based on the plot in the last chunk, this code is meant to isolate outlier(s)
+
+# outlier #1
+data_tract_outliers_1 <- data_tract_risk_outliers %>% 
+  filter(risk_score > 30)
+
+# code to look at the scores and census tracts that are outliers
+data_tract_outliers_1
+
+# outlier #2
+data_tract_outliers_2 <- data_tract_risk_outliers %>% 
+  filter(variable_value < 75)
+
+# code to look at the scores and census tracts that are outliers
+data_tract_outliers_2
+
+# To locate the census tracts on the map, its easy to use the Data Portal (https://psrc-psregcncl.hub.arcgis.com/datasets/census-tracts-2020/explore?location=47.506129%2C-121.980700%2C9.23) - just filter on the geoid20 field. 
+```
+
+
+# **MAP .rda**
+The map .rda is the data set used to create the map of the most recent data. 
+
+If there are any edits they should be made before saving it as an .rda. If not, you can skip to saving the final data set.
+```{r}
+# workspace for edits and reformatting before saving as .rda
+str(data_tract)
+```
+
+## Region and County numbers
+Depending on the indicator, weighting by population may not be necessary, but region and county numbers should be calculated, if possible. If your data set doesn't require weighting, a simple average for the region and counties could be calculated. The code chunk below is divided into whether you need to weight or you don't - comment out or delete whichever doesn't fit your data set. The final data set after this step will be saved as the .rda for the map. 
+
+Because the measure (life expectancy) does not account for the population of the tract, it hasn't been normalized and needs to be weighted in order to aggregate to the region/county level - these values will be referred to in the code and visualized on the map for regional context. 
+```{r, region and county numbers for map labels}
+# if you weighted your data set -----
+# calculating data by county
+county_tract_data <- data_tract %>%
+  st_drop_geometry() %>%  #to remove spatial component
+  dplyr::select(county_name, variable_value, population) %>% #to simplify table to necessary fields
+  dplyr::group_by(county_name) %>%
+  dplyr::mutate(cnty_estimate=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>% #calculate weighted value by county
+  dplyr::distinct(county_name, cnty_estimate)
+
+# calculating data by region
+reg_tract_data <- data_tract %>%
+  st_drop_geometry() %>%  #to remove spatial component
+  dplyr::select(variable_value, population) %>% #to simplify table to necessary fields
+  dplyr::mutate(reg_estimate=(sum(variable_value*population, na.rm =TRUE))/(sum(population, na.rm=TRUE))) %>% #calculate weighted value for region
+  dplyr::distinct(reg_estimate)
+
+# combine region and county data
+county_reg_data <- county_tract_data %>%
+  mutate(reg_estimate=reg_tract_data$reg_estimate)
+
+# merge tract, county, and region data into one data set
+data_tract <- merge(data_tract, county_reg_data,
+                    by="county_name",
+                    all.x=TRUE)
+
+# # if you did not weight your data set -----
+# # calculating data by county 
+# county_tract_data <- data_tract %>% 
+#   st_drop_geometry() %>%  #to remove spatial component
+#   dplyr::group_by(county_name) %>% 
+#   dplyr::mutate(cnty_estimate=mean(variable_value, na.rm=TRUE)) %>% #calculate average value by county
+#   dplyr::distinct(county_name, cnty_estimate)
+# 
+# # calculating data by region
+# reg_tract_data <- data_tract %>% 
+#   st_drop_geometry() %>%  #to remove spatial component
+#   dplyr::select(variable_value) %>% #to simplify table to necessary fields
+#   dplyr::mutate(reg_estimate=mean(variable_value, na.rm=TRUE)) %>% #calculate average value for region
+#   dplyr::distinct(reg_estimate)
+# 
+# # add region data to county data
+# county_reg_data <- county_tract_data %>% 
+#   mutate(reg_estimate=reg_tract_data$reg_estimate)
+# 
+# # merge tract, county, and region data into one data set 
+# data_tract <- merge(data_tract, county_reg_data,
+#                     by="county_name",
+#                     all.x=TRUE)
+```
+
+## Save final data set (.rda) for map
+```{r}
+# save final data set as .rda
+save(data_tract, file = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir, 
+                                  "update",
+                                  "rda-data",
+                                  paste0(file_names$map,'.rda')))
+```
+
+# Explore data by equity quintile
+## Join all primary data to equity quintiles.
+```{r}
+tract_indicator
+equity_tracts
+
+# join indicator data to equity quintiles 
+data_equity_tracts <- merge(tract_indicator, equity_tracts,
+                            by=c("geoid", "data_year"),
+                            all.x=TRUE)
+
+# check data set
+nrow(data_equity_tracts) #4938
+table(data_equity_tracts$data_year)
+```
+This data set should include rows for each census tracts twice (once as part of the region and another as part of their corresponding county) for each year.
+
+
+## Transform and pivot
+The data set needs to be cleaned and pivoted to a longer table so that there is only one field for the equity categories, instead of 6 fields.
+```{r, include=FALSE}
+str(data_equity_tracts)
+
+# clean/simplify data sets
+data_equity_quintile <- data_equity_tracts %>% 
+  dplyr::mutate(data_year=format(data_year,format="%Y"))
+
+# pivot data set so that there is one column with quintile designation
+data_equity_pivot <- data_equity_quintile %>% 
+  pivot_longer(cols = poc_quintile:lep_quintile,
+               names_to = "equity_group",
+               values_to = "quintile")
+
+# check data sets
+# nrow(data_equity_pivot)
+# str(data_equity_pivot)
+```
+
+These data sets should include records for:
+
+* 2 geographies (region and whichever county the tract belongs to) x # census tracts (~773 for 2010, ~919 for 2020)
+* 6 equity focus groups (disability and lep are not available in for 2010, lep not available in 2015 - but still show up as NA)
+
+
+## Calculations
+### Calculate by county and region
+The data are available at the census tract level but we want to calculate the average values across the census tracts grouping by the 6 equity/5 quintile groups/5 geographies (4 counties + region). For some indicators, such as life expectancy, we may also want to weight the values using the ACS population estimates. 
+
+The step of calculating by county/equity group/quintile is important for all data sets. The weighting by population is optional depending on the data set - comment out or delete whichever doesn't fit your data set. 
+```{r}
+# if you weighted your data set -----
+# calculations to get weighted average values
+data_tract <- data_equity_pivot %>%
+  filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
+  mutate(total_risk_tract=variable_value*population) %>%
+  group_by(county, data_year, equity_group, quintile) %>% # county field includes region
+  summarise(tracts=length(geoid),
+            total_variable=(sum(total_risk_tract, na.rm = TRUE)),
+            total_pop=(sum(population, na.rm = TRUE)),
+            .groups = "drop") %>%
+  mutate(variable_value=total_variable/total_pop)
+
+# check data set
+nrow(data_tract)
+table(data_tract$data_year)
+
+# # if you did not weight your data set -----
+# data_tract <- data_equity_pivot %>%
+#   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
+#   group_by(county, data_year, equity_group, quintile) %>% # county field includes region
+#   summarise(tracts=length(geoid),
+#             variable_value=mean(variable_value, na.rm=TRUE), # calculate average value by county and region
+#             .groups = "drop")
+# 
+# # check data set
+# nrow(data_tract) #4
+# table(data_tract$data_year)
+```
+
+This data set should include records for: 
+
+* 5 geographies: 4 PSRC counties + region
+* 3 years
+* ~6 equity focus groups (depends on the years for disability an lep)
+* 5 equity quintiles 
+
+### Address "Low - Low Medium" quintile group
+This code was added because of Kitsap/LEP data - there were too many tracts with 0, so we combined the bottom two quintiles into low - low medium. This change requires some additional processing so that all of the tracts (bottom 40%) in this combined quintile category are averaged and this average value is assigned to separate 'low' and 'low medium' quintile categories. 
+```{r}
+# nrow(data_tract) #429
+# unique(data_tract$quintile) #6 quintiles because of additional "Low - Low Medium"
+
+low_quintile <- data_tract %>%
+  filter(quintile=="Low - Low Medium") %>% 
+  rename(quintile_original=quintile) %>%
+  mutate(quintile="Low") %>%  # quintile label that matches rest of data
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+lowmed_quintile <- data_tract %>% 
+  filter(quintile=="Low - Low Medium") %>%
+  rename(quintile_original=quintile) %>%
+  mutate(quintile="Low Medium") %>% # quintile label that matches rest of data
+  filter(county!="Region") # need to remove region from this because there should be enough tracts when all the tracts are combined to have separate low and low medium classifications
+
+low_lowmed <- rbind(low_quintile,
+                    lowmed_quintile)
+# nrow(low_lowmed) #4
+
+# gather counties that have low - medium categorization
+low_lowmed_counties <- unique(low_lowmed$county) #Kitsap
+low_lowmed_years <- unique(low_lowmed$data_year) #2017 and 2022
+low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
+
+other_data <- data_tract %>% 
+  filter(quintile!="Low - Low Medium") %>% 
+  mutate(quintile_original=quintile)
+# nrow(other_data) #425
+
+data_tract_comb <- rbind(low_lowmed, #4
+                         other_data) #421
+
+# nrow(data_tract_comb) #425 - this number should be smaller but there are duplicates - low and low medium present in data set because of aggregation/calculations in previous steps - so the extras need to be removed and replaced with averaged values
+# table(data_tract_comb$quintile_original, data_tract_comb$county) # should not have extra in low and low medium quintile categories
+# unique(data_tract_comb$quintile) #5 quintiles
+
+# remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
+data_full <- data_tract_comb %>% 
+  filter(!(county %in% low_lowmed_counties & 
+           data_year %in% low_lowmed_years &
+           equity_group %in% low_lowmed_equity &
+           (quintile_original=="Low" | 
+             quintile_original=="Low Medium"))) %>% 
+  select(-quintile_original) # not needed for visualization, originally kept for checking
+
+# nrow(data_full) #425
+# table(data_full$quintile, data_full$county) #should not have extra in low and low medium quintile categories
+```
+
+## Rename and factor
+```{r}
+# wrap/order labels ----
+# variable ordering and label function in equity-tracker-supplemental-script.R
+data_clean <- transform_data_labels_tract(data_full)
+```
+
+
+# **CHART .rda**
+Save final data set for charts (.rda)
+```{r}
+# save final data set as .rda
+save(data_clean, file = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir, 
+                                  "update",
+                                  "rda-data",
+                                  paste0(file_names$chart,'.rda')))
+```
+
+<a href="#top">Back to top of the page</a>

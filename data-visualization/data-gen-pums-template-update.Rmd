@@ -55,22 +55,17 @@ library(here)
 ```
 
 ```{r sources}
-# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
-
 # reference supplemental script with supporting settings/functions
 source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 ```
 
 ```{r variables setup}
-
 file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    theme_dir = 'a-regional-health-collaboration',
                    ind_dir = 'a05-snap',
                    chart = 'a05-snap-chart-data',
                    map = 'a05-snap-map-data')
 ```
-
-**Median Income**
 
 # Download data 
 ## Primary data 
@@ -84,12 +79,6 @@ years <- c("2012", "2017", "2022")
 
 # PUMS/OSPI data set
 pums_ospi_elmer <- get_table(schema = "equity", tbl_name = "v_tracker_indicators")
-```
-
-```{r, include=FALSE}
-# PUMS/OSPI data set
-pums_ospi_elmer <- get_table(schema="equity",
-                             tbl_name="v_tracker_indicators")
 ```
 \
 This data set was compiled from PUMS data.
@@ -286,8 +275,7 @@ summary(data_full$fact_value)
 \
 \
 
-To look at distribution of all data - not the most useful visual, but provides a sense of the range of values at a high level in one plot. 
-\
+To look at distribution of all data - not the most useful visual, but provides a sense of the range of values at a high level in one plot. It can also help show if there are any outliers in the data.
 ```{r}
 qplot(data_year_yr, fact_value, 
       colour = county, shape = focus_type, 
@@ -311,7 +299,7 @@ sumtable(data_refined,
 ```{r}
 # wrap/order labels ----
 # variable ordering and label function in equity-tracker-supplemental-script.R
-data_clean <- transform_data_labels(data_full)
+data_clean <- transform_data_labels_pums(data_full)
 ```
 
 ```{r}
@@ -462,7 +450,7 @@ nrow(tracts10.lyr) #773
 # getting data by tract
 base_acs_data <- get_acs_recs(geography ='tract', 
                               table.names = 'S2201', #subject table code
-                              years = c(2022),
+                              years = c(as.numeric(pums_ospi_year)),
                               acs.type = 'acs5')
 
 
@@ -488,7 +476,7 @@ acs_data_tract_merge <- merge(tracts20.lyr, acs_data,
 # getting data by county from acs 
 county_acs_data <- get_acs_recs(geography ='county', 
                                 table.names = 'S2201', #subject table code
-                                years = c(2021),
+                                years = c(as.numeric(pums_ospi_year)),
                                 acs.type = 'acs5')
 
 #filter for percentage instead of total number
@@ -627,7 +615,7 @@ tract_map
 # **MAP .rda**
 Save final data set (.rda) for map
 ```{r}
-# This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
+# This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. 
 
 # save final data set as .rda
 save(acs_data_tract, file = file.path(file_names$base_dir,

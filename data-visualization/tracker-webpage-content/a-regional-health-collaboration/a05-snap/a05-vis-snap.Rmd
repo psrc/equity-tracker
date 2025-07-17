@@ -58,6 +58,9 @@ file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
                    map_name = 'a05-snap-map.html',
                    column_chart_name = 'a05-snap-column',
                    line_chart_name = 'a05-snap-line')
+
+# set most recent year
+year <- "2022"
 ```
 
 # 3 visuals for webpage
@@ -67,7 +70,9 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-[Please include the following for a general, layperson audience: 1-2 sentences explaining what your indicator is/measures, what it says about people's life outcomes; 1 sentence describing why it is useful/relevant in the indicator's theme]
+The Supplemental Nutrition Assistance Program (SNAP) provides food benefits for households with lower income. This helps families supplement their food budget and access healthy food options. It is useful to identify communities who have many participants in SNAP to help address food security and food access disparities.
+
+The Census Bureau question asks if an individual or household member has received SNAP benefits in the past 12 months.
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
@@ -86,8 +91,13 @@ load(file=file.path(file_names$base_dir,
 ```{r data format - map, include=FALSE}
 # move the decimal point for reg_estimate and cnty_estimate
 acs_data_tract <- acs_data_tract %>%
-   mutate(reg_estimate = (reg_estimate*100)) %>%
-   mutate(cnty_estimate = (cnty_estimate*100))
+  # mutate(reg_estimate = formatC( round((reg_estimate*100), 1), format='f', digits=1)) %>%
+  mutate(reg_estimate = sprintf('%.1f',reg_estimate*100)) %>% #keep zero after decimal, while round to nearest tenth
+  mutate(cnty_estimate = sprintf('%.1f',cnty_estimate*100))
+
+# acs_data_tract <- acs_data_tract %>%
+#    mutate(reg_estimate = round((reg_estimate*100), 1)) %>%
+#    mutate(cnty_estimate = round((cnty_estimate*100),1))
 ```
 
 
@@ -96,8 +106,8 @@ acs_data_tract <- acs_data_tract %>%
 source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 
 # check maximum value of data
-# summary(acs_data_tract$estimate) # max is 250001, so rounding to 260000 makes sense
-max_value <- 60 # this value will be the max value in the legend
+# summary(acs_data_tract$estimate) # max is 49.4, so rounding to 50 makes sense
+max_value <- 50 # this value will be the max value in the legend
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
@@ -116,10 +126,12 @@ labels <- sprintf(
   paste("Tract value: ", 
         prettyNum((round(acs_data_tract$estimate, digits=2))), " %"), 
   paste("Tract data reliability: ", acs_data_tract$reliability),
-  paste("Region value: ",
-        prettyNum((round(acs_data_tract$reg_estimate, digits=2))), " %"), 
-  paste("County value: ",
-        prettyNum((round(acs_data_tract$cnty_estimate, digits=2))), " %"), 
+  # paste("Region value: ",
+  #       prettyNum((round(acs_data_tract$reg_estimate, digits=2))), " %"), 
+  # paste("County value: ",
+  #       prettyNum((round(acs_data_tract$cnty_estimate, digits=2))), " %"), 
+  paste("Region value: ", acs_data_tract$reg_estimate, " %"), 
+  paste("County value: ", acs_data_tract$cnty_estimate, " %"), 
   paste0("(",acs_data_tract$county_name," County)")) %>%
   lapply(htmltools::HTML)
 
@@ -141,7 +153,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_plus_zero),
+              fillColor = psrc_palette(acs_data_tract$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -188,6 +200,7 @@ htmlwidgets::saveWidget(acs_map,
 \
 \
 
+#### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
 data <- acs_data_tract %>%
@@ -219,7 +232,7 @@ table(filter$county_name)
 
 #### Insights & Analysis
 
-* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.8%), Kitsap (10.0%), and Pierce (11.7%).
+* King County has the lowest average for SNAP participation (8.0%), followed by Snohomish (8.7%), Kitsap (9.6%), and Pierce (11.6%).
 * There are 38 census tracts with no SNAP participation with 30 tracts in King County, two in Kitsap, two in Pierce, and four in Snohomish.
 * The four census tracts with the highest participation include one tract in the Eastside neighborhood of Tacoma (49.4%), Downtown Tacoma (44.1%), southeast Des Moines (39.3%), and southeast Kent (35.8%).
 * The national average SNAP participation is 11.5%.
@@ -253,7 +266,7 @@ load(file=file.path(file_names$base_dir,
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2022") #filter on most recent year
+  dplyr::filter(data_year==year) #filter on most recent year
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
@@ -597,7 +610,7 @@ filter <- data_clean %>%
 * Regionally, people of color have consistently been almost twice as likely to participate in SNAP compared to the white non-Hispanic population; however, the disparity between these two groups decreased in all counties - Snohomish (-50%), King (-40%), Kitsap (-33%), Pierce (-22%).
 * SNAP participation decreased in all counties for households with limited English proficiency between 2012 and 2022, except for Pierce County where participation for the same group increased from 21% in 2012 to 23% in 2022.
 * SNAP participation among people with disabilities in the region either stayed the same (Kitsap and Pierce counties) or decreased (King and Snohomish counties) from 2012 to 2022.
-* The share of participating lower income households reached 40% in 2017, the highest for any group in the past decade; however, between 2012 and 2022, there was a three percentage point decrease in SNAP participation for households with lower income across the region
+* The share of participating lower income households reached 36% in 2017, the highest for any group in the past decade; however, between 2012 and 2022, there was a three percentage point decrease in SNAP participation for households with lower income across the region
 
 
 \

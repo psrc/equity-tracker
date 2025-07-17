@@ -38,12 +38,12 @@ check_missing_data <- function(vars, multiply_by_subgroups = FALSE) {
 # wrap/order labels ----
 county_order <- c("Region", "King", "Kitsap", "Pierce", "Snohomish")
 
-focus_type_order <- c("People of Color",
-                      "Households with Lower Income",
-                      "People with a Disability",
-                      "Households with Limited English Proficiency",
-                      "Households with Youth <18",
-                      "Households with Older Adults 65+")
+equity_group_order <- c("People of Color",
+                        "Households with Lower Income",
+                        "People with a Disability",
+                        "Households with Limited English Proficiency",
+                        "Households with Youth <18",
+                        "Households with Older Adults 65+")
 
 focus_attribute_order <- c("People of color",
                            "White\nnon-Hispanic",
@@ -56,9 +56,15 @@ focus_attribute_order <- c("People of color",
                            "Households with\nolder adults",
                            "Other households")
 
+quintile_order <- c("Low", 
+                    "Low\nMedium", 
+                    "Medium", 
+                    "Medium\nHigh", 
+                    "High")
+
 
 # transforming data labels ----
-transform_data_labels <- function(table) {
+transform_data_labels_pums <- function(table) {
   data_clean <- table |>  
     mutate(county = factor(county, levels=county_order)) |>
     mutate(focus_type_ord = case_when(
@@ -68,7 +74,7 @@ transform_data_labels <- function(table) {
       focus_type =="Income_cat"~"Households with Lower Income",
       focus_type =="Youth_cat"~"Households with Youth <18",
       focus_type =="Older_cat"~"Households with Older Adults 65+")) |>
-    mutate(focus_type_ord = factor(focus_type_ord, levels = focus_type_order)) |>
+    mutate(focus_type_ord = factor(focus_type_ord, levels = equity_group_order)) |>
     mutate(focus_attribute_ord = case_when(
       focus_attribute == "POC"~ "People of color",
       focus_attribute == "Non-POC"~ "White non-Hispanic",
@@ -94,6 +100,29 @@ transform_data_labels <- function(table) {
   
   return(data_clean)
 }
+
+transform_data_labels_tract <- function(table) {
+  data_clean <- table |>  
+    mutate(county = factor(county, levels=county_order)) |> #rename value variable for consistency
+    mutate(equity_group_ord = case_when(
+      equity_group=="poc_quintile"~"People of Color",
+      equity_group=="disability_quintile"~"People with a Disability",
+      equity_group=="lep_quintile"~"Households with Limited English Proficiency",
+      equity_group=="income_quintile"~"Households with Lower Income",
+      equity_group=="youth_quintile"~"Households with Youth <18",
+      equity_group=="older_quintile"~"Households with Older Adults 65+")) |>
+    mutate(equity_group_ord = factor(equity_group_ord, levels = equity_group_order)) |> 
+    mutate(quintile_ord = str_wrap(quintile, width=7)) |>
+    mutate(quintile_ord = factor(quintile_ord, levels = quintile_order))
+  
+  # Sort the data to ensure the charts work
+  data_clean <- data_clean |>
+    arrange(county, equity_group_ord, quintile_ord, data_year)
+  
+  return(data_clean)
+}
+
+
 
 # MAP SETTINGS --------
 ## This code helps to set up the legend so that it is arranged high-low with correct color order (https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend) 

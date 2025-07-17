@@ -1,16 +1,16 @@
 ---
 title: "Housing Cost Burden"
 subtitle: "Visuals for Equity Tracker (PUMS data)"
-author: "Meg Grzybowski, Mary Richards"
+author: "Meg Grzybowski, Mary Richards, updated by Grant Gibson"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
+  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
-  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -19,12 +19,12 @@ knitr::opts_chunk$set(echo=FALSE,
                       message=FALSE) # formatting
 
 # to reference chart functions in Github
-knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
+# knitr::opts_knit$set(root.dir = rprojroot::find_rstudio_root_file())
 ```
 
 ```{r library setup, include=FALSE}
-#devtools::install_github("psrc/psrcplot",
- #                      force=TRUE)
+# devtools::install_github("psrc/psrcplot",
+#                          force=TRUE)
 library(psrcplot)
 library(tidyverse)
 library(magrittr)
@@ -40,16 +40,29 @@ library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
 
 library(echarts4r)
-#remotes::install_github("JohnCoene/echarts4r",
- #                        force=TRUE)
-
 library(webshot2) #static image creation
+library(here)
 ```
 
 ```{r, choose output type}
 # output_type <- "word"
 output_type <- "html"
 ```
+
+```{r variables setup}
+file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
+                   theme_dir = 'e-housing',
+                   ind_dir = 'e02-housing-cost-burden',
+                   map = 'e02-housing-cost-burden-map-data',
+                   chart = 'e02-housing-cost-burden-chart-data',
+                   map_name = 'e02-housing-cost-burden-map.html',
+                   column_chart_name = 'e02-housing-cost-burden-column',
+                   line_chart_name = 'e02-housing-cost-burden-line')
+
+# set most recent year
+year <- "2022"
+```
+
 # 3 visuals for webpage
 This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
 \
@@ -61,129 +74,35 @@ Housing cost burden, in this case, refers to renters that are paying more than 3
 
 ## 1. Map of most recent data
 To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
-```{r map legend settings, include=FALSE}
-# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
-addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
-		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
-		  title = NULL, className = "info legend", layerId = NULL, 
-		  group = NULL, data = getMapData(map), decreasing = FALSE) {
-	position <- match.arg(position)
-	type <- "unknown"
-	na.color <- NULL
-	extra <- NULL
-	if (!missing(pal)) {
-		if (!missing(colors)) 
-			stop("You must provide either 'pal' or 'colors' (not both)")
-		if (missing(title) && inherits(values, "formula")) 
-			title <- deparse(values[[2]])
-		values <- evalFormula(values, data)
-		type <- attr(pal, "colorType", exact = TRUE)
-		args <- attr(pal, "colorArgs", exact = TRUE)
-		na.color <- args$na.color
-		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
-		    0) {
-			na.color <- NULL
-		}
-		if (type != "numeric" && !missing(bins)) 
-			warning("'bins' is ignored because the palette type is not numeric")
-		if (type == "numeric") {
-			cuts <- if (length(bins) == 1) 
-				pretty(values, bins)
-			else bins	
-			
-			if (length(bins) > 2) 
-				if (!all(abs(diff(bins, differences = 2)) <= 
-				         sqrt(.Machine$double.eps))) 
-					stop("The vector of breaks 'bins' must be equally spaced")
-			n <- length(cuts)
-			r <- range(values, na.rm = TRUE)
-			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
-			n <- length(cuts)
-			p <- (cuts - r[1])/(r[2] - r[1])
-			extra <- list(p_1 = p[1], p_n = p[n])
-			p <- c("", paste0(100 * p, "%"), "")
-			if (decreasing == TRUE){
-				colors <- pal(rev(c(r[1], cuts, r[2])))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}else{
-				colors <- pal(c(r[1], cuts, r[2]))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}
-			colors <- paste(colors, p, sep = " ", collapse = ", ")
-			
-		}
-		else if (type == "bin") {
-			cuts <- args$bins
-			n <- length(cuts)
-			mids <- (cuts[-1] + cuts[-n])/2
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "bin", cuts))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "bin", cuts)
-			}
-			
-		}
-		else if (type == "quantile") {
-			p <- args$probs
-			n <- length(p)
-			cuts <- quantile(values, probs = p, na.rm = TRUE)
-			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
-				 na.rm = TRUE)
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "quantile", cuts, p))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "quantile", cuts, p)
-			}
-		}
-		else if (type == "factor") {
-			v <- sort(unique(na.omit(values)))
-			colors <- pal(v)
-			labels <- labFormat(type = "factor", v)
-			if (decreasing == TRUE){
-				colors <- pal(rev(v))
-				labels <- rev(labFormat(type = "factor", v))
-			}else{
-				colors <- pal(v)
-				labels <- labFormat(type = "factor", v)
-			}
-		}
-		else stop("Palette function not supported")
-		if (!any(is.na(values))) 
-			na.color <- NULL
-	}
-	else {
-		if (length(colors) != length(labels)) 
-			stop("'colors' and 'labels' must be of the same length")
-	}
-	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
-	               na_color = na.color, na_label = na.label, opacity = opacity, 
-	               position = position, type = type, title = title, extra = extra, 
-	               layerId = layerId, className = className, group = group)
-	invokeMethod(map, data, "addLegend", legend)
-}
-```
 
 ### Create Visual
 ```{r map .rda}
 # load map .rda
-base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'e-housing'
-ind_dir <- 'e02-housing-cost-burden'
-rda <- 'e02-housing-cost-burden-map-data.rda'
-
-load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+load(file=file.path(file_names$base_dir,
+                    file_names$theme_dir,
+                    file_names$ind_dir,
+                    "update",
+                    "rda-data",
+                    paste0(file_names$map,'.rda')))
 ``` 
 
+```{r data format - map, include=FALSE}
+# This space is for any data transformations that may be needed before the final visualizations are generated. This code may or may not be necessary depending on the way the data were formatted in the data-gen script and saved in the rda.
+
+# move the decimal point for reg_estimate and cnty_estimate
+# acs_data_tract <- acs_data_tract %>%
+#    mutate(reg_estimate = (reg_estimate*100)) %>%
+#    mutate(cnty_estimate = (cnty_estimate*100))
+```
+
+
 ```{r acs map}
-# setting map extent
-map.lat<- 47.615
-map.lon<- -122.257
-map.zoom<- 8.5
+# reference addLegend_decreasing function
+source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
+
+# check maximum value of data
+# summary(acs_data_tract$estimate) # max is 100
+max_value <- 100 # this value will be the max value in the legend
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
@@ -191,25 +110,32 @@ acs_data_plus_zero<-append(acs_data_tract$estimate,0)
 
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = acs_data_plus_zero) # this is the value field
-# psrc_palette <- leaflet::colorNumeric(palette = psrc_colors$purples_inc,
-#                                       domain = acs_data_tract$wt_life_expec) # this is the value field
+psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
+                                      domain = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # setting the legend/label variables
 var_name <- "Renter Cost <br> Burden" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
-  paste("Tract value: ",
-        prettyNum(round(acs_data_tract$estimate, digits=0)), #the digits would probably be 2 for %
-        '%'),
+  paste("Tract value: ", 
+        prettyNum((round(acs_data_tract$estimate, digits=0))), " %"), 
   paste("Tract data reliability: ", acs_data_tract$reliability),
   paste("Region value: ",
-        prettyNum(round(acs_data_tract$reg_estimate, digits=0)),
-        '%'),
+        prettyNum((round(acs_data_tract$reg_estimate, digits=0))), " %"), 
   paste("County value: ",
-        prettyNum(round(acs_data_tract$cnty_estimate, digits=0)),
-        '%', paste0("(",acs_data_tract$county_name," County)"))) %>%
+        prettyNum((round(acs_data_tract$cnty_estimate, digits=0))), " %"), 
+  paste0("(",acs_data_tract$county_name," County)")) %>%
   lapply(htmltools::HTML)
+
+# if the label required a suffix instead of a prefix, for example a %, the code would look like this:
+# labels <- sprintf(
+#   "Census tract: <em>%s</em><br/><strong>%s</strong>", acs_data_tract$geoid20,
+#   paste(prettyNum((round(acs_data_tract$estimate, digits=2)), #the digits would probably be 2 for %
+#               big.mark = ","), #this wouldn't be necessary to include for %s    
+#         '%')) %>%
+#   lapply(htmltools::HTML)
+
 
 # map settings
 acs_map <- leaflet() %>%
@@ -220,7 +146,7 @@ acs_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=acs_data_tract,
-              fillColor = psrc_palette(acs_data_plus_zero),
+              fillColor = psrc_palette(acs_data_tract$estimate),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -229,7 +155,7 @@ acs_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = acs_data_plus_zero,
+                       values = c(min(acs_data_plus_zero,na.rm = TRUE),max_value, NA),
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -252,18 +178,17 @@ acs_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML co
 # printing map
 acs_map
 ```
-
-Source(s): U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Estimates, Table B25070; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
-
+Source(s): U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Estimates, Table S2201; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
-
-# set folder structure
-map_name <- 'e02-housing-cost-burden-map.html'
   
 # interactive webpage output process
 htmlwidgets::saveWidget(acs_map,
-                        file=file.path(base_dir,theme_dir,ind_dir, 'webpage-html-outputs', map_name))
+                        file=file.path(file_names$base_dir,
+                                       file_names$theme_dir,
+                                       file_names$ind_dir, 
+                                       'update/webpage-html-outputs', 
+                                       file_names$map_name))
 ```
 \
 \
@@ -292,12 +217,12 @@ filter <- data %>%
   dplyr::filter(reliability=="estimate is 0, cannot compute")
 
 filter <- data %>% 
-  dplyr::filter(estimate>50) #379/919:
+  dplyr::filter(estimate>50) #409/919:
 table(filter$county_name)
-# King: 188/379: 50%
-# Kitsap: 30/379: 8% 
-# Pierce: 84/379: 22%
-# Snohomish: 77/379: 20%
+# King: 201/409: 49%
+# Kitsap: 28/409: 7% 
+# Pierce: 97/409: 24%
+# Snohomish: 83/409: 20%
 table(data$county_name)
 # King: 494/919: 54%
 # Kitsap: 59/919: 6%
@@ -313,24 +238,24 @@ filter <- data %>%
   dplyr::filter(estimate==50)
 
 # calculate population density
-# get population for 2021
-tract_acs_data <- get_acs_recs(geography ='tract', 
-                               table.names = 'B01003', 
-                               years = c(2021), 
-                               acs.type = 'acs5')
+# get population for 2022
+tract_acs_data <- psrccensus::get_acs_recs(geography ='tract', 
+                                           table.names = 'B01003', 
+                                           years = c(2022), 
+                                           acs.type = 'acs5')
 tract_pop <- tract_acs_data %>% 
   dplyr::select(GEOID, estimate) %>% 
   dplyr::rename(pop_estimate=estimate)
 
 # join population data to 
-data_2021pop <- merge(data,
+data_2022pop <- merge(data,
                       tract_pop,
                       by.x="geoid20",
                       by.y="GEOID",
                       all.x=TRUE)
 
 # calculation
-calc <- data_2021pop %>% 
+calc <- data_2022pop %>% 
   mutate(pop_acres=pop_estimate/land_acres) %>% 
   mutate(area_sqmi=aland20*3.861E-07) %>% 
   mutate(pop_sqmi=pop_estimate/area_sqmi)
@@ -338,15 +263,21 @@ calc <- data_2021pop %>%
 # 50+ 
 calc_50plus <- calc %>% 
   dplyr::filter(estimate>=50) %>% 
-  dplyr::arrange(estimate)
+  dplyr::arrange(estimate) #409
 
 calc_50minus <- calc %>% 
-  dplyr::filter(estimate<50)
+  dplyr::filter(estimate<50) #510
 
-median(calc_50plus$pop_acres) #7.010612
-median(calc_50minus$pop_acres) #6.406462
-median(calc_50plus$pop_sqmi) #4558.947
-median(calc_50minus$pop_sqmi) #4103.732
+table(calc_50plus$county_name)
+# King: 201/409
+# Kitsap: 28/409
+# Pierce: 97/409
+# Snohomish: 83/409
+
+median(calc_50plus$pop_acres) #6.965862
+median(calc_50minus$pop_acres) #6.452537
+median(calc_50plus$pop_sqmi) #4501.258
+median(calc_50minus$pop_sqmi) #4167.978
 
 # quintiles
 quartile_burden <- calc %>% 
@@ -358,18 +289,19 @@ quartile_burden <- calc %>%
                    mean_dens_sqmi=mean(pop_sqmi))
 ```
 
-1. 48%: Regional share of rent-burdened households
-2. 5%: The difference in the share of the counties with the most and least rent-burdened households is 5%
-3. 51%: Pierce and Snohomish Counties tie for the highest percentage of rent-burdened households
+1. 48%: Regional share of renter households who are cost burdened
+2. 3/5: Almost three-fifths of households with limited English proficiency and households with older adults are rent cost burdened
+3. 19%: The gap in the regional share of renter cost burden between people with and without disabilities decreased by 19% between 2012 and 2022
 
 \
 
 #### Insights & Analysis
 
-* Pierce and Snohomish Counties have the highest percentage of rent-burdened households (51%), followed by Kitsap (50%) and King (46%)
-* Over half the households in a census tract are rent-burdened in 41% of the region's tracts: half of which are in King County (50%), followed by Pierce (22%), Snohomish (20%), and Kitsap (8%) - these values generally reflect the distribution of tracts across the region: King (54%), Pierce (21%), Snohomish (19%), and Kitsap (6%)
-* The median population density of the tracts where more than half of the households are rent-burdened is higher (7 people/acre) than that of the tracts where fewer than half of households are rent-burdened (6 people/acre)
-* OR: Tracts with a greater share of rent-burdened households have higher median population densities than those with a lower share (1st quartile: 5 people/acre; 4th quartile: 7 people/acre) 
+* Pierce and Snohomish Counties have the highest percentage of cost burdened households (52%), followed by Kitsap (51%) and King (46%).
+* In almost half (45%) of the region’s census tracts, cost burdened households make up more than half of the renters.
+* Half of these majority cost burdened renter household tracts are in King County (49%), followed by Pierce (24%), Snohomish (20%), and Kitsap (7%), which roughly reflect the distribution of tracts across the region (King 54%, Pierce 21%, Snohomish 19%, and Kitsap 6%) and point to this being a region-wide problem.
+* The median population density of the tracts where more than half of the renter households are cost burdened is higher (7 people/acre) than that of the tracts where fewer than half of households are rent-burdened (6 people/acre).
+
 \
 \
 
@@ -385,21 +317,23 @@ quartile_burden <- calc %>%
 
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
-#source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R')
+source(here::here('data-visualization/equity-tracker-chart-functions.R'))
 
-# set folder structure
-rda <- 'e02-housing-cost-burden-data.rda'
-
-load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
+# load chart .rda
+load(file=file.path(file_names$base_dir,
+                    file_names$theme_dir,
+                    file_names$ind_dir,
+                    "update",
+                    "rda-data",
+                    paste0(file_names$chart,'.rda')))
 ```
 
 ```{r column facet - pums}
 # Create Facet Column Chart
-data_clean_column <- data_clean %>%
-  dplyr::filter(data_year=="2021") #filter on most recent year
+data_clean_column <- data_clean %>% 
+  dplyr::filter(data_year==year) #filter on most recent year
 
-# set variables 
+# set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
 geo = "county"
 x = "focus_attribute_ord"
@@ -415,7 +349,7 @@ num_colors = 2
 color_rev = TRUE
 title = "Renter Cost Burden by Community"
 subtitle = "Percent of renters paying more than 30% of income on housing"
-#source = "U.S. Census Bureau, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+source = "U.S. Census Bureau, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
 
 column_chart <- equity_tracker_column_facet(df = df,
                                             geo = geo,
@@ -436,11 +370,8 @@ column_chart <- equity_tracker_column_facet(df = df,
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
-# set folder structure
-file_name <- 'e02-housing-cost-burden-column'
-
-# column Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+# Column Chart - html for interactive
+rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -454,15 +385,24 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                #source = source,
+                                # source = source,
                                 subtitle = subtitle),
-                  output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+                  output_file = paste0(file_names$column_chart_name, '.html'),
+                  output_dir = file.path(file_names$base_dir,
+                                         file_names$theme_dir,
+                                         file_names$ind_dir,'update/webpage-html-outputs'))
 
 # Column Chart - png for use in static file
 # need to create a 'static-images' sub-folder in theme sub-folder if not already existing
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
-                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+webshot2::webshot(url = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir,
+                                  'update/webpage-html-outputs', 
+                                  paste0(file_names$column_chart_name, '.html')), 
+                  file = file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   'static-images', 
+                                   paste0(file_names$column_chart_name, '.png')), 
                   vwidth = 1920, vheight = 1080)
 ```
 
@@ -480,14 +420,17 @@ if (output_type == "html") {
   
 } else {
   
-  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  knitr::include_graphics(file.path(file_names$base_dir,
+                                    file_names$theme_dir,
+                                    'static-images', 
+                                    paste0(file_names$column_chart_name, '.png')))
   
 }
 
 # column_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-
+`r source`
 </p> 
 
 #### Data call outs
@@ -544,18 +487,18 @@ filter <- data_clean_column %>%
   filter(focus_type=="Income_cat",
          vulnerability=="high vulnerability") %>% 
   dplyr::arrange(desc(fact_value))
-
 ```
-
-1. 2.5: Households in the region who are living below 200% of federal poverty level are 2.5 times more likely to be rent-burdened than households who are living above
-2. 3/5: Close to three-fifths of limited English proficient households and households with older adults are rent-burdened
-3. 13%: A higher share of people with disabilities are rent-burdened than those without, a 13% difference
+\
 
 #### Insights & Analysis
 
-* People of color are more likely to be rent-burdened than their white non-Hispanic counterparts, with the largest gap in Snohomish County (7%), followed by King (3%), Pierce (2%), and Kitsap (1%)
-* Limited English proficient households are at highest risk of rent burden in Kitsap County (64%), with the lowest risk limited English households in Pierce (56%)
-* Snohomish County is the only county where the share of households with children (18 years or younger) that are rent-burdened is the same as the share of households without children
+* People of color are more likely to be rent cost burdened than their white non-Hispanic counterparts, with the largest percentage point gap in Snohomish County (7%), followed by Pierce (3%), King (2%), and Kitsap (1%).
+* Renter households with lower income in the region are 2.4 times more likely to be cost burdened than other renter households.
+* Regionally, 57% of people with disabilities are rent cost burdened, 13% higher than those without disabilities.
+* Renter households with limited English proficiency are most cost burdened in Snohomish County (65%) and least in Kitsap and Pierce Counties (53%).
+* Snohomish is the only county where the share of renter households with youth (18 years or younger) that are cost burdened (50%) is lower than the share for those without (52%).
+
+
 \
 \
 
@@ -578,8 +521,8 @@ x = "data_year" # different from variables for facet column
 fill = "focus_attribute_ord" # different from variables for facet column
 color = "blues"
 title = "Renter Cost Burden Trend by Community"
-subtitle = "Percent of renters paying more than 30% of income on housing, in 5-year spans between 2011 and 2021"
-#source = "U.S. Census Bureau, 2007-2011, 2012-2016, 2017-2021 American Community Survey 5-Year Public Use Microdata Sample"
+subtitle = "Percent of renters paying more than 30% of income on housing"
+source = "U.S. Census Bureau, 2008-2012, 2013-2017, 2018-2022 American Community Survey 5-Year Public Use Microdata Sample"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -602,11 +545,8 @@ line_chart <- equity_tracker_line_facet(df = df,
 # to save html visual to folder, there must be an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 # to save png visuals to folder, there must be a 'static-images' folder within each thematic sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\static-images
 
-# set folder structure
-file_name <- 'e02-housing-cost-burden-line'
-
 # Line Chart - html for interactive
-rmarkdown::render("equity-tracker-chart-creator.RMD", 
+rmarkdown::render(here("data-visualization/equity-tracker-chart-creator.RMD"), 
                   params = list(df = df,
                                 geo = geo,
                                 x = x,
@@ -621,17 +561,27 @@ rmarkdown::render("equity-tracker-chart-creator.RMD",
                                 num_colors = num_colors,
                                 color_rev = color_rev,
                                 title = title,
-                                #source = source,
+                                # source = source,
                                 subtitle = subtitle,
                                 width = '420px',
                                 height = '380px',
                                 charttype = "line"),
-                  output_file = paste0(file_name, '.html'),
-                  output_dir = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs'))
+                  output_file = paste0(file_names$line_chart_name, '.html'),
+                  output_dir = file.path(file_names$base_dir,
+                                         file_names$theme_dir,
+                                         file_names$ind_dir,
+                                         'update/webpage-html-outputs'))
 
 # Line Chart - png for use in static file
-webshot2::webshot(url = file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs', paste0(file_name, '.html')), 
-                  file = file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')), 
+webshot2::webshot(url = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir,
+                                  'update/webpage-html-outputs', 
+                                  paste0(file_names$line_chart_name, '.html')), 
+                  file = file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   'static-images', 
+                                   paste0(file_names$line_chart_name, '.png')), 
                   vwidth = 1920, vheight = 1080)
 ```
 
@@ -648,13 +598,16 @@ if (output_type == "html") {
   
 } else {
   
-  knitr::include_graphics(file.path(base_dir,theme_dir,'static-images', paste0(file_name, '.png')))
+  knitr::include_graphics(file.path(file_names$base_dir,
+                                    file_names$theme_dir,
+                                    'static-images', 
+                                    paste0(file_names$line_chart_name, '.png')))
   
 }
 # line_chart
 ```
 <p style="font-family: Poppins; font-size:10pt; font-style:italic">
-
+`r source`
 </p> 
 
 #### Data call outs
@@ -663,14 +616,6 @@ if (output_type == "html") {
 filter <- data_clean %>%
   filter(county=="Region",
          focus_type=="Income_cat")
-# 2021 low income: 25409.57
-# 2021 non-low income: 135561.35
-# 135561.35-25409.57=110151.8
-# 2011 low income: 24829.81
-# 2011 non-low income: 106454.25
-# 106454.25-24829.81=81624.44
-# ((110151.8-81624.44)/(81624.44))*100: 34.94953% change
-
 
 filter <- data_clean %>%
   filter(county=="Region",
@@ -681,34 +626,36 @@ filter <- data_clean %>%
 # 118053.44-102481.29=15572.15
 
 filter <- data_clean %>%
-  filter(county=="Region",
+  filter(county!="Region",
          focus_type=="Youth_cat",
-         indicator_attribute != "Less than 30 percent")
-# 2021 older: 83306.58
-# 2021 non-older: 124514.77
-# 124514.77-83306.58=41208.19
-# 2011 older: 62308.22
-# 2011 non-older: 94026.28
-# 94026.28-62308.22= 31718.06
-# ((41208.19-31718.06)/(31718.06))*100: 29.92027% change
+         indicator_attribute != "Less than 30 percent",
+         data_year==2012 |
+           data_year==2022)
+# king 2012 youth-no youth: 0.52-0.44=0.08
+# king 2022 youth-no youth: 0.48-0.44=0.04
+# kitsap 2012 youth-no youth: 0.52-0.50=0.02
+# kitsap 2022 youth-no youth: 0.50-0.48=0.02
+# pierce 2012 youth-no youth: 0.54-0.48=0.06
+# pierce 2022 youth-no youth: 0.51-0.48=0.03
+# snohomish 2012 youth-no youth: 0.53-0.45=0.08
+# snohomish 2022 youth-no youth: 0.50-0.52=0.02
 
 filter <- data_clean %>%
   filter(county == "Region",
          focus_type=="Disability_cat",
-         data_year==2016 |
-           data_year==2021)
-# 2016 disability-no disability: 0.60-0.43=0.17
-# 2021 disability-no disability: 0.56-0.43=0.13
-# ((0.17-0.13)/(0.13))*100: 30.76923% change
+         data_year==2012 |
+           data_year==2022)
+# 2012 disability-no disability: 0.60-0.44=0.16
+# 2022 disability-no disability: 0.57-0.44=0.13
+# ((0.16-0.13)/(0.13))*100: 23.07692% change
 
 filter <- data_clean %>%
   filter(county == "Region",
          focus_type=="LEP_cat",
-         data_year==2016 |
-           data_year==2021)
-# 2016 lep-no lep: 0.55-0.46=0.09
-# 2021 lep-no lep: 0.57-0.45=0.12
-# ((0.09-0.12)/(0.12))*100: 25% change
+         data_year==2012 |
+           data_year==2022)
+# 2012 lep-no lep: 0.59-0.47=0.12
+# 2022 lep-no lep: 0.57-0.46=0.11
 
 filter <- data_clean %>%
   filter(county=="Snohomish",
@@ -729,28 +676,23 @@ filter <- data_clean %>%
 # ((4088.07-15777.04)/(15777.04))*100: -74.08849% change
 
 filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="Disability_cat",
-         vulnerability=="low vulnerability",
-         data_year=="2016" |
-           data_year=="2021",
+  filter(county!="Region",
+         focus_type=="Older_cat",
+         vulnerability=="high vulnerability",
+         data_year=="2012" |
+           data_year=="2022",
          indicator_attribute != "Less than 30 percent")
-# king non-low income:150511.89-98506.82=52005.07
-# Snohomish non-low income:130900.06-97445.42=33454.64
+
 ```
-
-1. 48%: Share of people of color who are rent burdened in 2021, a decrease of 3 percentage points from 2011
-2. 31%: The gap in the regional share of rent-burden between people with and without disabilities decreased by 31% between 2016 and 2021
-3. 25%: The gap in the regional share of rent-burdened households with and without limited English proficiency increased by 25% between 2016 and 2021  
-
 \
 
 #### Insights & Analysis
 
-* The regional share of rent-burdened households above 200% of federal poverty line has remained consistent between 2011 and 2021, while the share of households below has increased by 5 percentage points
-* Kitsap County is the only county where the difference in the share of rent-burdened households decreased over time between households with limited English and English proficient households 
-* King County is the only county where the difference between households with youth (18 years or younger) and without youth has remained consistent between 2011 and 2021, while the difference has decreased in Kitsap (7 percentage points), Pierce (6 percentage points), and Snohomish (4 percentage points) 
-* The share of rent-burdened households with older adults (65 years or older) has remained the same in King County between 2011 and 2021, while it has decreased in Kitsap (11 percentage points) and Pierce (4 percentage points), and increased in Snohomish (15 percentage points)
+* Regionally, a little less than half of renters of color are rent cost burdened in 2022 (48%), a decrease of three percentage points from 2012 (51%).
+* The regional share of rent cost burdened households with lower income has remained unchanged between 2012 and 2022, while the share of rent cost burdened households with higher income has increased by 6 percentage points during the same period.
+* The gap in the regional share of renter cost burden between households with limited English proficiency and households proficient in English narrowed by one percentage point between 2012 (12 percentage points) and 2022 (11 percentage points).
+* Kitsap is the only county where the difference between renter households with youth and those without has remained constant between 2012 and 2022, while the difference has decreased in Snohomish (6 percentage points), King (4 percentage points), and Pierce (3 percentage points).
+* The share of cost burdened renter households with older adults has decreased in Pierce County (4 percentage points) and King County (3 percentage points) between 2012 and 2022, while it has increased in Kitsap (1 percentage point) and Snohomish (3 percentage points).
 
 
 \
@@ -758,22 +700,26 @@ filter <- data_clean %>%
 
 
 # Transfer files
-## Copy files from Github > Y drive
+## Copy files from Github > Y drive/update folder
+This step will transfer all of the Rmd output files (html and docx) to the network for review. It will keep the Rmd files within GitHub so that code is kept in a central place. 
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(getwd())
-y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+y.drive.folder.update <- file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   file_names$ind_dir,
+                                   'update')
 
 # isolate files in Github
 list.of.files <- list.files(current_folder, 
                             full.names = T,
                             pattern = "\\.(html|docx)$")
-# list.of.files
 
 # copy the files to the new folder
-file.copy(list.of.files,
-          y.drive.folder,
-          overwrite = T)
+file.copy(from=list.of.files,
+          to=y.drive.folder.update,
+          overwrite = TRUE,
+          recursive = TRUE)
 
 # keep only .Rmd files in Github (cleaner)
 files.in.dir <- list.files(current_folder, 
@@ -786,13 +732,102 @@ files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.kee
 do.call(unlink, files.to.remove)
 ```
 
-## Copy files from Y drive > website folder
+## Copy files from Y drive/indicator folder > Y drive/indicator/archive folder
+This step will transfer the previous data and files to the archive folder. This step is meant to retain the older versions in case they are needed for reference. 
+```{r to archive, include=FALSE, eval=FALSE}
+# set folder structure
+y.drive.folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir)
+archive.folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir,'archive')
+
+# isolate old files/directories
+list.of.files <- list.files(y.drive.folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$|rda-data|webpage-html-outputs")
+
+# copy the files to the archive folder
+file.copy(from=list.of.files,
+          to=archive.folder,
+          overwrite = TRUE,
+          recursive = TRUE)
+```
+
+### Delete old files from indicator folder
+This step will clean the indicator folder to make room for the new versions.
+```{r clean indicator folder, include=FALSE, eval=FALSE}
+# identify html and docx files to remove
+list.of.files <- list.files(y.drive.folder,  
+                            full.names = T,
+                            pattern = "\\.(html|docx)$",
+                            recursive=F)
+# clean the files from the update folder
+files.to.remove <- list(list.of.files)
+do.call(unlink, files.to.remove)
+
+# # identify map_files sub-directory, wanted to keep the rda-data and webpage-html-outputs folders
+# map.files.dir <- list.dirs(file.path(y.drive.folder, 'webpage-html-outputs'),
+#                            full.names = T,
+#                            recursive=F)
+# 
+# # clean the files from the update folder
+# dir.to.remove <- list(map.files.dir)
+# unlink(dir.to.remove, recursive=T)
+```
+
+## Copy new files from Y drive/update folder > Y drive/indicator folder
+This step will move all of the updated data/files to the general indicator folder. They should be moved from the update (draft staging directory) to the parent folder so that the htmls can be copied to the webpage folder (outside the firewall).
+```{r update to indicator folder, include=FALSE, eval=FALSE}
+# isolate old files/directories
+list.of.files <- list.files(y.drive.folder.update, 
+                            full.names = T)
+
+# copy the files to the new folder
+file.copy(from=list.of.files,
+          to=y.drive.folder,
+          overwrite = TRUE,
+          recursive = TRUE)
+```
+
+## Clear Y drive/update folder
+This step will help keep the folders organized and ready for the next update. 
+```{r clear update, include=FALSE, eval=FALSE}
+# clean the map files from the indicator/webpage-html-outputs folders
+# identify files/data to remove
+list.of.files <- list.files(y.drive.folder.update, 
+                            full.names = T,
+                            pattern = "\\.(html|docx|rda)$",
+                            recursive=T)
+# clean the files from the update folder
+files.to.remove <- list(list.of.files)
+do.call(unlink, files.to.remove)
+
+# the webpage-html-output and rda files will get overwritten, but the map_files folder is still in the webpage-html-outputs folder
+
+# identify map_files sub-directory, wanted to keep the rda-data and webpage-html-outputs folders
+map.files.dir <- list.dirs(file.path(y.drive.folder.update, 'webpage-html-outputs'),
+                           full.names = T,
+                           recursive=F)
+
+# clean the files from the update folder
+dir.to.remove <- list(map.files.dir)
+unlink(dir.to.remove, recursive=T)
+```
+
+## Copy files from Y drive/indicator folder > website folder
+This step copies the htmls for the webpage (3 visuals) from the network to the folder outside the firewall- this 'external' folder connects directly to the webpage.
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
-current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+current_folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir,
+                            'webpage-html-outputs')
 
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-new.folder <- file.path(web.base.folder,theme_dir)
+new.folder <- file.path(web.base.folder,
+                        file_names$theme_dir)
 
 list.of.files <- list.files(current_folder, 
                             full.names = T)
