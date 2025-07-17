@@ -1,3 +1,5 @@
+#remotes::install_github("Chicago/RSocrata")
+
 library(magrittr)
 library(dplyr)
 library(stringr)
