@@ -9,10 +9,10 @@ library(psrcelmer)
 
 # References -------------------------------------------------------
 dyear <- 2020
-voting_url <-"https://www.sos.wa.gov/_assets/elections/research/"
-turnout_url <- paste0(voting_url, dyear, "Gen_Precinct_Results_GIS-Ready.xlsx")
+voting_url <-"https://www.sos.wa.gov/sites/default/files/2024-02/"
+turnout_zip_url <- paste0(voting_url, "2020Gen_Precinct_Results_GIS-Ready.zip")
 psrc_counties <- data.frame("CountyName"=c("King","Kitsap","Pierce","Snohomish"),
-                                  "FIPS"=c("033","035","053","061"))
+                            "FIPS"=c("033","035","053","061"))
 
 # Helper functions -------------------------------------------------
 
@@ -20,7 +20,7 @@ psrc_counties <- data.frame("CountyName"=c("King","Kitsap","Pierce","Snohomish")
 fetch_zip <- function(dyear){
   temp <- tempfile()
   filename <- paste0("Statewide_Precincts_", dyear, "General")
-  zip_url <- paste0(voting_url, filename, ".zip")
+  zip_url <- paste0("https://www.sos.wa.gov/_assets/elections/research/", filename, ".zip")
   download.file(zip_url, temp)
   unzip(temp, exdir="~/precincts")
   sf_df <- paste0("precincts/", filename, ".shp") %>% st_read() %>%
@@ -29,6 +29,28 @@ fetch_zip <- function(dyear){
   unlink(temp)
   rm(temp)
   return(sf_df)
+}
+
+# Download and extract turnout data from zip file
+fetch_turnout <- function(){
+  temp_zip <- tempfile(fileext = ".zip")
+  temp_dir <- tempdir()
+  
+  # Download the zip file
+  download.file(turnout_zip_url, temp_zip)
+  
+  # Extract the zip file
+  unzip(temp_zip, exdir = temp_dir)
+  
+  # Read the Excel file
+  excel_file <- file.path(temp_dir, "2020Gen_Precinct_Turnout_GIS-Ready.xlsx")
+  turnout_data <- read.xlsx(excel_file)
+  
+  # Clean up temporary files
+  unlink(temp_zip)
+  unlink(excel_file)
+  
+  return(turnout_data)
 }
 
 # Retrieve Census redistricting block population & geometry
@@ -59,9 +81,11 @@ label_quintile <- function(var){
 
 b2p <- psrcelmer::get_table(db_name="Sandbox", schema="Mike", tbl_name="block20_to_precinct")      # Spatial join much faster in SQL
 
-vt <- read.xlsx(turnout_url) %>% setDT() %>%                                                       # Load turnout data
-  .[County %in% psrc_counties$CountyName & RaceName=="Turnout"] %>%
-  dcast(PrecinctCode ~ Candidate, value.var="Votes")
+# Load turnout data using new source and column names
+vt <- fetch_turnout() %>% setDT() %>%                                                              # Load turnout data from zip
+  .[County %in% psrc_counties$CountyName] %>%                                                      # Filter to PSRC counties
+  .[, .(County, PrecinctCode = PrecCode, PrecName, 
+        `Registered Voters` = G20TREGVOT, `Ballots Cast` = G20TBALCST)]                            # Rename columns to match original code
 
 # precincts <- fetch_zip(dyear)                                                                    # Fetch precinct geometry
 # precincts %<>% inner_join(vt, by=c("St_Code"="PrecinctCode"))                                    # -- link to turnout
@@ -69,7 +93,7 @@ vt <- read.xlsx(turnout_url) %>% setDT() %>%                                    
 block_pop <- fetch_blockpop(dyear) %>%                                                             # Fetch block-level redistricting population estimates
   setDT() %>% .[b2p, precinct_code:=st_code, on=.(GEOID=geoid20)]                                  # Associate precinct
 precinct_pop <- block_pop[!is.na(precinct_code), lapply(.SD, sum),
-                   by=.(county=str_sub(GEOID,3,5), precinct_code), .SDcols=c("voting_age", "POC")] # Summarize to precinct
+                          by=.(county=str_sub(GEOID,3,5), precinct_code), .SDcols=c("voting_age", "POC")] # Summarize to precinct
 vt[precinct_pop, `:=`(county=county, voting_age=voting_age, POC=POC),
    on=.(PrecinctCode=precinct_code)]                                                               # Combine data items
 vt[, `:=`(POC_voter_share=as.numeric(POC)/voting_age, turnout_share=`Ballots Cast`/voting_age)]    # Create analysis variables
@@ -83,4 +107,3 @@ vt[turnout_share>1,turnout_share:=1]                                            
 vt[,POC_bin:=factor(label_quintile(POC_voter_share), levels=c(1:5))]                               # Add quintile
 rs <- vt[!is.na(POC_bin), .(avg_turnout=mean(turnout_share), .N), by=.(POC_bin)] %>%               # Summarize
   setorder(POC_bin)
-
