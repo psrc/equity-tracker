@@ -34,10 +34,20 @@ return(df)
 cty_codes <- data.table( fips=c("033","035","053","061"),
                          county=c("King","Kitsap","Pierce","Snohomish"))
 
-label_quintile <- function(var){
-  breakpoints <- unique(quantile(var, probs=0:5/5, na.rm=TRUE))                                    # Unique so all-zero quintiles act as one bin
-  rv <- cut(var, breaks=unique(breakpoints), labels=(6 - length(breakpoints)):5,                   # -- labels anchor the higher quintiles for consistency
-    include.lowest=TRUE, right=TRUE)                                                               # -- i.e. when 1 & 2 are combined, labels will be 2:5
+label_quintile <- function(var){                                                                   # Unique so all-zero quintiles act as one bin
+  breakpoints <- unique(quantile(var, probs=0:5/5, na.rm=TRUE))                                    # -- labels anchor the higher quintiles for consistency
+  num_intervals <- length(breakpoints) - 1  # Number of actual intervals after unique()            # -- i.e. when 1 & 2 are combined, labels will be 2:5
+  
+  if(num_intervals <= 0) {
+    # Handle edge case where all values are NA or identical
+    return(rep(NA, length(var)))
+  }
+  
+  # Create labels that match the actual number of intervals
+  labels <- (6 - num_intervals):5
+  
+  rv <- cut(var, breaks = breakpoints, labels = labels,
+            include.lowest = TRUE, right = TRUE)
   return(rv)
 }
 
@@ -77,19 +87,25 @@ get_psrc_equity_shares <- function(dyear, entirety){                            
 }
 
 write_shares_to_elmer <- function(df){
-  merge_sql <- paste("MERGE INTO equity.tract_shares WITH (HOLDLOCK) AS target",                   # Create the merge SQL syntax
+
+  dyear <- unique(df$data_year)[1]                                                                 # Extract year from the data
+  dimvar_df <- choose_dims_n_vars(dyear)                                                           # -- use it to determine dimensions
+  df_colnames <- colnames(df)
+  
+  # Create the merge SQL syntax
+  merge_sql <- paste("MERGE INTO equity.tract_shares WITH (HOLDLOCK) AS target",
                      "USING stg.tract_shares AS source",
                      "ON target.data_year = source.data_year AND target.geoid = source.geoid AND target.county = source.county",
                      "WHEN MATCHED THEN UPDATE SET",
                      paste0(paste0(dimvar_df$share_vars,"=source.", dimvar_df$share_vars, collapse=", "), ", ",
                             paste0(dimvar_df$quintile_vars,"=source.", dimvar_df$quintile_vars, collapse=", ")),
-                     "WHEN NOT MATCHED BY TARGET THEN INSERT (", paste0(colnames(tract_shares), collapse=", "),")",
-                     "VALUES (", paste0("source.", colnames(tract_shares), collapse=", "), ");")
-
-  psrcelmer::stage_table(df, "tract_shares")                                                       # Stage table first
-  psrcelmer::sql_execute(sql=merge_sql)                                                            # -- then merge
-  psrcelmer::sql_execute(sql=paste("DROP TABLE stg.tract_shares"))                                 # Clean up
-  return(invisible(NULL))                                                                          # No return object for this action
+                     "WHEN NOT MATCHED BY TARGET THEN INSERT (", paste0(df_colnames, collapse=", "),")",
+                     "VALUES (", paste0("source.", df_colnames, collapse=", "), ");")
+  
+  psrcelmer::stage_table(df, "tract_shares")                                                       # Stage table first                                                   
+  psrcelmer::sql_execute(sql=merge_sql)                                                            # -- then merge                                                   
+  psrcelmer::sql_execute(sql=paste("DROP TABLE stg.tract_shares"))                                 # Clean up                              
+  return(invisible(NULL))                                                                          # No return object for this action                             
 }
 
 # Examples -------------------------------------------------------
@@ -100,7 +116,7 @@ write_shares_to_elmer <- function(df){
 # fwrite(equity_shares, filename)
 
 # Write to Elmer
-args <- expand.grid(years= c(2009:2022), entirety=c("county","region"))
+args <- expand.grid(years= c(2023), entirety=c("county","region"))
 tract_shares <- list()
 tract_shares <- mapply(get_psrc_equity_shares, args$years, args$entirety, SIMPLIFY = FALSE)
 lapply(tract_shares, write_shares_to_elmer)
