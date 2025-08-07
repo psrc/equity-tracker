@@ -42,7 +42,8 @@ library(leafem) #home button
 library(htmlwidgets) #save visuals as html
 library(ggspatial)
 library(lubridate) #year formatting
-library(readxl)
+library(openxlsx)
+library(data.table)
 library(summarytools) ##freq/ctable functions
 
 install_psrc_fonts()
@@ -74,7 +75,7 @@ folder_path <- file.path(file_names$base_dir,
 
 # set the variables
 var_name <- "Voter Participation"
-year <- 2024
+year <- 2020
 years <- c(#2012, 2016 
            2020, 2024)
 data <- 1:2 #number of datasets in raw_data list - to iterate through
