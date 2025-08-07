@@ -20,25 +20,20 @@ knitr::opts_chunk$set(echo=FALSE,
 ```
 
 ```{r library setup, include=FALSE}
+# install.packages("devtools")
 # devtools::install_github("psrc/psrcplot",
 #                          force=TRUE)
+
 library(tidyverse)
 library(psrcelmer)
 library(psrccensus)
 library(psrcplot)
-library(psrctrends)
 library(rlang) #required for psrccensus
 library(emmeans) #required for rlang
 library(magrittr)
-library(ggplot2)
 
-library(summarytools) #freq
 library(vtable) #summary stats
-library(table1)  #nice descriptive summary table
-library(scales) #number formatting
-library(ggpubr) #graphing - ggarrange fx
 library(forcats) #for factor re-leveling
-library(plotly) #for interactive charts
 
 library(odbc) #connect to ElmerGeo
 library(DBI) #connect to ElmerGeo
@@ -46,19 +41,32 @@ library(sf)
 library(leaflet)
 library(leafem) #home button
 library(htmlwidgets) #save visuals as html
-library(raster)
 library(ggspatial)
 library(lubridate) #year formatting
-library(stringr) #add leading zero's
-library(reshape2) #formatting data
 library(readxl)
-library(readr)
-library(gridExtra)
 
 install_psrc_fonts()
 library(showtext) #trying to fix PSRC font issues
 library(sysfonts) #required for showtext
 library(showtextdb) #required for showtext
+
+library(here)
+```
+
+```{r sources}
+# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the map legend so that it is arranged high-low with correct color order
+
+# reference supplemental script with supporting settings/functions
+source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
+```
+
+```{r variables setup}
+
+file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
+                   theme_dir = 'h-public-services',
+                   ind_dir = 'h02-voter-participation',
+                   chart = 'h02-voter-participation-chart-data',
+                   map = 'h02-voter-participation-map-data')
 ```
 
 **Voter Participation**
@@ -121,7 +129,7 @@ kitsap_data <- kitsap_el %>%
 # download.file(fileUrl, destfile = file.path(data_folder,"2016_Pierce_by_precinct_csv.csv"))
 # pierce_csv <- read_csv(file.path(data_folder,"2016_Pierce_by_precinct_csv.csv"),
 #                       col_names = FALSE)
-## Access 2: https://piercecountywa.gov/DocumentCenter/View/45035/Precinct-Canvass-Excel?bidId= > downloads Precinct Canvass.xls ----
+## Access 2 (preferred): https://piercecountywa.gov/DocumentCenter/View/45035/Precinct-Canvass-Excel?bidId= > downloads Precinct Canvass.xls ----
 ## Saved as: 2016_Pierce_by_precinct.xls
 pierce_el <- read_xls(
   file.path(data_folder,"2016_Pierce_by_precinct.xls"),
@@ -916,17 +924,15 @@ data_tract20_outliers_2
 # **MAP .rda**
 Save final data set (.rda) for map
 ```{r}
-# set folder structure
-base_dir <- 'Y:/Equity Indicators/tracker-webpage-content'
-theme_dir <- 'h-public-services'
-ind_dir <- 'h02-voter-participation'
-file_name <- 'h02-voter-participation-data'
+# This is the data set used to create the map of the most recent data. If there are any edits they should be made before saving it as an .rda. If not, you can skip this code chunk.
 
 # save final data set as .rda
-save(data_tract, file = file.path(base_dir,
-                                  theme_dir,
-                                  ind_dir, "rda-data",
-                                  paste0(file_name,'.rda')))
+save(acs_data_tract, file = file.path(file_names$base_dir,
+                                      file_names$theme_dir,
+                                      file_names$ind_dir, 
+                                      "update",
+                                      "rda-data",
+                                      paste0(file_names$map,'.rda')))
 ```
 
 # Explore data by equity quintile
@@ -1253,14 +1259,13 @@ data_clean <- data_clean %>%
 # **CHART .rda**
 Save final data set for charts (.rda)
 ```{r}
-# set folder structure
-file_name <- 'h02-voter-participation-data'
-
 # save final data set as .rda
-save(data_clean, file = file.path(base_dir,
-                                  theme_dir,
-                                  ind_dir, "rda-data",
-                                  paste0(file_name,'.rda')))
+save(data_clean, file = file.path(file_names$base_dir,
+                                  file_names$theme_dir,
+                                  file_names$ind_dir, 
+                                  "update",
+                                  "rda-data",
+                                  paste0(file_names$chart,'.rda')))
 ```
 
 <a href="#top">Back to top of the page</a>

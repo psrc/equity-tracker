@@ -51,12 +51,13 @@ library(webshot2) #static image creation
 output_type <- "html"
 ```
 # 3 visuals for webpage
-This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time.
+This code will help produce the three visuals that are going to be a part of each equity tracker indicator webpage: regional map (tract level) of most recent data, chart of the most recent data, chart of trends over time. 
 \
 \
-**If the indicator is a PUMS/OPSI indicator that can be accessed through Elmer.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-pums-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
+**If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
+Life expectancy provides a way to understand a population's overall health. Differences between groups of people can highlight differing access to healthcare and public services, adequate nutrition and living conditions, all of which impact a population's mortality rate.
 [Please include the following for a general, layperson audience: 1-2 sentences explaining what your indicator is/measures, what it says about people's life outcomes; 1 sentence describing why it is useful/relevant in the indicator's theme]
 
 ## 1. Map of most recent data
