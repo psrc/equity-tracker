@@ -192,9 +192,8 @@ sort <- data %>%
 ```
 
 1. 85%: The region's voter participation rate
-2. 93%: The highest voter participation rate in 19 neighborhoods is in the West Woodland neighborhood in Seattle, followed by voter participation rates of 93.1% in three Seattle neighborhoods: Blue Ridge, Ravenna and Wedgewood, and Tangletown
-3. 45.7%: The lowest voter participation rate in the region
-
+2. 78%: The regional voter participation rate for communities with high concentrations of households of color is 78%, 9 percentage points lower than the rate for communities with low concentrations
+3. 81%: Regionally, communities with high concentrations of people with disabilities have voter participation rates 6 percentage points lower than communities with low concentrations
 \
 
 #### Insights & Analysis
@@ -327,13 +326,45 @@ if (output_type == "html") {
 ```{r column facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
 
+# data call out #2
 filter <- data_clean_column %>% 
   filter(county=="Region",
-         equity_group=="poc_quintile")
+         equity_group=="poc_quintile",
+         quintile=="Low"|
+           quintile=="High")
 
 # region low quintile poc households: 0.8775952	
 # region high quintile poc households: 0.7839176
 # 0.8775952-0.7839176=0.0936776
+
+# data call out #3
+filter <- data_clean_column %>% 
+  filter(equity_group=="disability_quintile",
+         quintile=="Low"|
+           quintile=="High")
+# region dif bt low/high quintiles for disability: 0.8744172-0.8103445=0.0640727
+
+filter <- data_clean_column %>% 
+  filter(county!="Region",
+         equity_group=="poc_quintile",
+         quintile=="Low"|
+           quintile=="High")
+
+# king low-high quintiles for poc: 0.8970217-0.7852066=0.1118151
+# kitsap low-high quintiles for poc: 0.8824477-0.7703693=0.1120784
+# pierce low-high quintiles for poc: 0.8687831-0.7314347=0.1373484
+# snohomish low-high quintiles for poc: 0.8690456-0.8216389=0.0474067
+
+
+filter <- data_clean_column %>% 
+  filter(equity_group=="income_quintile",
+         quintile=="High",
+         county!="Region")
+
+# king high quintile low income households: 0.7815157
+# kitsap high quintile low income households: 0.7806591
+# pierce high quintile low income households: 0.7163262
+# snohomish high quintile low income households: 0.8082091
 
 filter <- data_clean_column %>% 
   filter(equity_group=="lep_quintile",
@@ -347,56 +378,31 @@ filter <- data_clean_column %>%
 # snohomish low-high quintiles for lep: 0.8610657-0.8152412=0.0458245
 
 filter <- data_clean_column %>% 
-  filter(equity_group=="income_quintile",
-         quintile=="Low"|
-           quintile=="High",
-         county!="Region")
-
-# king low-high quintile low income households: 0.8874104-0.7815157=0.1058947
-# kitsap low-high quintile low income households: 0.8683479-0.7806591=0.0876888
-# pierce low-high quintile low income households: 0.8759634-0.7163262=0.1596372
-# snohomish low-high quintile low income households: 0.8854558-0.8082091=0.0772467
-
-
-filter <- data_clean_column %>% 
-  filter(equity_group=="disability_quintile",
+  filter(equity_group=="youth_quintile",
          quintile=="Low"|
            quintile=="High")
-# region dif bt low/high quintiles for disability: 0.8744172-0.8103445=0.0640727
+# king high-low quintiles for youth: 0.8574988-0.8480032=0.0094956
+# kitsap high-low quintiles for youth: 0.8433094-0.8135396=0.0297698
+# pierce high-low quintiles for youth: 0.8308442-0.7905982=0.040246
+# snohomish high-low quintiles for youth: 0.8461898-0.8627143=-0.0165245
 
 filter <- data_clean_column %>% 
-  filter(county!="Region",
-         equity_group=="youth_quintile",
+  filter(equity_group=="older_quintile",
          quintile=="Low"|
            quintile=="High")
-# king high-low quintiles for income: 0.8574988-0.8480032=0.0094956
-# kitsap high-low quintiles for income: 0.8433094-0.8135396=0.0297698
-# pierce high-low quintiles for income: 0.8308442-0.7905982=0.040246
-# snohomish high-low quintiles for income: 0.8461898-0.8627143=-0.0165245
-
-filter <- data_clean_column %>% 
-  filter(county!="Region",
-         equity_group=="older_quintile",
-         quintile=="Low"|
-           quintile=="High")
-# king high-low quintiles for income: 0.8480646-0.8522888=-0.0042242
-# kitsap high-low quintiles for income: 0.7615507-0.8843850=-0.1228343
-# pierce high-low quintiles for income: 0.7673896-0.8717076=-0.104318
-# snohomish high-low quintiles for income: 0.8417441-0.8648048=-0.0230607
+# king high-low quintiles for older: 0.8480646-0.8522888=-0.0042242
+# kitsap high-low quintiles for older: 0.7615507-0.8843850=-0.1228343
+# pierce high-low quintiles for older: 0.7673896-0.8717076=-0.104318
+# snohomish high-low quintiles for older: 0.8417441-0.8648048=-0.0230607
 ```
-
-1. 78%: The regional voter participation rate of households of color is 78%, 9 percentage points lower than the rate for white, non-Hispanic households
-2. 86%: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
-3. \$39,300: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
-
 \
 
 #### Insights & Analysis
 
-* The smallest difference in median income between people of color and white non-Hispanic is in Snohomish County (\$4,100), while the largest difference is in King County (\$19,400)
-* For households who are below 200% of the poverty level, the median income is lowest in King County (\$24,100), followed by Snohomish and Kitsap (\$26,100), and Pierce (\$27,700)
-* The largest difference in median income between people with and without a disability is in King County (\$53,100), while the smallest difference is in County (\$20,100)
-* Snohomish County is the only county where Non-English proficient households have higher median incomes (\$67,800) than the region's Non-English proficient households (\$58,300)
+* Communities with higher concentrations of people of color have lower voter participation rates than those with lower concentrations - the largest difference is in Pierce County (14 percentage points).
+* For communities with high concentrations of households who are below 200% of the poverty level, voter participation rates are highest in Snohomish County (81%), followed by King and Kitsap (78%), and Pierce County (72%).
+* Voter participation is lower in communities with higher concentrations of households with limited English proficiency compared to communities with lower concentrations. King County has the highest difference (9 percentage points), while Snohomish County has the smallest difference (5 percentage points).
+* Regionally, there is little difference in the voter participation rate between communities with high and low concentrations of households with children. The largest differences are in Pierce and Kitsap counties where higher concentrations of households with children have lower voter participation rates by four and three percentage points, respectively. Snohomish County is the only county where voter participation rates are higher in communities with higher concentrations of households with children, although the difference is one percentage point. 
 
 \
 \
