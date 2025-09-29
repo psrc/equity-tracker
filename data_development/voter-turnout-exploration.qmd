@@ -1,0 +1,935 @@
+---
+title: "Exploring Voter Turnout"
+subtitle: "Applying geography splits to translate precinct-level data to census tract geographies"
+author: "Mary Richards"
+date: today
+date-format: long
+format: 
+  html:
+    toc: true
+    toc-location: right-body
+    toc-expand: 2
+    # toc-depth: 6
+    toc-title: "Contents"
+# editor: visual
+execute:
+  # echo: false
+  warning: false
+  error: false
+---
+
+This documents the process for exploring voter turnout based on data from the WA Secretary of State. In this exercise, we are using precinct-tract geography splits to calculate voter turnout by tract geographies.  
+\
+The final output is voter turnout (%) by census tract. Ultimately, this measurement will be used in the Equity Tracker and Displacement Risk Mapping projects.
+```{r setup, include=FALSE}
+# Read in Libraries
+library(magrittr)
+library(stringr)
+library(data.table)
+library(tidycensus)
+library(tidyverse)
+library(openxlsx)
+library(psrcelmer)
+library(psrccensus)
+```
+
+```{r, include=FALSE}
+# Helper functions
+fetch_turnout <- function(zip_url, data_file){
+  temp_zip <- tempfile(fileext = ".zip")
+  temp_dir <- tempdir()
+  
+  # Download the zip file
+  download.file(zip_url, temp_zip)
+  
+  # Extract the zip file
+  unzip(temp_zip, exdir = temp_dir)
+  
+  # Read the Excel/CSV file
+  data_file <- file.path(temp_dir, data_file)
+  
+  if (endsWith(data_file, ".xlsx")) {
+    turnout_data <- read.xlsx(data_file)
+  } else if (endsWith(data_file, ".csv")) {
+    turnout_data <- read.csv(data_file)
+  } else {
+    print("data is a different file type")
+  }
+  
+  # Clean up temporary files
+  unlink(temp_zip)
+  unlink(data_file)
+  
+  return(turnout_data)
+}
+```
+
+::: panel-tabset
+# Data 
+## 1.) Elmer geography splits: precinct-tract
+These data tables include the proportion of the population based on OFM (total population) between voting precincts (2024, from SOS) and census tracts (2020). There are three variations: 1) distribution based on total population; 2) distribution based on adult population, based on the 2023 5y ACS tract estimates for adult 18+ population; 3) distribution based on adult population, based on the 2020 decennial census block group estimates for adult 18+ population.
+```{r}
+total_sql24 <- "select *
+    from stg.get_any_geography_splits(
+        'voter_precinct_2024', --@data_geog_type
+        'tract20',              --@planning_geog_type
+        2024,                   --@ofm_estimate_year
+        2024,                   --@ofm_vintage
+        2018)                   --@parcel_year"
+adult_sql24 <- "select *
+    from general.get_any_geography_splits(
+        'voter_precinct_2024', --@data_geog_type
+        'tract20',              --@planning_geog_type
+        2024,                   --@ofm_estimate_year
+        2024,                   --@ofm_vintage
+        2018)                   --@parcel_year"
+
+adult_sql24_dec <- "select *
+    from stg.get_geography_splits_scaled_decennial(
+        'voter_precinct_2024', --@data_geog_type
+        'tract20',              --@planning_geog_type
+        2024,                   --@ofm_estimate_year
+        2024,                   --@ofm_vintage
+        2018)                   --@parcel_year"
+
+df24_total <- get_query(sql=total_sql24, db_name = "Elmer")
+df24_adult <- get_query(sql=adult_sql24, db_name = "Elmer")
+df24_adult_dec <- get_query(sql=adult_sql24_dec, db_name = "Elmer")
+
+```
+
+## 2.) Secretary of State: turnout data
+This data set includes the number of registered voters and the number of ballots cast by voting precinct. The voting precinct geographies change between election years. 
+```{r}
+voting_url <-"https://www.sos.wa.gov/sites/default/files/"
+turnout_zip_url24 <- paste0(voting_url, "2025-01/2024Gen_Precinct_Results_GIS-Ready.zip")
+
+psrc_counties <- data.frame("CountyName"=c("King","Kitsap","Pierce","Snohomish"),
+                            "FIPS"=c("033","035","053","061"),
+                            "CountyCode" = c("KI", "KI", "PI", "SN"))
+acs_year <- 2023
+
+# Load voter turnout data using new source and column names
+# 2024 available through the SOS website
+vt24 <- fetch_turnout(turnout_zip_url24, 
+                      '2024Gen_Precinct_Turnout_GIS-Ready.csv')
+
+# Clean turnout data sets - filter to PSRC region, rename columns
+vt24_df <- vt24 %>% setDT() %>%                                             
+  filter(str_detect(St_Code, "^KI|KP|PI|SN")) %>%               # Filter to PSRC counties
+  .[, .(precinctcode = St_Code, 
+        reg_voters = G24TREGVOT, ballots_cast = G24TBALCST)]
+```
+
+## 3.) ACS 5y (2023) population data
+These values will be used as the denominator - dividing the ballots cast by the total population 18+.
+```{r}
+base_acs_data <- get_acs_recs(geography ='tract',
+                              table.names = 'S0101', #subject table code
+                              years = c(as.numeric(acs_year)),
+                              acs.type = 'acs5')
+
+age_18over <- base_acs_data %>%
+  filter(variable=="S0101_C01_026") #Total population!!SELECTED AGE CATEGORIES!!18 years and over
+
+# calculate the proportion of 18+ adults/total population to check if there are some tracts with more/fewer adults
+age_18over_total <- base_acs_data %>%
+  filter(variable=="S0101_C01_001" | #Total population
+           variable=="S0101_C01_026") %>% #Total population!!SELECTED AGE CATEGORIES!!18 years and over
+  select(GEOID, variable, estimate) %>%
+  pivot_wider(names_from = variable,
+              values_from = estimate) %>%
+  reframe(GEOID,
+          pop_18=S0101_C01_026,
+          pop_tot=S0101_C01_001,
+          pop18_total=S0101_C01_026/S0101_C01_001)
+
+# calculate total number for reference
+sum(age_18over$estimate) #3,394,729
+```
+# Methods
+**Voter turnout = ballots cast / eligible population** 
+\
+The main challenge is that the raw voting data is available at voting precincts, which are unique geographies that do not align with census geographies. This requires translation between the two geographies. 
+\
+\
+There are three approaches we are exploring to calculating the numerator (the number of ballots cast):
+
+A) total population distribution based on OFM
+B) weighting the population distribution by 2023 5y adult 18+ population estimates (TRACT)
+C) weighting the population distribution by 2020 decennial census adult 18+ population estimates (BLOCK GROUP)
+\
+
+For all three approaches, the 2023 5y adult 18+ population estimates are used as the denominator (eligible population). 
+\
+\
+*DATA NOTE: For this exercise, it is assumed that the eligible population most closely aligns with the adult 18+ population. Although this may include individuals who are not able to legally vote (non-citizens), the alternative is using the number of registered voters (available at voting precincts), which is a subset of the adult 18+ population who are already engaged enough to have registered. While using the general 18+ population as a denominator may result in slightly lower voter turnout values (based on our working definition), using registered voters as the denominator would results in inflated voter turnout values.*
+
+# A) Total population (OFM)
+## Join precinct-tract to geographies to turnout data
+```{r}
+nrow(df24_total) #precinct-tract records: 6294
+nrow(vt24_df) #voting data by unique precinct: 4608
+vt24_df_0 <- vt24_df %>% 
+  filter(reg_voters<1) # there are 62 precincts without data
+# data_geog = precinct
+# planning_geog = tract
+length(unique(df24_total$data_geog)) #unique precincts: 4552
+length(unique(df24_total$planning_geog)) #unique tracts: 919
+```
+There is a difference in the number of records - in the voting data, there are 4,608 records (precincts) while the geography split data only has 4,552 unique precincts. The difference between these two data sets is 56 precincts. There are 62 precincts in the voting data without registered voters.
+
+### checking the records that don't line up between the two data sets
+```{r}
+outer <- df24_total %>% 
+  anti_join(vt24_df, by = c('data_geog'='precinctcode')) 
+nrow(outer) #54 records
+summary(outer$percent_of_total_pop)
+
+outer2 <- vt24_df %>% 
+  anti_join(df24_total, by = c('precinctcode'='data_geog')) 
+nrow(outer2) #57 records
+summary(outer2$percent_of_total_pop)
+```
+The output table from the first anti_join() includes census tract IDs without associated precincts.
+
+
+## calculate total numbers for reference 
+```{r}
+sum(vt24_df$reg_voters) #2,736,409
+sum(vt24_df$ballots_cast) #2,166,325
+```
+In the 2024 voting data (by precinct), there were 2,736,409 registered voters and 2,166,325 ballots cast.  
+
+## join voter turnout data to precinct-tract splits on precinct field
+Using a full_join()
+```{r}
+join_df24 <- df24_total %>% 
+  full_join(vt24_df, 
+            by = c('data_geog'='precinctcode')) #6351 records
+
+
+# simplify data - remove unnecessary fields
+join_df24_simp <- join_df24 %>% 
+  select(-c(percent_of_group_quarters_pop, 
+            percent_of_household_pop, 
+            percent_of_housing_units,
+            percent_of_occupied_housing_units))
+
+# review data
+summary(join_df24_simp$reg_voters) #54 NAs
+summary(join_df24_simp$ballots_cast) #54 NAs
+
+# calculate weighted registered voters and ballots cast 
+df24_calc <- join_df24_simp %>% 
+  mutate(reg_voters_wt = reg_voters*percent_of_total_pop,
+         ballots_cast_wt = ballots_cast*percent_of_total_pop)
+```
+
+## calculate total numbers to check 
+These calculations sum the values after being weighted by the geography splits. They should match the original voting precinct data. 
+```{r}
+sum(df24_calc$reg_voters_wt, na.rm = TRUE) #2,736,352 ~ 57 missing voters?
+sum(df24_calc$ballots_cast_wt, na.rm = TRUE) #2,166,294 ~ 31 missing ballots cast
+
+# does rounding make a difference?
+round(sum(df24_calc$reg_voters_wt, na.rm = TRUE), digits = 0) #2,736,352 ~ still 57 missing voters
+round(sum(df24_calc$ballots_cast_wt, na.rm = TRUE), digits =0) #2,166,294 ~ still 31 missing ballots cast
+```
+After weighting, the total registered voters is 2,736,352 and the total number of ballots cast is 2,166,294. This means that there are 57 missing voters and 31 missing ballots. These go missing during the weighting step.
+
+### checking for missing voters/ballots
+```{r}
+# grouping and adding by precinct 
+test <- df24_calc %>% 
+  # mutate(reg_voters_wt = case_when(is.na(reg_voters_wt)~0, # need to convert NA to 0 so they can be added
+  #                                  TRUE ~ reg_voters_wt), # if this isn't included, when they're grouped, the NA's will cancel out the other values within the census tract
+  #        ballots_cast_wt = case_when(is.na(ballots_cast_wt)~0,
+  #                                    TRUE ~ ballots_cast_wt)) %>% 
+  group_by(data_geog) %>% # grouping on precinct
+  summarise(#reg_voters_test = sum(reg_voters_wt), # need to round
+            #ballots_cast_test = sum(ballots_cast_wt), # need to round
+            reg_voters_test = round(sum(reg_voters_wt), digits = 0),
+            ballots_cast_test = round(sum(ballots_cast_wt), digits = 0),
+            .groups = 'drop')
+
+test2 <- df24_calc %>% 
+  full_join(test) %>% 
+  mutate(dif_voters = if_else(reg_voters == reg_voters_test, "Match", "No Match"),
+         dif_ballots = if_else(ballots_cast == ballots_cast, "Match", "No Match"))
+
+
+# check number of matching/not matching records
+table(test2$dif_voters) # all matching once rounded 'reg_voters_wt' above
+table(test2$dif_ballots) # all matching once rounded 'ballots_cast_wt' above
+
+test3 <- df24_calc %>% 
+  group_by(data_geog) %>% # grouping on precincts
+  reframe(total_pop = sum(percent_of_total_pop))
+# when viewing the data frame in a separate window, all values are '1' but when looking at df in console there are some '1' and some '1.00'
+
+summary(test3$total_pop) #57 NAs
+```
+Unable to find missing values?
+
+## calculate voter turnout by registered voters 
+(ballots cast/registered voters)
+\
+This is not the final calculation because it is based on those who are already engaged to an extent, not the general population who are capable of voting.
+```{r}
+df24_calc_tract <- df24_calc %>% 
+  mutate(reg_voters_wt = case_when(is.na(reg_voters_wt)~0, # need to convert NA to 0 so they can be added
+                                   TRUE ~ reg_voters_wt), # if this isn't included, when they're grouped, the NA's will cancel out the other values within the census tract
+         ballots_cast_wt = case_when(is.na(ballots_cast_wt)~0,
+                                     TRUE ~ ballots_cast_wt)) %>% 
+  group_by(data_geog_type, planning_geog_type, 
+           ofm_estimate_year, ofm_vintage, parcel_year,
+           planning_geog) %>% # grouping on tract ids, retaining other fields for reference
+  summarise(#reg_voters = sum(reg_voters_wt), # need to round?
+            #ballots_cast = sum(ballots_cast_wt), # need to round?
+            reg_voters = round(sum(reg_voters_wt), digits = 0),
+            ballots_cast = round(sum(ballots_cast_wt), digits = 0),
+            .groups = 'drop') %>% 
+  mutate(regvote_turnout = ballots_cast/reg_voters)
+
+# calculate total numbers to check
+sum(df24_calc_tract$reg_voters, na.rm=T) #2,736,352 when not rounded, 2,736,358 when rounded
+sum(df24_calc_tract$ballots_cast, na.rm=T) #2,166,294 when not rounded, 2,166,281 when rounded
+```
+
+## calculate voter turnout by population 18+ 
+(ballots cast/pop 18+)
+\
+This is closer to the final calculation because it takes into account all people who are capable of voting. This value may include non-citizens, or adults 18+ who are not legally allowed to vote, but it is more comprehensive than just considering those who are registered.
+```{r}
+# simplify acs table and join to voter/ballot data
+age_18over_simp <- age_18over %>% 
+  select(GEOID, 
+         adult_18plus = estimate, 
+         acs_year = year,
+         acs_reliability = reliability)
+
+# join to precinct/voter turnout data to tract 18+ population data to calculate population 18+ turnout
+df24_calc_tract_adults <- df24_calc_tract %>% 
+  left_join(age_18over_simp, 
+            by = c('planning_geog'='GEOID')) 
+  
+
+# calculate voter turnout by population 18+
+df24_tract_total <- df24_calc_tract_adults %>% 
+  mutate(pop18_turnout = ballots_cast/adult_18plus,
+         registered_pop18 = reg_voters/adult_18plus)
+
+# check 
+summary(df24_tract_total$pop18_turnout) #1.21 max
+summary(df24_tract_total$registered_pop18) #1.39 max
+```
+There are some tracts with higher than 100% voter turnout and registered voters. 
+
+### Checking tracts with over 100%
+#### where number of ballots cast is greater than the number of adults 18+
+```{r}
+df24_tract_above1_totalpop <- df24_tract_total %>% 
+  filter(pop18_turnout>1)
+
+df24_tract_above1_totalpop
+
+df24_tract_above1_totalpop_simp <- df24_tract_above1_totalpop %>% 
+  select(planning_geog, ballots_cast, adult_18plus, pop18_turnout)
+```
+There are 11 tracts over 100%.
+
+#### where number of registered voters is greater than the number of adults 18+
+```{r}
+df24_tract_above1_totalpop_reg <- df24_tract_total %>% 
+  filter(registered_pop18>1)
+
+df24_tract_above1_totalpop_reg
+```
+There are 111 tracts over 100%.
+
+
+We could check against the proportion of adults 18+ out of the total population, in case some tracts have more/fewer children. The geography splits are based on total population, which assumes the distribution of adults 18+ matches the distribution of the total population.
+```{r}
+# check distribution of 18+ 
+summary(age_18over_total$pop18_total)
+hist(age_18over_total$pop18_total) 
+```
+There are some tracts where all of the population is 18+
+
+```{r}
+# calculate weighted values for voter turnout based on population 18+ and based on registered voters
+df24_tract_calculations <- df24_tract_total %>% 
+  left_join(age_18over_total,
+            by = c('planning_geog'='GEOID')) %>% 
+  mutate(reg_voters_wt18 = reg_voters*pop18_total, #weight values calc from geog splits by eligible pop
+         ballots_cast_wt18 = ballots_cast*pop18_total) %>% #weight values calc from geog splits by eligible pop
+  mutate(pop18_turnout_wt18 = ballots_cast_wt18/adult_18plus,
+         registered_pop18_wt18 = reg_voters_wt18/adult_18plus)
+
+summary(df24_tract_calculations$pop18_turnout_wt18) #max: 0.961
+summary(df24_tract_calculations$registered_pop18_wt18) #max: 1.05
+
+# checking tracts where registered voters/population 18+ (weighted) >100%
+df24_tract_calculations_above1 <- df24_tract_calculations %>% 
+  filter(registered_pop18_wt18>1)
+```
+When weighted by the proportion 18+/total population, there are no tracts with over 100% voter tunrout based on ballots cast, however there are still 2 tracts that are over 100% when looking at registered voters.
+
+
+# B) Adult population by tract (ACS 5y-estimates, 2023)
+## Join precinct-tract to geographies to turnout data
+```{r}
+nrow(df24_adult) #precinct-tract records: 6294
+nrow(vt24_df) #voting data by unique precinct: 4608
+vt24_df_0 <- vt24_df %>% 
+  filter(reg_voters<1) # there are 62 precincts without data
+# data_geog = precinct
+# planning_geog = tract
+length(unique(df24_adult$data_geog)) #unique precincts: 4552
+length(unique(df24_adult$planning_geog)) #unique tracts: 919
+```
+There is a difference in the number of records - in the voting data, there are 4,608 records (precincts) while the geography split data only has 4,552 unique precincts. The difference between these two data sets is 56 precincts. There are 62 precincts in the voting data without registered voters.
+
+### checking the records that don't line up between the two data sets
+```{r}
+outer <- df24_total %>% 
+  anti_join(vt24_df, by = c('data_geog'='precinctcode')) 
+nrow(outer) #54 records
+summary(outer$percent_of_total_pop)
+
+outer2 <- vt24_df %>% 
+  anti_join(df24_adult, by = c('precinctcode'='data_geog')) 
+nrow(outer2) #57 records
+summary(outer2$percent_of_total_pop)
+```
+The output table from the first anti_join() includes census tract IDs without associated precincts.
+
+
+## calculate total numbers for reference 
+```{r}
+sum(vt24_df$reg_voters) #2,736,409
+sum(vt24_df$ballots_cast) #2,166,325
+```
+In the 2024 voting data (by precinct), there were 2,736,409 registered voters and 2,166,325 ballots cast.  
+
+## join voter turnout data to precinct-tract splits on precinct field
+Using a full_join()
+```{r}
+join_df24 <- df24_adult %>% 
+  full_join(vt24_df, 
+            by = c('data_geog'='precinctcode')) #6351 records
+
+
+# simplify data - remove unnecessary fields
+join_df24_simp <- join_df24 %>% 
+  select(-c(percent_of_group_quarters_pop, 
+            percent_of_household_pop, 
+            percent_of_housing_units,
+            percent_of_occupied_housing_units))
+
+# review data
+summary(join_df24_simp$reg_voters) #54 NAs
+summary(join_df24_simp$ballots_cast) #54 NAs
+
+# calculate weighted registered voters and ballots cast 
+df24_calc <- join_df24_simp %>% 
+  mutate(reg_voters_wt = reg_voters*percent_of_total_pop,
+         ballots_cast_wt = ballots_cast*percent_of_total_pop)
+```
+
+## calculate total numbers to check 
+These calculations sum the values after being weighted by the geography splits. They should match the original voting precinct data. 
+```{r}
+sum(df24_calc$reg_voters_wt, na.rm = TRUE) #2,736,352 ~ 57 missing voters?
+sum(df24_calc$ballots_cast_wt, na.rm = TRUE) #2,166,294 ~ 31 missing ballots cast
+
+# does rounding make a difference?
+round(sum(df24_calc$reg_voters_wt, na.rm = TRUE), digits = 0) #2,736,352 ~ still 57 missing voters
+round(sum(df24_calc$ballots_cast_wt, na.rm = TRUE), digits =0) #2,166,294 ~ still 31 missing ballots cast
+```
+After weighting, the total registered voters is 2,736,352 and the total number of ballots cast is 2,166,294. This means that there are 57 missing voters and 31 missing ballots. These go missing during the weighting step.
+
+### checking for missing voters/ballots
+```{r}
+# grouping and adding by precinct 
+test <- df24_calc %>% 
+  # mutate(reg_voters_wt = case_when(is.na(reg_voters_wt)~0, # need to convert NA to 0 so they can be added
+  #                                  TRUE ~ reg_voters_wt), # if this isn't included, when they're grouped, the NA's will cancel out the other values within the census tract
+  #        ballots_cast_wt = case_when(is.na(ballots_cast_wt)~0,
+  #                                    TRUE ~ ballots_cast_wt)) %>% 
+  group_by(data_geog) %>% # grouping on precinct
+  summarise(#reg_voters_test = sum(reg_voters_wt), # need to round
+            #ballots_cast_test = sum(ballots_cast_wt), # need to round
+            reg_voters_test = round(sum(reg_voters_wt), digits = 0),
+            ballots_cast_test = round(sum(ballots_cast_wt), digits = 0),
+            .groups = 'drop')
+
+test2 <- df24_calc %>% 
+  full_join(test) %>% 
+  mutate(dif_voters = if_else(reg_voters == reg_voters_test, "Match", "No Match"),
+         dif_ballots = if_else(ballots_cast == ballots_cast, "Match", "No Match"))
+
+
+# check number of matching/not matching records
+table(test2$dif_voters) # all matching once rounded 'reg_voters_wt' above
+table(test2$dif_ballots) # all matching once rounded 'ballots_cast_wt' above
+
+test3 <- df24_calc %>% 
+  group_by(data_geog) %>% # grouping on precincts
+  reframe(total_pop = sum(percent_of_total_pop))
+# when viewing the data frame in a separate window, all values are '1' but when looking at df in console there are some '1' and some '1.00'
+
+summary(test3$total_pop) #57 NAs
+```
+Unable to find missing values?
+
+## calculate voter turnout by registered voters 
+(ballots cast/registered voters)
+\
+This is not the final calculation because it is based on those who are already engaged to an extent, not the general population who are capable of voting.
+```{r}
+df24_calc_tract <- df24_calc %>% 
+  mutate(reg_voters_wt = case_when(is.na(reg_voters_wt)~0, # need to convert NA to 0 so they can be added
+                                   TRUE ~ reg_voters_wt), # if this isn't included, when they're grouped, the NA's will cancel out the other values within the census tract
+         ballots_cast_wt = case_when(is.na(ballots_cast_wt)~0,
+                                     TRUE ~ ballots_cast_wt)) %>% 
+  group_by(data_geog_type, planning_geog_type, 
+           ofm_estimate_year, ofm_vintage, parcel_year,
+           planning_geog) %>% # grouping on tract ids, retaining other fields for reference
+  summarise(#reg_voters = sum(reg_voters_wt), # need to round?
+            # ballots_cast = sum(ballots_cast_wt), # need to round?
+            reg_voters = round(sum(reg_voters_wt), digits = 0),
+            ballots_cast = round(sum(ballots_cast_wt), digits = 0),
+            .groups = 'drop') %>% 
+  mutate(regvote_turnout = ballots_cast/reg_voters)
+
+# calculate total numbers to check
+sum(df24_calc_tract$reg_voters, na.rm=T) #2,736,352 when not rounded, 2,736,354 when rounded
+sum(df24_calc_tract$ballots_cast, na.rm=T) #2,166,294 when not rounded, 2,166,297 when rounded
+```
+
+## calculate voter turnout by population 18+ 
+(ballots cast/pop 18+)
+\
+This is closer to the final calculation because it takes into account all people who are capable of voting. This value may include non-citizens, or adults 18+ who are not legally allowed to vote, but it is more comprehensive than just considering those who are registered.
+```{r}
+# simplify acs table and join to voter/ballot data
+age_18over_simp <- age_18over %>% 
+  select(GEOID, 
+         adult_18plus = estimate, 
+         acs_year = year,
+         acs_reliability = reliability)
+
+# join to precinct/voter turnout data to tract 18+ population data to calculate population 18+ turnout
+df24_calc_tract_adults <- df24_calc_tract %>% 
+  left_join(age_18over_simp, 
+            by = c('planning_geog'='GEOID')) 
+  
+
+# calculate voter turnout by population 18+
+df24_tract_adult <- df24_calc_tract_adults %>% 
+  mutate(pop18_turnout = ballots_cast/adult_18plus,
+         registered_pop18 = reg_voters/adult_18plus)
+
+# check 
+summary(df24_tract_adult$pop18_turnout) #1.21 max
+summary(df24_tract_adult$registered_pop18) #1.39 max
+```
+There are some tracts with higher than 100% voter turnout and registered voters. 
+
+### Checking tracts with over 100%
+#### where number of ballots cast is greater than the number of adults 18+
+```{r}
+df24_tract_above1_adultpop <- df24_tract_adult %>% 
+  filter(pop18_turnout>1)
+
+df24_tract_above1_adultpop
+
+df24_tract_above1_adultpop_simp <- df24_tract_above1_adultpop %>% 
+  select(planning_geog, ballots_cast, adult_18plus, pop18_turnout)
+```
+There are 9 tracts over 100% - compared to 11 tracts when considering the total population.
+
+#### where number of registered voters is greater than the number of adults 18+
+```{r}
+df24_tract_above1_adultpop_reg <- df24_tract_adult %>% 
+  filter(registered_pop18>1)
+
+df24_tract_above1_adultpop_reg
+```
+There are 109 tracts over 100% - compared to 111 tracts when considering the total population.
+
+```{r}
+# calculate weighted values for voter turnout based on population 18+ and based on registered voters
+df24_tract_calculations <- df24_tract_adult %>% 
+  left_join(age_18over_total,
+            by = c('planning_geog'='GEOID')) %>% 
+  mutate(reg_voters_wt18 = reg_voters*pop18_total, #weight values calc from geog splits by eligible pop
+         ballots_cast_wt18 = ballots_cast*pop18_total) %>% #weight values calc from geog splits by eligible pop
+  mutate(pop18_turnout_wt18 = ballots_cast_wt18/adult_18plus,
+         registered_pop18_wt18 = reg_voters_wt18/adult_18plus)
+
+summary(df24_tract_calculations$pop18_turnout_wt18) #max: 0.96375, compared to 0.961 when considering total population
+summary(df24_tract_calculations$registered_pop18_wt18) #max: 1.05687, compared to 1.05 when considering total population
+
+# checking tracts where registered voters/population 18+ (weighted) >100%
+df24_tract_calculations_above1 <- df24_tract_calculations %>% 
+  filter(registered_pop18_wt18>1)
+```
+When weighted by the proportion 18+/total population, there are no tracts with over 100% voter tunrout based on ballots cast, however there are still 3 tracts that are over 100% when looking at registered voters, compared to the 2 tracts when considering the total population.
+
+
+### Comparing tracts
+To look compare the differences in the voter turnout for all tracts (based on ballots cast) between those calculated based on total population distribution and adult 18+ distribution
+
+#### All tracts
+```{r}
+compare_all <- df24_tract_total %>% 
+  full_join(df24_tract_adult,
+            by = c("data_geog_type", "planning_geog_type",
+                  "ofm_estimate_year", "ofm_vintage",
+                  "parcel_year", "planning_geog",
+                  "acs_year"))
+
+compare_all_calc <- compare_all %>% 
+  mutate(dif_total_adult=pop18_turnout.x-pop18_turnout.y)
+compare_all_calc_simp <- compare_all_calc %>% 
+  select(planning_geog, pop18_turnout.x, pop18_turnout.y, dif_total_adult)
+
+summary(compare_all_calc$dif_total_adult)
+hist(compare_all_calc$dif_total_adult)
+
+filter <- compare_all_calc %>% 
+  filter(dif_total_adult<0)
+```
+This shows that the difference in voter turnout is more negative which means that when weighting by adult 18+ distribution the values are slightly higher than the values when just taking the total population distribution into account. The differences are relatively small, but 386 tracts have differences that are positive, while 418 are negative. 
+
+#### Those above 100%
+To compare the differences in the voter turnout values for the tracts over 100% (based on ballots cast) between those calculated based on total population distribution and adult 18+ distribution
+```{r}
+compare_above1 <- df24_tract_above1_totalpop %>% 
+ full_join(df24_tract_above1_adultpop,
+           by = c("data_geog_type", "planning_geog_type",
+                  "ofm_estimate_year", "ofm_vintage",
+                  "parcel_year", "planning_geog",
+                  "acs_year", 
+                  "acs_reliability")) #reliability is good for all tracts in both datasets
+
+compare_above1_calc <- compare_above1 %>% 
+  mutate(dif_total_adult=pop18_turnout.x-pop18_turnout.y)
+compare_above1_calc_simp <- compare_above1_calc %>% 
+  select(planning_geog, pop18_turnout.x, pop18_turnout.y, dif_total_adult)
+
+summary(compare_above1_calc$dif_total_adult)
+hist(compare_above1_calc$dif_total_adult)
+```
+
+# C) Adult population by block group (decennial census, 2020)
+## Join precinct-tract to geographies to turnout data
+```{r}
+nrow(df24_adult_dec) #precinct-tract records: 6294
+nrow(vt24_df) #voting data by unique precinct: 4608
+vt24_df_0 <- vt24_df %>% 
+  filter(reg_voters<1) # there are 62 precincts without data
+# data_geog = precinct
+# planning_geog = tract
+length(unique(df24_adult_dec$data_geog)) #unique precincts: 4552
+length(unique(df24_adult_dec$planning_geog)) #unique tracts: 919
+```
+There is a difference in the number of records - in the voting data, there are 4,608 records (precincts) while the geography split data only has 4,552 unique precincts. The difference between these two data sets is 56 precincts. There are 62 precincts in the voting data without registered voters.
+
+### checking the records that don't line up between the two data sets
+```{r}
+outer <- df24_adult_dec %>% 
+  anti_join(vt24_df, by = c('data_geog'='precinctcode')) 
+nrow(outer) #54 records
+summary(outer$percent_of_total_pop)
+
+outer2 <- vt24_df %>% 
+  anti_join(df24_adult_dec, by = c('precinctcode'='data_geog')) 
+nrow(outer2) #57 records
+summary(outer2$percent_of_total_pop)
+```
+The output table from the first anti_join() includes census tract IDs without associated precincts.
+
+
+## calculate total numbers for reference 
+```{r}
+sum(vt24_df$reg_voters) #2,736,409
+sum(vt24_df$ballots_cast) #2,166,325
+```
+In the 2024 voting data (by precinct), there were 2,736,409 registered voters and 2,166,325 ballots cast.  
+
+## join voter turnout data to precinct-tract splits on precinct field
+Using a full_join()
+```{r}
+join_df24 <- df24_adult_dec %>% 
+  full_join(vt24_df, 
+            by = c('data_geog'='precinctcode')) #6351 records
+
+
+# simplify data - remove unnecessary fields
+join_df24_simp <- join_df24 %>% 
+  select(-c(percent_of_group_quarters_pop, 
+            percent_of_household_pop, 
+            percent_of_housing_units,
+            percent_of_occupied_housing_units))
+
+# review data
+summary(join_df24_simp$reg_voters) #54 NAs
+summary(join_df24_simp$ballots_cast) #54 NAs
+
+# calculate weighted registered voters and ballots cast 
+df24_calc <- join_df24_simp %>% 
+  mutate(reg_voters_wt = reg_voters*percent_of_total_pop,
+         ballots_cast_wt = ballots_cast*percent_of_total_pop)
+```
+
+## calculate total numbers to check 
+These calculations sum the values after being weighted by the geography splits. They should match the original voting precinct data. 
+```{r}
+sum(df24_calc$reg_voters_wt, na.rm = TRUE) #2,736,352 ~ 57 missing voters?
+sum(df24_calc$ballots_cast_wt, na.rm = TRUE) #2,166,294 ~ 31 missing ballots cast
+
+# does rounding make a difference?
+round(sum(df24_calc$reg_voters_wt, na.rm = TRUE), digits = 0) #2,736,352 ~ still 57 missing voters
+round(sum(df24_calc$ballots_cast_wt, na.rm = TRUE), digits =0) #2,166,294 ~ still 31 missing ballots cast
+```
+After weighting, the total registered voters is 2,736,352 and the total number of ballots cast is 2,166,294. This means that there are 57 missing voters and 31 missing ballots. These go missing during the weighting step.
+
+### checking for missing voters/ballots
+```{r}
+# grouping and adding by precinct 
+test <- df24_calc %>% 
+  # mutate(reg_voters_wt = case_when(is.na(reg_voters_wt)~0, # need to convert NA to 0 so they can be added
+  #                                  TRUE ~ reg_voters_wt), # if this isn't included, when they're grouped, the NA's will cancel out the other values within the census tract
+  #        ballots_cast_wt = case_when(is.na(ballots_cast_wt)~0,
+  #                                    TRUE ~ ballots_cast_wt)) %>% 
+  group_by(data_geog) %>% # grouping on precinct
+  summarise(#reg_voters_test = sum(reg_voters_wt), # need to round
+            #ballots_cast_test = sum(ballots_cast_wt), # need to round
+            reg_voters_test = round(sum(reg_voters_wt), digits = 0),
+            ballots_cast_test = round(sum(ballots_cast_wt), digits = 0),
+            .groups = 'drop')
+
+test2 <- df24_calc %>% 
+  full_join(test) %>% 
+  mutate(dif_voters = if_else(reg_voters == reg_voters_test, "Match", "No Match"),
+         dif_ballots = if_else(ballots_cast == ballots_cast, "Match", "No Match"))
+
+
+# check number of matching/not matching records
+table(test2$dif_voters) # all matching once rounded 'reg_voters_wt' above
+table(test2$dif_ballots) # all matching once rounded 'ballots_cast_wt' above
+
+test3 <- df24_calc %>% 
+  group_by(data_geog) %>% # grouping on precincts
+  reframe(total_pop = sum(percent_of_total_pop))
+# when viewing the data frame in a separate window, all values are '1' but when looking at df in console there are some '1' and some '1.00'
+
+summary(test3$total_pop) #57 NAs
+```
+Unable to find missing values?
+
+## calculate voter turnout by registered voters 
+(ballots cast/registered voters)
+\
+This is not the final calculation because it is based on those who are already engaged to an extent, not the general population who are capable of voting.
+```{r}
+df24_calc_tract <- df24_calc %>% 
+  mutate(reg_voters_wt = case_when(is.na(reg_voters_wt)~0, # need to convert NA to 0 so they can be added
+                                   TRUE ~ reg_voters_wt), # if this isn't included, when they're grouped, the NA's will cancel out the other values within the census tract
+         ballots_cast_wt = case_when(is.na(ballots_cast_wt)~0,
+                                     TRUE ~ ballots_cast_wt)) %>% 
+  group_by(data_geog_type, planning_geog_type, 
+           ofm_estimate_year, ofm_vintage, 
+           planning_geog) %>% # grouping on tract ids, retaining other fields for reference
+  summarise(#reg_voters = sum(reg_voters_wt), # need to round?
+            # ballots_cast = sum(ballots_cast_wt), # need to round?
+            reg_voters = round(sum(reg_voters_wt), digits = 0),
+            ballots_cast = round(sum(ballots_cast_wt), digits = 0),
+            .groups = 'drop') %>% 
+  mutate(regvote_turnout = ballots_cast/reg_voters)
+
+# calculate total numbers to check
+sum(df24_calc_tract$reg_voters, na.rm=T) #2,736,352 when not rounded, 2,736,354 when rounded
+sum(df24_calc_tract$ballots_cast, na.rm=T) #2,166,294 when not rounded, 2,166,293 when rounded
+```
+
+## calculate voter turnout by population 18+ 
+(ballots cast/pop 18+)
+\
+This is closer to the final calculation because it takes into account all people who are capable of voting. This value may include non-citizens, or adults 18+ who are not legally allowed to vote, but it is more comprehensive than just considering those who are registered.
+```{r}
+# simplify acs table and join to voter/ballot data
+age_18over_simp <- age_18over %>% 
+  select(GEOID, 
+         adult_18plus = estimate, 
+         acs_year = year,
+         acs_reliability = reliability)
+
+# join to precinct/voter turnout data to tract 18+ population data to calculate population 18+ turnout
+df24_calc_tract_adults <- df24_calc_tract %>% 
+  left_join(age_18over_simp, 
+            by = c('planning_geog'='GEOID')) 
+  
+
+# calculate voter turnout by population 18+
+df24_tract_adult_dec <- df24_calc_tract_adults %>% 
+  mutate(pop18_turnout = ballots_cast/adult_18plus,
+         registered_pop18 = reg_voters/adult_18plus)
+
+# check 
+summary(df24_tract_adult_dec$pop18_turnout) #1.20 max
+summary(df24_tract_adult_dec$registered_pop18) #1.39 max
+```
+There are some tracts with higher than 100% voter turnout and registered voters. 
+
+### Checking tracts with over 100%
+#### where number of ballots cast is greater than the number of adults 18+
+```{r}
+df24_tract_above1_adultpop_dec <- df24_tract_adult_dec %>% 
+  filter(pop18_turnout>1)
+
+df24_tract_above1_adultpop_dec
+
+df24_tract_above1_adultpop_dec_simp <- df24_tract_above1_adultpop_dec %>% 
+  select(planning_geog, ballots_cast, adult_18plus, pop18_turnout)
+```
+There are 10 tracts over 100% - compared to 9 tracts over 100% when considering the adult population (by tract, 2023 5y estimates) and compared to 11 tracts when considering the total population.
+
+#### where number of registered voters is greater than the number of adults 18+
+```{r}
+df24_tract_above1_adultpop_reg_dec <- df24_tract_adult_dec %>% 
+  filter(registered_pop18>1)
+
+df24_tract_above1_adultpop_reg_dec
+```
+There are 115 tracts over 100% - compared to 109 tracts over 100% when considering the adult population (by tract, 2023 5y estimates) and compared to 111 tracts when considering the total population.
+
+```{r}
+# calculate weighted values for voter turnout based on population 18+ and based on registered voters
+df24_tract_calculations <- df24_tract_adult_dec %>% 
+  left_join(age_18over_total,
+            by = c('planning_geog'='GEOID')) %>% 
+  mutate(reg_voters_wt18 = reg_voters*pop18_total, #weight values calc from geog splits by eligible pop
+         ballots_cast_wt18 = ballots_cast*pop18_total) %>% #weight values calc from geog splits by eligible pop
+  mutate(pop18_turnout_wt18 = ballots_cast_wt18/adult_18plus,
+         registered_pop18_wt18 = reg_voters_wt18/adult_18plus)
+
+summary(df24_tract_calculations$pop18_turnout_wt18) #max: 0.96342, compared to 0.96375 when considering adult population by tract, compared to 0.961 when considering total population
+summary(df24_tract_calculations$registered_pop18_wt18) #max: 1.05653, compared to 1.05687 when considering adult population by tract, compared to 1.05 when considering total population
+
+# checking tracts where registered voters/population 18+ (weighted) >100%
+df24_tract_calculations_above1 <- df24_tract_calculations %>% 
+  filter(registered_pop18_wt18>1)
+```
+There are still 3 tracts that are over 100% when looking at registered voters, compared to the 2 tracts when considering the total population.
+
+
+### Comparing tracts
+To look compare the differences in the voter turnout for all tracts (based on ballots cast) between those calculated based on total population distribution and adult 18+ distribution
+
+#### All tracts
+```{r}
+compare_all <- df24_tract_adult %>% 
+  full_join(df24_tract_adult_dec,
+            by = c("data_geog_type", "planning_geog_type",
+                  "ofm_estimate_year", "ofm_vintage",
+                  "planning_geog",
+                  "acs_year"))
+
+compare_all_calc <- compare_all %>% 
+  mutate(dif_tract_bg=pop18_turnout.x-pop18_turnout.y)
+compare_all_calc_simp <- compare_all_calc %>% 
+  select(planning_geog, pop18_turnout.x, pop18_turnout.y, dif_tract_bg)
+
+summary(compare_all_calc$dif_tract_bg)
+hist(compare_all_calc$dif_tract_bg)
+
+filter <- compare_all_calc %>% 
+  filter(dif_tract_bg>0)
+```
+This shows that the difference in voter turnout is slightly more positive which means that when weighting by adult 18+ distribution (tract) the values are slightly higher than the values when just taking the adult 18+ distribution (block group, dec) into account. The differences are relatively small, but 453 tracts have differences that are positive, while 446 are negative. 
+
+#### Those above 100%
+To compare the differences in the voter turnout values for the tracts over 100% (based on ballots cast) between those calculated based on total population distribution and adult 18+ distribution
+```{r}
+compare_above1 <- df24_tract_above1_adultpop %>% 
+ full_join(df24_tract_above1_adultpop_dec,
+           by = c("data_geog_type", "planning_geog_type",
+                  "ofm_estimate_year", "ofm_vintage",
+                  "planning_geog",
+                  "acs_year", "adult_18plus", 
+                  "acs_reliability")) #reliability is good for all tracts in both datasets
+
+compare_above1_calc <- compare_above1 %>% 
+  mutate(dif_tract_bg=pop18_turnout.x-pop18_turnout.y)
+compare_above1_calc_simp <- compare_above1_calc %>% 
+  select(planning_geog, pop18_turnout.x, pop18_turnout.y, dif_tract_bg)
+
+summary(compare_above1_calc$dif_tract_bg)
+hist(compare_above1_calc$dif_tract_bg)
+```
+
+# Conclusions
+## Overall
+Out of the three methods explored above, the second approach appears to be the best. 
+
+## Process
+We tested the second approach to determine if using adult 18+ population estimates in order to weight the initial population distribution (based on OFM parcels) would improve the issue of tracts with over 100% voter turnout. This was mostly based on the assumption that the population distribution of adults 18+ does not mirror the total population distribution - there are likely some areas where there are more or fewer households with children or young adults than others. 
+\
+\
+We tested the third approach to determine if using adult 18+ population estimates at a more granular geographic scale in order to weight the population distribution would improve the issue of tracts with over 100% voter turnout. Perhaps estimates at the block group were better at accurately reflecting the population distribution, which would have resulted in more accurate weighting/translation between the precinct and tract. 
+
+## Rationale
+Although there are still some concerns about the final numbers because tracts with over 100% voter turnout persist, the ability to weight the population distribution by the adult 18+ population seems to be the most accurate in terms or representing eligible voters. This makes the second and third approach more attractive than the first. 
+
+Although the geographic resolution of block groups (third approach) is more refined than tracts (second approach), the additional geographic detail did not resolve the issue of tracts with over 100% voter turnout. In addition, the ability to use population estimates most closely aligned with the election year (2023 for second approach vs. 2020 for third approach) seems to outweigh the potential benefits of additional geographic accuracy. Using block group data from the decennial census would become more challenging to justify as the distance between 2020 and the election year increases (2028). This makes the second approach more attractive than the third.
+
+## Summary of results
+### 1st approach
+#### All tracts
+```{r}
+summary(df24_tract_total$pop18_turnout)
+hist(df24_tract_total$pop18_turnout)
+```
+
+#### Tracts with voter turnout over 100%
+```{r}
+df24_tract_above1_totalpop_simp %>% arrange(desc(pop18_turnout))
+
+summary(df24_tract_above1_totalpop_simp$pop18_turnout)
+hist(df24_tract_above1_totalpop_simp$pop18_turnout)
+```
+
+### 2nd approach
+#### All tracts
+```{r}
+summary(df24_tract_adult$pop18_turnout)
+hist(df24_tract_adult$pop18_turnout)
+```
+
+#### Tracts with voter turnout over 100%
+```{r}
+df24_tract_above1_adultpop_simp %>% arrange(desc(pop18_turnout))
+
+summary(df24_tract_above1_adultpop_simp$pop18_turnout)
+hist(df24_tract_above1_adultpop_simp$pop18_turnout)
+```
+
+### 3rd approach
+#### All tracts
+```{r}
+summary(df24_tract_adult_dec$pop18_turnout)
+hist(df24_tract_adult_dec$pop18_turnout)
+```
+
+#### Tracts with voter turnout over 100%
+```{r}
+df24_tract_above1_adultpop_dec_simp %>% arrange(desc(pop18_turnout))
+
+summary(df24_tract_above1_adultpop_dec_simp$pop18_turnout)
+hist(df24_tract_above1_adultpop_dec_simp$pop18_turnout)
+```
