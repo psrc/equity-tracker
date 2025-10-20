@@ -75,209 +75,18 @@ folder_path <- file.path(file_names$base_dir,
 
 # set the variables
 var_name <- "Voter Participation"
-year <- 2020
-years <- c(#2012, 2016 
-           2020, 2024)
-data <- 1:2 #number of datasets in raw_data list - to iterate through
+year <- 2024
+years <- c(2012, 2016, 2020, 2024)
+data <- 1:4 #number of datasets in raw_data list - to iterate through
 ```
 
 **Voter Participation**
 
 # Download data 
 ## Primary data 
-These data come from the [Washington Secretary of State webpage](https://www.sos.wa.gov/elections#data_research). Separate zip folders are available for each election year. Within the zip folders are excel files with the turnout data by voting precinct. The data are available back to 2007, but we will be focusing on presidential election years, every 4 years, and going as far back as 2012 (considering 2010 and 2020 census geographies).
+These data come from the [Washington Secretary of State webpage](https://www.sos.wa.gov/elections#data_research). Separate xlxs and csv files are available for each election year with voting data by precinct. The data are available back to 2007, but we will be focusing on presidential election years, every 4 years, and going as far back as 2012 (considering 2010 and 2020 census geographies). More information about the pre-processing of these data are available in GitHub (GitHub/equity-tracker/data_development) in 1-voter-turnout-exploration.qmd, 2-voter-turnout-ofm-acs-dec.qmd, and 3-voter-turnout-12-16-20-24.qmd. The transformation between precinct-tract is done in 3-voter-turnout-12-16-20-24.qmd.
 ```{r}
-# These functions were created to download and process the data sets so that the final output would be voting turnout by census tract. This required creating geography splits to go from voting precincts to census tracts, for each of the election years. Chris created the geography splits to account for population distribution between the overlaps between precinct and tract. 
-
-# Elmer geography splits: precinct-tract
-# The last parameter (@parcel_year) will need to be 2014 for both the 2016 and 2012 precincts, but should be 2018 for 2020 and 2024. 
-sql24 <- "select *
-    from general.get_any_geography_splits(
-        'voter_precinct_2024', --@data_geog_type
-        'tract20',              --@planning_geog_type
-        2024,                   --@ofm_estimate_year
-        2024,                   --@ofm_vintage
-        2018)                   --@parcel_year"
-
-sql20 <- "select *
-    from general.get_any_geography_splits(
-      'voter_precinct_2020', --@data_geog_type
-      'tract20',              --@planning_geog_type
-      2020,                   --@ofm_estimate_year
-      2024,                   --@ofm_vintage
-      2018)                   --@parcel_year"
-
-sql16 <- "select *
-    from general.get_any_geography_splits(
-      'voter_precinct_2016', --@data_geog_type
-      'tract10',              --@planning_geog_type
-      2016,                   --@ofm_estimate_year
-      2020,                   --@ofm_vintage
-      2014)                   --@parcel_year"
-
-sql12 <- "select *
-    from general.get_any_geography_splits(
-      'voter_precinct_2012', --@data_geog_type
-      'tract10',              --@planning_geog_type
-      2012,                   --@ofm_estimate_year
-      2020,                   --@ofm_vintage
-      2014)                   --@parcel_year"
-
-df24 <- get_query(sql=sql24, db_name = "Elmer")
-df20 <- get_query(sql=sql20, db_name = "Elmer")
-df16 <- get_query(sql=sql16, db_name = "Elmer")
-df12 <- get_query(sql=sql12, db_name = "Elmer")
-
-# Secretary of State: turnout data
-# dyear <- 2020
-voting_url <-"https://www.sos.wa.gov/sites/default/files/"
-turnout_zip_url24 <- paste0(voting_url, "2025-01/2024Gen_Precinct_Results_GIS-Ready.zip")
-turnout_zip_url20 <- paste0(voting_url, "2024-02/2020Gen_Precinct_Results_GIS-Ready.zip") 
-turnout_zip_url16 <- paste0(voting_url, "2023-05/2016-general-data.zip") 
-turnout_zip_url12 <- paste0(voting_url, "2022-05/2012-general-data2.zip") 
-psrc_counties <- data.frame("CountyName"=c("King","Kitsap","Pierce","Snohomish"),
-                            "FIPS"=c("033","035","053","061"),
-                            "CountyCode" = c("KI", "KI", "PI", "SN"))
-
-# Helper functions -------------------------------------------------
-
-fetch_turnout <- function(zip_url, data_file){
-  temp_zip <- tempfile(fileext = ".zip")
-  temp_dir <- tempdir()
-  
-  # Download the zip file
-  download.file(zip_url, temp_zip)
-  
-  # Extract the zip file
-  unzip(temp_zip, exdir = temp_dir)
-  
-  # Read the Excel/CSV file
-  data_file <- file.path(temp_dir, data_file)
-  
-  if (endsWith(data_file, ".xlsx")) {
-    turnout_data <- read.xlsx(data_file)
-  } else if (endsWith(data_file, ".csv")) {
-    turnout_data <- read.csv(data_file)
-  } else {
-    print("data is a different file type")
-  }
-  
-  # Clean up temporary files
-  unlink(temp_zip)
-  unlink(data_file)
-  
-  return(turnout_data)
-}
-
-
-# Load turnout data using new source and column names
-vt20 <- fetch_turnout(turnout_zip_url20, '2020Gen_Precinct_Turnout_GIS-Ready.xlsx')
-vt24 <- fetch_turnout(turnout_zip_url24, '2024Gen_Precinct_Turnout_GIS-Ready.csv')
-# vt16 <- fetch_turnout(turnout_zip_url16, '2016Gen_Precinct_Results_GIS-Ready.xlsx')
-# vt12 <- fetch_turnout(turnout_zip_url12, '2012-general-data2.xlsx')
-
-
-# Clean turnout data sets
-vt20_df <- vt20 %>% setDT() %>%                                             
-  .[County %in% psrc_counties$CountyName] %>%                           # Filter to PSRC counties
-  .[, .(county=County, precinctcode = PrecCode, precinctname = PrecName, 
-        reg_voters = G20TREGVOT, ballots_cast = G20TBALCST)]
-
-vt24_df <- vt24 %>% setDT() %>%                                             
-  filter(str_detect(St_Code, "^KI|KP|PI|SN")) %>%                          # Filter to PSRC counties
-  .[, .(precinctcode = St_Code, 
-        reg_voters = G24TREGVOT, ballots_cast = G24TBALCST)]
-
-# create function to process data
-# inputs: precinct voter data, precinct-tract geography splits
-# output: tract level voter participation
-calc_vt <- function(geography_data, voting_data){
-  
-  # calculate total number of registered voters/ballots cast for reference
-  total_reg_voters <- sum(voting_data$reg_voters)
-  total_ballots_cast <- sum(voting_data$ballots_cast)
-  
-  print(paste("There were", total_reg_voters, "registered voters in the region."))
-  print(paste("There were", total_ballots_cast, "ballots cast in the region."))
-  
-  # join precinct-tract geography data to voter data on precinct code
-  join_df <- geography_data %>% 
-    left_join(voting_data, 
-              by = c('data_geog'='precinctcode'))
-  
-  # simplify table 
-  join_df_simp <- join_df %>% 
-    select(-c(percent_of_group_quarters_pop, 
-              percent_of_household_pop, 
-              percent_of_housing_units,
-              percent_of_occupied_housing_units))
-  
-  # weight registered voters and ballots cast by percent of total population
-  # data includes each combination of unique precincts and tracts based on overlapping geographies
-  df_calc <- join_df_simp %>% 
-    mutate(reg_voters_wt = reg_voters*percent_of_total_pop,
-           ballots_cast_wt = ballots_cast*percent_of_total_pop)
-  
-  # check totals to ensure that numbers align
-  total_reg_voters2 <- sum(df_calc$reg_voters_wt, na.rm = TRUE)
-  total_ballots_cast2 <- sum(df_calc$ballots_cast_wt, na.rm = TRUE)
-  
-  if(total_reg_voters2 < total_reg_voters){
-    warning(paste("Please check:", total_reg_voters-total_reg_voters2, "registered voters went missing."))
-  } else if (total_reg_voters2 > total_reg_voters) {
-    warning(paste("Please check:", total_reg_voters2-total_reg_voters, "too many registered voters."))
-  } else {
-    message("All people are accounted for.")
-  }
-  
-  if(total_ballots_cast2 < total_ballots_cast){
-    warning(paste("Please check:", total_ballots_cast-total_ballots_cast2, "ballots went missing."))
-  } else if (total_ballots_cast2 > total_ballots_cast) {
-    warning(paste("Please check:", total_ballots_cast2-total_ballots_cast, "too many ballots."))
-  } else {
-    message("All ballots are accounted for.")
-  }
-  
-  df_calc_tract <- df_calc %>% 
-    mutate(reg_voters_wt = case_when(is.na(reg_voters_wt)~0, # need to convert NA to 0 so they can be added
-                                     TRUE ~ reg_voters_wt), # if this isn't included, when they're grouped, the NA's will cancel out the other values within the census tract
-           ballots_cast_wt = case_when(is.na(ballots_cast_wt)~0,
-                                       TRUE ~ ballots_cast_wt)) %>% 
-    group_by(data_geog_type, planning_geog_type, 
-             ofm_estimate_year, ofm_vintage, parcel_year,
-             planning_geog) %>% # grouping on tract ids, retaining other fields for reference
-    summarise(reg_voters = sum(reg_voters_wt),
-              ballots_cast = sum(ballots_cast_wt), .groups = 'drop') %>% 
-    mutate(vote_turnout = ballots_cast/reg_voters)
-  
-  # check totals to ensure that numbers align
-  total_reg_voters3 <- sum(df_calc_tract$reg_voters, na.rm=T)
-  total_ballots_cast3 <-sum(df_calc_tract$ballots_cast, na.rm=T)
-  
-  if(total_reg_voters3 < total_reg_voters){
-    warning(paste("Please check:", total_reg_voters-total_reg_voters3, "registered voters went missing."))
-  } else if (total_reg_voters3 > total_reg_voters) {
-    warning(paste("Please check:", total_reg_voters3-total_reg_voters, "too many registered voters."))
-  } else {
-    message("All people are accounted for.")
-  }
-  
-  if(total_ballots_cast3 < total_ballots_cast){
-    warning(paste("Please check:", total_ballots_cast-total_ballots_cast3, "ballots went missing."))
-  } else if (total_ballots_cast3 > total_ballots_cast) {
-    warning(paste("Please check:", total_ballots_cast3-total_ballots_cast, "too many ballots."))
-  } else {
-    message("All ballots are accounted for.")
-  }
-  
-  return(df_calc_tract)
-}
-
-
-vt24_tract <- calc_vt(df24, vt24_df)
-vt20_tract <- calc_vt(df20, vt20_df)
-
-df_raw_data <- rbind(vt24_tract, vt20_tract)
+df_raw_data <- read.csv('Y:/Equity Indicators/tracker-webpage-content/h-public-services/h02-voter-participation/raw-data/voter_participation.csv')
 ```
 
 ### Look at raw data
@@ -288,7 +97,7 @@ df_raw_data
 
 # check data
 str(df_raw_data)
-# table(df_raw_data$data_year)
+# table(df_raw_data$election_year)
 ```
 
 ### Clean and format data
@@ -296,7 +105,8 @@ This will step will require different cleaning and formatting steps depending on
 ```{r}
 # creat a data_year field
 df_psrc_data <- df_raw_data %>% 
-  mutate(data_year = ofm_estimate_year)
+  select(-X) %>% #remove id column from CSV
+  mutate(data_year = election_year)
 
 # check data
 str(df_psrc_data)
@@ -366,7 +176,7 @@ This step is included so that the data set and variable of interest and year var
 # the input data set is the most updated data set from above - if you didn't need to weight or transform, it would be 'df_psrc_data' and if you did make any transformations, you would use that as the input
 
 tract_indicator <- df_psrc_data %>% # insert the name of your data set
-  rename(variable_value=vote_turnout, # insert the name of your indicator variable
+  rename(variable_value=pop18_turnout, # insert the name of your indicator variable
          data_year=data_year, # insert the name of your year variable
          geoid=planning_geog) %>% # insert the name of your census tract or geography variable
   mutate(variable_value=as.numeric(variable_value)) # ensure the indicator variable is numeric so it can be mapped/visualized
@@ -567,17 +377,11 @@ The following steps are specific to the voter turnout data set and may or may no
 # to identify the outlier values
 outlier_values <- outlier_df[,2]
 
-# # if you weighted your data set -----
-# data_tract_outliers <- data_tract_nona_weight %>%
-#   dplyr::filter(variable_value %in% outlier_values)
-# 
-# num_outliers <- nrow(data_tract_outliers) #16
-
 # if you did not weight your data set -----
 data_tract_outliers <- data_tract_nona %>%
   dplyr::filter(variable_value %in% outlier_values)
 
-num_outliers <- nrow(data_tract_outliers) #16
+num_outliers <- nrow(data_tract_outliers) #6
 ```
 \
 
@@ -612,11 +416,11 @@ data_tract_risk_outliers <- merge(x=displacement_simp,
 head(data_tract_risk_outliers)
 # class(data_tract_risk_outliers)
 # plot(data_tract_risk_outliers$geometry)
-nrow(data_tract_risk_outliers) #13
-pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop20, na.rm = T)) #59,391
-# There are approx. 59,391 people (2020 population) in these outlier tracts - just for a broad estimate.
-regvot_outliers <- as.numeric(sum(data_tract_risk_outliers$reg_voters, na.rm = T)) #22544.81
-# There are approx. 22,545 registered voters in these outlier tracts.
+nrow(data_tract_risk_outliers) #6
+pop_outliers <- as.numeric(sum(data_tract_risk_outliers$total_pop20, na.rm = T)) #33,324
+# There are approx. 33,324 people (2020 population) in these outlier tracts - just for a broad estimate.
+regvot_outliers <- as.numeric(sum(data_tract_risk_outliers$reg_voters, na.rm = T)) #4,482
+# There are approx. 4,482 registered voters in these outlier tracts.
 ```
 
 \
@@ -694,15 +498,15 @@ Because the measure (voter participation) does account for the population of the
 # calculating data by county
 county_tract_data <- data_tract %>%
   st_drop_geometry() %>%  #to remove spatial component
-  dplyr::group_by(county_name) %>%
-  dplyr::mutate(cnty_estimate=(sum(ballots_cast, na.rm=TRUE))/(sum(reg_voters, na.rm=TRUE))) %>% #calculate average value by county
+  dplyr::group_by(County_Name) %>%
+  dplyr::mutate(cnty_estimate=(sum(ballots_cast, na.rm=TRUE))/(sum((total_pop_ofm*pop18_total), na.rm=TRUE))) %>% #calculate average value by county
 
   dplyr::distinct(county_name, cnty_estimate)
 
 # calculating data by region
 reg_tract_data <- data_tract %>%
   st_drop_geometry() %>%  #to remove spatial component
-  dplyr::mutate(reg_estimate=(sum(ballots_cast, na.rm=TRUE))/(sum(reg_voters, na.rm=TRUE))) %>% #calculate average value for region
+  dplyr::mutate(reg_estimate=(sum(ballots_cast, na.rm=TRUE))/(sum(total_pop_ofm*pop18_total, na.rm=TRUE))) %>% #calculate average value for region
   dplyr::distinct(reg_estimate)
 
 # add region data to county data
@@ -740,8 +544,17 @@ data_equity_tracts <- merge(tract_indicator, equity_tracts,
                             by=c("geoid", "data_year"),
                             all.x=TRUE)
 
+# need to join 2024 election data to 2023 equity quintiles -----
+equity_tracts_adj <- equity_tracts %>% 
+  mutate(data_year=case_when(data_year==2023 ~ 2024,
+                             TRUE~data_year))
+
+data_equity_tracts <- merge(tract_indicator, equity_tracts_adj,
+                            by=c("geoid", "data_year"),
+                            all.x=TRUE)
+
 # check data set
-nrow(data_equity_tracts) #2757
+nrow(data_equity_tracts) #6764
 table(data_equity_tracts$data_year)
 ```
 The most recent equity tracts data does not match the voter participation data. The 2024 equity tract data is not available yet, so will need to use 2020 voter turnout data and 2020 equity tract data. 
@@ -763,7 +576,7 @@ data_equity_pivot <- data_equity_quintile %>%
                values_to = "quintile")
 
 # check data sets
-# nrow(data_equity_pivot)
+# nrow(data_equity_pivot) #40584
 # str(data_equity_pivot)
 ```
 
@@ -779,34 +592,18 @@ The data are available at the census tract level but we want to calculate the av
 
 The step of calculating by county/equity group/quintile is important for all data sets. The weighting by population is optional depending on the data set - comment out or delete whichever doesn't fit your data set. 
 ```{r}
-# # if you weighted your data set -----
-# # calculations to get weighted average values
-# data_tract <- data_equity_pivot %>%
-#   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot
-#   mutate(total_risk_tract=variable_value*population) %>%
-#   group_by(county, data_year, equity_group, quintile) %>% # county field includes region
-#   summarise(tracts=length(geoid),
-#             total_variable=(sum(total_risk_tract, na.rm = TRUE)),
-#             total_pop=(sum(population, na.rm = TRUE)),
-#             .groups = "drop") %>%
-#   mutate(variable_value=total_variable/total_pop)
-# 
-# # check data set
-# nrow(data_tract)
-# table(data_tract$data_year)
-
 # if you did not weight your data set -----
 data_tract <- data_equity_pivot %>%
   filter(!is.na(quintile)) %>% # necessary because of added na columns from pivot (2024 data)
   group_by(county, data_year, equity_group, quintile) %>% # county field includes region
   summarise(tracts=length(geoid),
             total_variable=(sum(ballots_cast, na.rm = TRUE)),
-            total_pop=(sum(reg_voters, na.rm = TRUE)),
+            total_pop=(sum((total_pop_ofm*pop18_total), na.rm=TRUE)),
             .groups = "drop") %>%
   mutate(variable_value=total_variable/total_pop)
 
 # check data set
-nrow(data_tract) #148
+nrow(data_tract) #571
 table(data_tract$data_year)
 # 5 geography * 6 equity groups * 5 quintiles = 150
 ```
@@ -821,7 +618,7 @@ This data set should include records for:
 ### Address "Low - Low Medium" quintile group
 This code was added because of Kitsap/LEP data - there were too many tracts with 0, so we combined the bottom two quintiles into low - low medium. This change requires some additional processing so that all of the tracts (bottom 40%) in this combined quintile category are averaged and this average value is assigned to separate 'low' and 'low medium' quintile categories. 
 ```{r}
-# nrow(data_tract) #148
+# nrow(data_tract) #571
 # unique(data_tract$quintile) #6 quintiles because of additional "Low - Low Medium"
 
 low_quintile <- data_tract %>%
@@ -837,11 +634,11 @@ lowmed_quintile <- data_tract %>%
 
 low_lowmed <- rbind(low_quintile,
                     lowmed_quintile)
-# nrow(low_lowmed) #4
+# nrow(low_lowmed) #6
 
 # gather counties that have low - medium categorization
-low_lowmed_counties <- unique(low_lowmed$county) #Kitsap
-low_lowmed_years <- unique(low_lowmed$data_year) #2017 and 2022
+low_lowmed_counties <- unique(low_lowmed$county) #Kitsap and Pierce
+low_lowmed_years <- unique(low_lowmed$data_year) #2016 and 2020
 low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
 
 other_data <- data_tract %>% 
@@ -849,10 +646,10 @@ other_data <- data_tract %>%
   mutate(quintile_original=quintile)
 # nrow(other_data) #146
 
-data_tract_comb <- rbind(low_lowmed, #4
-                         other_data) #146
+data_tract_comb <- rbind(low_lowmed, #6
+                         other_data) #568
 
-nrow(data_tract_comb) 
+nrow(data_tract_comb) #574
 unique(data_tract_comb$quintile) #5 quintiles
 
 # remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
@@ -864,7 +661,7 @@ data_full <- data_tract_comb %>%
              quintile_original=="Low Medium"))) %>% 
   select(-quintile_original) # not needed for visualization, originally kept for checking
 
-# nrow(data_full) #150
+# nrow(data_full) #572
 # table(data_full$quintile, data_full$county) #should not have extra in low and low medium quintile categories
 ```
 

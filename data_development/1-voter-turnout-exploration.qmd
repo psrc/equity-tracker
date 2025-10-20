@@ -1,5 +1,5 @@
 ---
-title: "Exploring Voter Turnout"
+title: "1.) Exploring Voter Turnout: 2024"
 subtitle: "Applying geography splits to translate precinct-level data to census tract geographies"
 author: "Mary Richards"
 date: today
@@ -11,7 +11,6 @@ format:
     toc-expand: 2
     # toc-depth: 6
     toc-title: "Contents"
-# editor: visual
 execute:
   # echo: false
   warning: false
@@ -31,6 +30,18 @@ library(tidyverse)
 library(openxlsx)
 library(psrcelmer)
 library(psrccensus)
+
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(psrcplot)
+library(here)
+
+library(readxl)
+
+# reference supplemental script with supporting settings/functions
+# source(here::here('GitHub/equity-tracker/data-visualization/equity-tracker-supplemental-script.R'))
+source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-supplemental-script.R')
 ```
 
 ```{r, include=FALSE}
@@ -95,7 +106,6 @@ adult_sql24_dec <- "select *
 df24_total <- get_query(sql=total_sql24, db_name = "Elmer")
 df24_adult <- get_query(sql=adult_sql24, db_name = "Elmer")
 df24_adult_dec <- get_query(sql=adult_sql24_dec, db_name = "Elmer")
-
 ```
 
 ## 2.) Secretary of State: turnout data
@@ -119,6 +129,12 @@ vt24_df <- vt24 %>% setDT() %>%
   filter(str_detect(St_Code, "^KI|KP|PI|SN")) %>%               # Filter to PSRC counties
   .[, .(precinctcode = St_Code, 
         reg_voters = G24TREGVOT, ballots_cast = G24TBALCST)]
+
+# 2024 precinct spatial data
+# https://www.sos.wa.gov/elections/data-research/reports-data-and-statistics/precinct-shapefiles
+folder <- "Y:/Equity Indicators/tracker-webpage-content/h-public-services/h02-voter-participation/raw-data/Statewide_Precincts_2024General"
+
+precinct_24 <- st_read(file.path(folder, "Statewide_Precincts_2024General.shp"))
 ```
 
 ## 3.) ACS 5y (2023) population data
@@ -147,6 +163,65 @@ age_18over_total <- base_acs_data %>%
 # calculate total number for reference
 sum(age_18over$estimate) #3,394,729
 ```
+
+## 4.) PSRC Region spatial file
+This dataset includes the census tracts within the region and provides a way to visually explore the voter turnout values. 
+```{r, echo=FALSE}
+# Connecting to ElmerGeo for census geographies through Portal----
+arc_service <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services"
+
+tracts20.url <- file.path(arc_service, "Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson")
+
+tracts20.lyr <- st_read(tracts20.url)
+```
+
+## 5.) OFM small area estimates (2024) population data
+These values will be used as the denominator for the fourth approach - dividing the ballots cast by the total population (OFM - Small Area Demographic Estaimtes, 2024), weighted by the proportion of adults 18+/total population from ACS 5y 2023 estimates.
+```{r}
+# # OFM Small Area Demographic Estimates (2020-2024): https://ofm.wa.gov/washington-data-research/population-demographics/population-estimates/estimates-april-1-population-age-sex-race-and-hispanic-origin#age
+# folder_loc <- here::here("data_development/voter_turnout")
+# 
+# ofm_raw <- read_excel(file.path(folder_loc,
+#                                 "ofm_pop_sade_tract_2020_2024.xlsx"),
+#                       sheet = "Total")
+# 
+# # clean data set
+# ofm_total <- ofm_raw %>% 
+#   filter(`Age Group`== "Total",
+#          `Area Name` != "Washington",
+#          Year=="2024") %>% 
+#   select(`Area ID`, Year, Total)
+# 
+# # isolate PSRC tracts
+# tracts20_psrc <- st_drop_geometry(tracts20.lyr) %>% 
+#   select(county_name, geoid20) 
+# 
+# ofm_psrc <- ofm_total %>% 
+#   right_join(tracts20_psrc, by=c(`Area ID`='geoid20')) %>% 
+#   rename(geoid20=`Area ID`)
+
+# OFM Small Estimates Program: https://ofm.wa.gov/washington-data-research/population-demographics/population-estimates/small-area-estimates-program
+# folder_loc <- here::here("data_development/voter_turnout")
+folder_loc <- "C:/Users/mrichards/Documents/GitHub/equity-tracker/data_development/voter_turnout"
+
+
+ofm_raw <- read_excel(file.path(folder_loc,
+                                "saep_tract20.xlsx"),
+                      sheet = "Total Population",
+                      skip=10) #first rows includes metadata
+
+# clean data set
+ofm_psrc <- ofm_raw %>% 
+  select(`County Name`, `Census Tract Code Complete`, `Estimated Total Population 2024`) %>% 
+  rename("County_Name"=`County Name`,
+         "GEOID20"=`Census Tract Code Complete`,
+         "population_2024"=`Estimated Total Population 2024`) %>% 
+  filter(County_Name=='King' |
+           County_Name=='Kitsap' |
+           County_Name=='Pierce' |
+           County_Name=='Snohomish')
+```
+
 # Methods
 **Voter turnout = ballots cast / eligible population** 
 \
@@ -163,7 +238,141 @@ C) weighting the population distribution by 2020 decennial census adult 18+ popu
 For all three approaches, the 2023 5y adult 18+ population estimates are used as the denominator (eligible population). 
 \
 \
-*DATA NOTE: For this exercise, it is assumed that the eligible population most closely aligns with the adult 18+ population. Although this may include individuals who are not able to legally vote (non-citizens), the alternative is using the number of registered voters (available at voting precincts), which is a subset of the adult 18+ population who are already engaged enough to have registered. While using the general 18+ population as a denominator may result in slightly lower voter turnout values (based on our working definition), using registered voters as the denominator would results in inflated voter turnout values.*
+
+There is one additional approach that will be explored after discussing with data applications team (9/30/2025). The approach to get the numerator mirrors the second approach described above, but calculating the denominator varies:
+
+D) the denominator will be based on OFM small area total population estimates, but weighted by the proportion of adults 18+/total population (calculated from 2023 5y ACS estimates)
+
+
+*DATA CAVEATS:* 
+
+* For this exercise, it is assumed that the eligible population most closely aligns with the adult 18+ population. Although this may include individuals who are not able to legally vote (non-citizens), the alternative is using the number of registered voters (available at voting precincts), which is a subset of the adult 18+ population who are already engaged enough to have registered. While using the general 18+ population as a denominator may result in slightly lower voter turnout values (based on our working definition), using registered voters as the denominator would results in inflated voter turnout values.
+* Some voters may be registered in one location, but reside in another. This could cause mismatches in the way that they are accounted for in the numerator (ballots cast) and the denominator (population). 
+* There is a distinction between residential addresses (which must be in Washington State and where you are considered registered for voting purposes) and mailing addresses (which can be anywhere). Therefore, the number of registered voters refers to the number of voters who have their residential address in that precinct. This is based on correspondence with staff at the Washington Secretary of State office (8/13/2025).
+* According to correspondences with staff at the Washington Secretary of State office (10/9/2025), data from smaller precincts are occasionally “masked” into a larger precinct in order to protect the privacy of voters and maintain confidentiality. It is also possible for last minuet ballots to be cast (such as by UOCAVA voters, or Military and Overseas Voters, defined by https://www.eac.gov/uocava) that must be accorded to a precinct. As a result, the voter turnout results calculated at the tract level are estimates and may reflect some margin of error. 
+
+
+# Reference Maps
+## Voting precints (2024) and census tracts (2020)
+```{r, echo=FALSE}
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  leaflet::addLayersControl(baseGroups = "voting precincts (2024)",
+                   overlayGroups = "census tracts (2020)",
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  
+  addPolygons(data=precinct_24,
+              color = "gray",
+              stroke=TRUE, 
+              weight = 3,
+              smoothFactor = 0.5,
+              fillOpacity = 0,
+              group = "voting precincts (2024)",
+              label = precinct_24$St_Code) %>%
+  addPolygons(data=tracts20.lyr,
+              color = "blue",
+              stroke = TRUE, 
+              weight = 2.5,
+              smoothFactor = 0.5,
+              fillOpacity = 0,
+              group = "census tracts (2020)",
+              label = tracts20.lyr$geoid20) %>% 
+
+  #set view extent
+  leaflet::setView(lng=-122.257, lat=47.615, zoom=8.5) %>%
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+## 2024 voter participation (ballots cast/registered voters)
+```{r}
+# join voting data to precinct spatial layer 
+join_voting24 <- precinct_24 %>% 
+  right_join(vt24_df,
+            by = c('St_Code'='precinctcode'))
+
+# calculate the ballots cast/registered voters for reference numbers
+voting_24 <- join_voting24 %>% 
+  mutate(vote_participation=(ballots_cast/reg_voters)*100)
+
+summary(voting_24$vote_participation)
+```
+
+While the median is quite high, there are some precincts with low voter participation (based on the registered voters).
+```{r}
+lowest_15 <- voting_24 %>%
+  st_drop_geometry() %>% 
+  arrange(vote_participation) %>% 
+  slice_head(n = 15) %>% 
+  select(St_Code, ballots_cast, reg_voters, vote_participation) %>% 
+  print
+```
+
+This map shows the ballots cast/registered voters. The legend starts at 0% because there are 7 precincts where no ballots were cast. It is important to note that these precincts also have quite low numbers of registered voters
+```{r, echo=FALSE}
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = voting_24$vote_participation)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  leaflet::addLayersControl(baseGroups = "voter participation",
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  
+  addPolygons(data=voting_24,
+              fillColor = psrc_palette(voting_24$vote_participation),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = "voter participation",
+              label = paste(round(voting_24$vote_participation, digits=0),"%")) %>%
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = voting_24$vote_participation,
+                       position = "bottomright",
+                       title = "Voter Participation",
+                       group = "voter participation",
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat(suffix = "%")) %>% 
+
+  #set view extent
+  leaflet::setView(lng=-122.257, lat=47.615, zoom=8.5) %>%
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
 
 # A) Total population (OFM)
 ## Join precinct-tract to geographies to turnout data
@@ -327,7 +536,7 @@ summary(df24_tract_total$registered_pop18) #1.39 max
 There are some tracts with higher than 100% voter turnout and registered voters. 
 
 ### Checking tracts with over 100%
-#### where number of ballots cast is greater than the number of adults 18+
+#### where # of ballots cast is greater than the number of adults 18+
 ```{r}
 df24_tract_above1_totalpop <- df24_tract_total %>% 
   filter(pop18_turnout>1)
@@ -339,7 +548,82 @@ df24_tract_above1_totalpop_simp <- df24_tract_above1_totalpop %>%
 ```
 There are 11 tracts over 100%.
 
-#### where number of registered voters is greater than the number of adults 18+
+##### map of tracts >100% voter turnout
+```{r}
+# join full data to tract spatial file
+df24_tract_total_geo <- merge(tracts20.lyr, df24_tract_total,
+                              by.x="geoid20",
+                              by.y="planning_geog", 
+                              all.x=TRUE)
+
+df24_tract_total_geo <- df24_tract_total_geo %>% 
+  mutate(pop18_turnout=pop18_turnout*100)
+
+# filter to tracts >100%
+df24_tract_total_geo_100plus <- df24_tract_total_geo %>% 
+  filter(pop18_turnout>100)
+```
+
+```{r, echo=FALSE}
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = df24_tract_total_geo$pop18_turnout)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  leaflet::addLayersControl(baseGroups = "voter participation",
+                   overlayGroups = "tracts >100%",
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  
+  addPolygons(data=df24_tract_total_geo,
+              fillColor = psrc_palette(df24_tract_total_geo$pop18_turnout),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = "voter participation",
+              label = paste(round(df24_tract_total_geo$pop18_turnout, digits=0),"%")) %>%
+  addPolygons(data=df24_tract_total_geo_100plus,
+              color = "red",
+              stroke = TRUE, 
+              weight = 3,
+              smoothFactor = 0.5,
+              fillOpacity = 0,
+              group = "tracts >100%",
+              label = paste(round(df24_tract_total_geo_100plus$pop18_turnout, digits=0),"%")) %>% 
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = df24_tract_total_geo$pop18_turnout,
+                       position = "bottomright",
+                       title = "Voter Participation",
+                       group = "voter participation",
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat(suffix = "%")) %>% 
+
+  #set view extent
+  leaflet::setView(lng=-122.257, lat=47.615, zoom=8.5) %>%
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+#### where # of registered voters is greater than the number of adults 18+
 ```{r}
 df24_tract_above1_totalpop_reg <- df24_tract_total %>% 
   filter(registered_pop18>1)
@@ -539,7 +823,7 @@ summary(df24_tract_adult$registered_pop18) #1.39 max
 There are some tracts with higher than 100% voter turnout and registered voters. 
 
 ### Checking tracts with over 100%
-#### where number of ballots cast is greater than the number of adults 18+
+#### where # of ballots cast is greater than the number of adults 18+
 ```{r}
 df24_tract_above1_adultpop <- df24_tract_adult %>% 
   filter(pop18_turnout>1)
@@ -551,7 +835,82 @@ df24_tract_above1_adultpop_simp <- df24_tract_above1_adultpop %>%
 ```
 There are 9 tracts over 100% - compared to 11 tracts when considering the total population.
 
-#### where number of registered voters is greater than the number of adults 18+
+##### map of tracts >100% voter turnout
+```{r}
+# join full data to tract spatial file
+df24_tract_adult_geo <- merge(tracts20.lyr, df24_tract_adult,
+                              by.x="geoid20",
+                              by.y="planning_geog", 
+                              all.x=TRUE)
+
+df24_tract_adult_geo <- df24_tract_adult_geo %>% 
+  mutate(pop18_turnout=pop18_turnout*100)
+
+# filter to tracts >100%
+df24_tract_adult_geo_100plus <- df24_tract_adult_geo %>% 
+  filter(pop18_turnout>100)
+```
+
+```{r, echo=FALSE}
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = df24_tract_adult_geo$pop18_turnout)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  leaflet::addLayersControl(baseGroups = "voter participation",
+                   overlayGroups = "tracts >100%",
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  
+  addPolygons(data=df24_tract_adult_geo,
+              fillColor = psrc_palette(df24_tract_adult_geo$pop18_turnout),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = "voter participation",
+              label = paste(round(df24_tract_adult_geo$pop18_turnout, digits=0),"%")) %>%
+  addPolygons(data=df24_tract_adult_geo_100plus,
+              color = "red",
+              stroke = TRUE, 
+              weight = 3,
+              smoothFactor = 0.5,
+              fillOpacity = 0,
+              group = "tracts >100%",
+              label = paste(round(df24_tract_adult_geo_100plus$pop18_turnout, digits=0),"%")) %>% 
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = df24_tract_adult_geo$pop18_turnout,
+                       position = "bottomright",
+                       title = "Voter Participation",
+                       group = "voter participation",
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat(suffix = "%")) %>% 
+
+  #set view extent
+  leaflet::setView(lng=-122.257, lat=47.615, zoom=8.5) %>%
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+#### where # of registered voters is greater than the number of adults 18+
 ```{r}
 df24_tract_above1_adultpop_reg <- df24_tract_adult %>% 
   filter(registered_pop18>1)
@@ -787,7 +1146,7 @@ summary(df24_tract_adult_dec$registered_pop18) #1.39 max
 There are some tracts with higher than 100% voter turnout and registered voters. 
 
 ### Checking tracts with over 100%
-#### where number of ballots cast is greater than the number of adults 18+
+#### where # of ballots cast is greater than the number of adults 18+
 ```{r}
 df24_tract_above1_adultpop_dec <- df24_tract_adult_dec %>% 
   filter(pop18_turnout>1)
@@ -799,7 +1158,82 @@ df24_tract_above1_adultpop_dec_simp <- df24_tract_above1_adultpop_dec %>%
 ```
 There are 10 tracts over 100% - compared to 9 tracts over 100% when considering the adult population (by tract, 2023 5y estimates) and compared to 11 tracts when considering the total population.
 
-#### where number of registered voters is greater than the number of adults 18+
+##### map of tracts >100% voter turnout
+```{r}
+# join full data to tract spatial file
+df24_tract_adult_dec_geo <- merge(tracts20.lyr, df24_tract_adult_dec,
+                              by.x="geoid20",
+                              by.y="planning_geog", 
+                              all.x=TRUE)
+
+df24_tract_adult_dec_geo <- df24_tract_adult_dec_geo %>% 
+  mutate(pop18_turnout=pop18_turnout*100)
+
+# filter to tracts >100%
+df24_tract_adult_dec_geo_100plus <- df24_tract_adult_dec_geo %>% 
+  filter(pop18_turnout>100)
+```
+
+```{r, echo=FALSE}
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = df24_tract_adult_dec_geo$pop18_turnout)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  leaflet::addLayersControl(baseGroups = "voter participation",
+                   overlayGroups = "tracts >100%",
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  
+  addPolygons(data=df24_tract_adult_dec_geo,
+              fillColor = psrc_palette(df24_tract_adult_dec_geo$pop18_turnout),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = "voter participation",
+              label = paste(round(df24_tract_adult_dec_geo$pop18_turnout, digits=0),"%")) %>%
+  addPolygons(data=df24_tract_adult_dec_geo_100plus,
+              color = "red",
+              stroke = TRUE, 
+              weight = 3,
+              smoothFactor = 0.5,
+              fillOpacity = 0,
+              group = "tracts >100%",
+              label = paste(round(df24_tract_adult_dec_geo_100plus$pop18_turnout, digits=0),"%")) %>% 
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = df24_tract_adult_dec_geo$pop18_turnout,
+                       position = "bottomright",
+                       title = "Voter Participation",
+                       group = "voter participation",
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat(suffix = "%")) %>% 
+
+  #set view extent
+  leaflet::setView(lng=-122.257, lat=47.615, zoom=8.5) %>%
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+#### where # of registered voters is greater than the number of adults 18+
 ```{r}
 df24_tract_above1_adultpop_reg_dec <- df24_tract_adult_dec %>% 
   filter(registered_pop18>1)
@@ -873,20 +1307,261 @@ summary(compare_above1_calc$dif_tract_bg)
 hist(compare_above1_calc$dif_tract_bg)
 ```
 
+# D) Adult population by tract (OFM SAEP 2024; ACS 5y 2023)
+## Join precinct-tract to geographies to turnout data
+```{r}
+nrow(df24_adult) #precinct-tract records: 6294
+nrow(vt24_df) #voting data by unique precinct: 4608
+vt24_df_0 <- vt24_df %>% 
+  filter(reg_voters<1) # there are 62 precincts without data
+# data_geog = precinct
+# planning_geog = tract
+length(unique(df24_adult$data_geog)) #unique precincts: 4552
+length(unique(df24_adult$planning_geog)) #unique tracts: 919
+```
+There is a difference in the number of records - in the voting data, there are 4,608 records (precincts) while the geography split data only has 4,552 unique precincts. The difference between these two data sets is 56 precincts. There are 62 precincts in the voting data without registered voters.
+
+## calculate total numbers for reference 
+```{r}
+sum(vt24_df$reg_voters) #2,736,409
+sum(vt24_df$ballots_cast) #2,166,325
+```
+In the 2024 voting data (by precinct), there were 2,736,409 registered voters and 2,166,325 ballots cast.  
+
+## join voter turnout data to precinct-tract splits on precinct field
+Using a full_join()
+```{r}
+join_df24 <- df24_adult %>% 
+  full_join(vt24_df, 
+            by = c('data_geog'='precinctcode')) #6351 records
+
+
+# simplify data - remove unnecessary fields
+join_df24_simp <- join_df24 %>% 
+  select(-c(percent_of_group_quarters_pop, 
+            percent_of_household_pop, 
+            percent_of_housing_units,
+            percent_of_occupied_housing_units))
+
+# review data
+summary(join_df24_simp$reg_voters) #54 NAs
+summary(join_df24_simp$ballots_cast) #54 NAs
+
+# calculate weighted registered voters and ballots cast 
+df24_calc <- join_df24_simp %>% 
+  mutate(reg_voters_wt = reg_voters*percent_of_total_pop,
+         ballots_cast_wt = ballots_cast*percent_of_total_pop)
+```
+
+## join tract level OFM estimates to ACS adult 18+ ratio
+```{r}
+tract_population <- ofm_psrc %>% 
+  left_join(age_18over_total, by= c("GEOID20"="GEOID"))
+
+tract_pop_18plus <- tract_population %>% 
+  mutate(population_18plus=round(as.numeric(population_2024)*pop18_total,0))
+```
+
+## calculate voter turnout by registered voters 
+(ballots cast/registered voters)
+\
+This is not the final calculation because it is based on those who are already engaged to an extent, not the general population who are capable of voting.
+```{r}
+df24_calc_tract <- df24_calc %>% 
+  mutate(reg_voters_wt = case_when(is.na(reg_voters_wt)~0, # need to convert NA to 0 so they can be added
+                                   TRUE ~ reg_voters_wt), # if this isn't included, when they're grouped, the NA's will cancel out the other values within the census tract
+         ballots_cast_wt = case_when(is.na(ballots_cast_wt)~0,
+                                     TRUE ~ ballots_cast_wt)) %>% 
+  group_by(data_geog_type, planning_geog_type, 
+           ofm_estimate_year, ofm_vintage, parcel_year,
+           planning_geog) %>% # grouping on tract ids, retaining other fields for reference
+  summarise(#reg_voters = sum(reg_voters_wt), # need to round?
+            # ballots_cast = sum(ballots_cast_wt), # need to round?
+            reg_voters = round(sum(reg_voters_wt), digits = 0),
+            ballots_cast = round(sum(ballots_cast_wt), digits = 0),
+            .groups = 'drop') %>% 
+  mutate(regvote_turnout = ballots_cast/reg_voters)
+
+# calculate total numbers to check
+sum(df24_calc_tract$reg_voters, na.rm=T) #2,736,352 when not rounded, 2,736,354 when rounded
+sum(df24_calc_tract$ballots_cast, na.rm=T) #2,166,294 when not rounded, 2,166,297 when rounded
+```
+
+## calculate voter turnout by population 18+ 
+(ballots cast/pop 18+)
+\
+This is closer to the final calculation because it takes into account all people who are capable of voting. This value may include non-citizens, or adults 18+ who are not legally allowed to vote, but it is more comprehensive than just considering those who are registered. The denominator will be based on OFM population estimates (2024), weighted by the ratio of adults 18+/total population from ACS (2023). 
+```{r}
+# join to precinct/voter turnout data to tract 18+ population data (OFM/ACS) to calculate population 18+ turnout
+df24_calc_tract_adults_ofm <- df24_calc_tract %>% 
+  left_join(tract_pop_18plus, by = c('planning_geog'='GEOID20')) 
+  
+
+# calculate voter turnout by population 18+
+df24_tract_adult_ofm <- df24_calc_tract_adults_ofm %>% 
+  mutate(pop18_turnout = ballots_cast/population_18plus,
+         registered_pop18 = reg_voters/population_18plus)
+
+# check 
+summary(df24_tract_adult_ofm$pop18_turnout) #0.99887 max
+summary(df24_tract_adult_ofm$registered_pop18) #1.19 max
+```
+There are no tracts with higher than 100% voter turnout and registered voters. 
+
+### Checking tracts with over 100%
+#### where # of ballots cast is greater than the number of adults 18+
+```{r}
+df24_tract_adult_ofm_simp <- df24_tract_adult_ofm %>% 
+  select(planning_geog, ballots_cast, population_18plus, pop18_turnout)
+
+df24_tract_above1_adultpop_ofm <- df24_tract_adult_ofm %>% 
+  filter(pop18_turnout>1)
+
+df24_tract_above1_adultpop_ofm
+
+df24_tract_above1_adultpop_ofm_simp <- df24_tract_above1_adultpop_ofm %>% 
+  select(planning_geog, ballots_cast, population_18plus, pop18_turnout)
+```
+There aren't any tracts over 100%.
+
+##### map of tracts by voter turnout
+```{r}
+# join full data to tract spatial file
+df24_tract_adult_ofm_geo <- merge(tracts20.lyr, df24_tract_adult_ofm,
+                              by.x="geoid20",
+                              by.y="planning_geog", 
+                              all.x=TRUE)
+
+df24_tract_adult_ofm_geo <- df24_tract_adult_ofm_geo %>% 
+  mutate(pop18_turnout=pop18_turnout*100)
+
+# filter to tracts >100%
+df24_tract_adult_ofm_geo_100plus <- df24_tract_adult_ofm_geo %>% 
+  filter(pop18_turnout>100)
+```
+
+```{r, echo=FALSE}
+# set up palettes
+psrc_palette <- leaflet::colorNumeric(palette=psrc_colors$purples_inc,
+                                      domain = df24_tract_adult_ofm_geo$pop18_turnout)
+
+# map settings
+tract_map <- leaflet() %>%
+  leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
+  leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
+  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+                            options = leaflet::leafletOptions(pane = "maplabels"),
+                            group = "Labels") %>%
+  leaflet::addLayersControl(baseGroups = "voter participation",
+                   overlayGroups = "tracts >100%",
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  
+  addPolygons(data=df24_tract_adult_ofm_geo,
+              fillColor = psrc_palette(df24_tract_adult_ofm_geo$pop18_turnout),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.7,
+              group = "voter participation",
+              label = paste(round(df24_tract_adult_ofm_geo$pop18_turnout, digits=0),"%")) %>%
+  addPolygons(data=df24_tract_adult_ofm_geo_100plus,
+              color = "red",
+              stroke = TRUE, 
+              weight = 3,
+              smoothFactor = 0.5,
+              fillOpacity = 0,
+              group = "tracts >100%",
+              label = paste(round(df24_tract_adult_ofm_geo_100plus$pop18_turnout, digits=0),"%")) %>% 
+
+  # legends
+  addLegend_decreasing(pal = psrc_palette,
+                       values = df24_tract_adult_ofm_geo$pop18_turnout,
+                       position = "bottomright",
+                       title = "Voter Participation",
+                       group = "voter participation",
+                       opacity = 0.7,
+                       decreasing = TRUE,
+                       labFormat = labelFormat(suffix = "%")) %>% 
+
+  #set view extent
+  leaflet::setView(lng=-122.257, lat=47.615, zoom=8.5) %>%
+  addEasyButton(easyButton(
+    icon = htmltools::span(class = "globe", htmltools::HTML("&#127758;")),  #&#127760; (another emoji option) #"fa-globe", (font awesome icon no longer works because of the conversion to Poppins font below)
+    title ="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8.5); }")))
+
+# fix the legend NA placement (https://github.com/rstudio/leaflet/issues/615)
+css_fix <- "div.info.legend.leaflet-control br {clear: both;} html * {font-family: Poppins !important;}" # CSS to correct spacing and font family
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+tract_map %<>% htmlwidgets::prependContent(html_fix)
+
+# print map
+tract_map
+```
+
+#### where # of registered voters is greater than the number of adults 18+
+```{r}
+df24_tract_above1_adultpop_reg <- df24_tract_adult %>% 
+  filter(registered_pop18>1)
+
+df24_tract_above1_adultpop_reg
+```
+There are 52 tracts over 100% - about half as many from the other methods.
+
+### Comparing tracts
+To look compare the differences in the voter turnout for all tracts (based on ballots cast) between those calculated based on total population distribution and adult 18+ distribution
+
+#### All tracts
+```{r}
+compare_all <- df24_tract_adult %>% 
+  full_join(df24_tract_adult_ofm,
+            by = c("data_geog_type", "planning_geog_type",
+                  "ofm_estimate_year", "ofm_vintage",
+                  "parcel_year", "planning_geog"))
+
+compare_all_calc <- compare_all %>% 
+  mutate(dif_adult_ofm=pop18_turnout.x-pop18_turnout.y)
+compare_all_calc_simp <- compare_all_calc %>% 
+  select(planning_geog, pop18_turnout.x, pop18_turnout.y, dif_adult_ofm)
+
+summary(compare_all_calc$dif_adult_ofm)
+hist(compare_all_calc$dif_adult_ofm)
+
+filter <- compare_all_calc %>% 
+  filter(dif_adult_ofm>0)
+```
+This shows that the difference in voter turnout is more positive which means that when the denominator is based on OFM estimates and weighted by ACS, the values are smaller than the values when just using just ACS adult 18+ estimates into account. 597 tracts have differences that are positive, while 321 are negative. 
+
+#### Top 10 tracts
+Looking at the ten tracts with the highest turnout
+```{r}
+fourth <- df24_tract_adult_ofm %>% 
+  arrange(desc(pop18_turnout)) %>% 
+  top_n(10) %>% 
+  select(planning_geog, pop18_turnout)
+
+fourth
+```
+
 # Conclusions
 ## Overall
-Out of the three methods explored above, the second approach appears to be the best. 
+Out of the three methods explored above, the fourth approach appears to be the best. 
 
 ## Process
 We tested the second approach to determine if using adult 18+ population estimates in order to weight the initial population distribution (based on OFM parcels) would improve the issue of tracts with over 100% voter turnout. This was mostly based on the assumption that the population distribution of adults 18+ does not mirror the total population distribution - there are likely some areas where there are more or fewer households with children or young adults than others. 
 \
 \
 We tested the third approach to determine if using adult 18+ population estimates at a more granular geographic scale in order to weight the population distribution would improve the issue of tracts with over 100% voter turnout. Perhaps estimates at the block group were better at accurately reflecting the population distribution, which would have resulted in more accurate weighting/translation between the precinct and tract. 
+\
+\
+We tested the fourth approach to determine if the accuracy of the denominator could be improved. Instead of using the 2023 5y estimates for adults 18+ population, ACS 5y estimates may be better for proportions at the tract level. Perhaps the 5y average, outdated by one year, was too low for certain areas with more recent population growth. The OFM estimates may be a better more accurate representation of population, especially as they are available for 2024. 
 
 ## Rationale
 Although there are still some concerns about the final numbers because tracts with over 100% voter turnout persist, the ability to weight the population distribution by the adult 18+ population seems to be the most accurate in terms or representing eligible voters. This makes the second and third approach more attractive than the first. 
 
 Although the geographic resolution of block groups (third approach) is more refined than tracts (second approach), the additional geographic detail did not resolve the issue of tracts with over 100% voter turnout. In addition, the ability to use population estimates most closely aligned with the election year (2023 for second approach vs. 2020 for third approach) seems to outweigh the potential benefits of additional geographic accuracy. Using block group data from the decennial census would become more challenging to justify as the distance between 2020 and the election year increases (2028). This makes the second approach more attractive than the third.
+
+The fourth approach closely resembles the second in terms of the numerator, but calculating the denominator from OFM values seemed to yield slightly better results - there were no tracts with over 100% voter turn out. 
 
 ## Summary of results
 ### 1st approach
@@ -932,4 +1607,50 @@ df24_tract_above1_adultpop_dec_simp %>% arrange(desc(pop18_turnout))
 
 summary(df24_tract_above1_adultpop_dec_simp$pop18_turnout)
 hist(df24_tract_above1_adultpop_dec_simp$pop18_turnout)
+```
+
+### 4rd approach
+#### All tracts
+```{r}
+summary(df24_tract_adult_ofm$pop18_turnout)
+hist(df24_tract_adult_ofm$pop18_turnout)
+```
+
+#### Tracts with voter turnout over 100%
+```{r}
+df24_tract_above1_adultpop_ofm_simp %>% arrange(desc(pop18_turnout))
+
+summary(df24_tract_above1_adultpop_ofm_simp$pop18_turnout)
+# hist(df24_tract_above1_adultpop_ofm_simp$pop18_turnout)
+```
+
+## Comparing tracts across four methods
+Comparing the census tracts with over 100% voter turn out from methods #1-3 and the top ten tracts from method #4
+```{r}
+# compare to the tracts >100% from the previous 3 methods:
+first <- df24_tract_above1_totalpop %>% 
+  select(planning_geog, pop18_turnout) %>% 
+  arrange(desc(pop18_turnout)) %>% 
+  rename(first=pop18_turnout)
+  
+second <- df24_tract_above1_adultpop%>% 
+  select(planning_geog, pop18_turnout) %>% 
+  arrange(desc(pop18_turnout)) %>% 
+  rename(second=pop18_turnout)
+
+third <- df24_tract_above1_adultpop_dec%>% 
+  select(planning_geog, pop18_turnout) %>% 
+  arrange(desc(pop18_turnout)) %>% 
+  rename(third=pop18_turnout)
+
+fourth <- fourth %>% 
+  rename(fourth=pop18_turnout)
+  
+
+all_methods <- first %>% 
+  full_join(second, by="planning_geog") %>% 
+  full_join(third, by="planning_geog") %>% 
+  full_join(fourth, by="planning_geog")
+
+all_methods
 ```

@@ -89,7 +89,7 @@ data_tract <- data_tract %>%
 source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 
 # check maximum value of data
-summary(data_tract$variable_value) # max is 91.5, so rounding to 100 makes sense
+# summary(data_tract$variable_value) # max is 99.887, so rounding to 100 makes sense
 max_value <- 100 # this value will be the max value in the legend
 
 # setting color palette
@@ -102,7 +102,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(data_tract_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Voter Participation <br> (2020)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Voter Participation <br> (2024)" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>",
   data_tract$geoid20, # the code in <> makes the geoid value bold/italic
@@ -159,7 +159,8 @@ tract_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML 
 # printing map
 tract_map
 ```
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2020 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Sources: Washington Office of Secretary of State 2024 general election data; U.S. Census Bureau, American Community Survey (ACS) 2023 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
@@ -218,7 +219,7 @@ sort <- data %>%
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
 source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R') 
+# source('equity-tracker-chart-functions.R') 
 
 # set folder structure
 rda <- 'h02-voter-participation-chart-data.rda'
@@ -229,7 +230,8 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2020") #filter on most recent year
+  dplyr::filter(data_year=="2024") #%>% #filter on most recent year
+  # mutate(variable_value=variable_value*100)
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
@@ -238,7 +240,7 @@ x = "quintile_ord"
 y = "variable_value"
 facet = "equity_group_ord"
 fill = "quintile_ord"
-y_min = 0.6
+y_min = 0
 y_max = 1
 dec = 0
 esttype = "percent"
@@ -246,7 +248,7 @@ color = "purples"
 num_colors = 5
 color_rev = FALSE
 title = "Voter Participation"
-subtitle = "2020 election data"
+subtitle = "2024 election data"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -471,7 +473,7 @@ df2 <- df %>%
 df = dplyr::filter(df2, data_year %in% years)
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
-y_min = 0.6
+y_min = 0
 y_max = 1
 color = "blues"
 
