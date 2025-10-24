@@ -1,6 +1,6 @@
 ---
 title: "Voter Participation"
-subtitle: "Visuals for Equity Tracker (PUMS data)"
+subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
@@ -61,113 +61,7 @@ Life expectancy provides a way to understand a population's overall health. Diff
 [Please include the following for a general, layperson audience: 1-2 sentences explaining what your indicator is/measures, what it says about people's life outcomes; 1 sentence describing why it is useful/relevant in the indicator's theme]
 
 ## 1. Map of most recent data
-To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already aggregated to equity group/quintile. 
-```{r map legend settings, include=FALSE}
-# https://stackoverflow.com/questions/40276569/reverse-order-in-r-leaflet-continuous-legend - this code helps to set up the legend so that it is arranged high-low with correct color order
-addLegend_decreasing <- function (map, position = c("topright", "bottomright", "bottomleft", 
-			    "topleft"), pal, values, na.label = "NA", bins = 7, colors, 
-		  opacity = 0.5, labels = NULL, labFormat = labelFormat(), 
-		  title = NULL, className = "info legend", layerId = NULL, 
-		  group = NULL, data = getMapData(map), decreasing = FALSE) {
-	position <- match.arg(position)
-	type <- "unknown"
-	na.color <- NULL
-	extra <- NULL
-	if (!missing(pal)) {
-		if (!missing(colors)) 
-			stop("You must provide either 'pal' or 'colors' (not both)")
-		if (missing(title) && inherits(values, "formula")) 
-			title <- deparse(values[[2]])
-		values <- evalFormula(values, data)
-		type <- attr(pal, "colorType", exact = TRUE)
-		args <- attr(pal, "colorArgs", exact = TRUE)
-		na.color <- args$na.color
-		if (!is.null(na.color) && col2rgb(na.color, alpha = TRUE)[[4]] == 
-		    0) {
-			na.color <- NULL
-		}
-		if (type != "numeric" && !missing(bins)) 
-			warning("'bins' is ignored because the palette type is not numeric")
-		if (type == "numeric") {
-			cuts <- if (length(bins) == 1) 
-				pretty(values, bins)
-			else bins	
-			
-			if (length(bins) > 2) 
-				if (!all(abs(diff(bins, differences = 2)) <= 
-				         sqrt(.Machine$double.eps))) 
-					stop("The vector of breaks 'bins' must be equally spaced")
-			n <- length(cuts)
-			r <- range(values, na.rm = TRUE)
-			cuts <- cuts[cuts >= r[1] & cuts <= r[2]]
-			n <- length(cuts)
-			p <- (cuts - r[1])/(r[2] - r[1])
-			extra <- list(p_1 = p[1], p_n = p[n])
-			p <- c("", paste0(100 * p, "%"), "")
-			if (decreasing == TRUE){
-				colors <- pal(rev(c(r[1], cuts, r[2])))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}else{
-				colors <- pal(c(r[1], cuts, r[2]))
-				labels <- rev(labFormat(type = "numeric", cuts))
-			}
-			colors <- paste(colors, p, sep = " ", collapse = ", ")
-			
-		}
-		else if (type == "bin") {
-			cuts <- args$bins
-			n <- length(cuts)
-			mids <- (cuts[-1] + cuts[-n])/2
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "bin", cuts))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "bin", cuts)
-			}
-			
-		}
-		else if (type == "quantile") {
-			p <- args$probs
-			n <- length(p)
-			cuts <- quantile(values, probs = p, na.rm = TRUE)
-			mids <- quantile(values, probs = (p[-1] + p[-n])/2, 
-				 na.rm = TRUE)
-			if (decreasing == TRUE){
-				colors <- pal(rev(mids))
-				labels <- rev(labFormat(type = "quantile", cuts, p))
-			}else{
-				colors <- pal(mids)
-				labels <- labFormat(type = "quantile", cuts, p)
-			}
-		}
-		else if (type == "factor") {
-			v <- sort(unique(na.omit(values)))
-			colors <- pal(v)
-			labels <- labFormat(type = "factor", v)
-			if (decreasing == TRUE){
-				colors <- pal(rev(v))
-				labels <- rev(labFormat(type = "factor", v))
-			}else{
-				colors <- pal(v)
-				labels <- labFormat(type = "factor", v)
-			}
-		}
-		else stop("Palette function not supported")
-		if (!any(is.na(values))) 
-			na.color <- NULL
-	}
-	else {
-		if (length(colors) != length(labels)) 
-			stop("'colors' and 'labels' must be of the same length")
-	}
-	legend <- list(colors = I(unname(colors)), labels = I(unname(labels)), 
-	               na_color = na.color, na_label = na.label, opacity = opacity, 
-	               position = position, type = type, title = title, extra = extra, 
-	               layerId = layerId, className = className, group = group)
-	invokeMethod(map, data, "addLegend", legend)
-}
-```
+To map data in this form, it requires accessing data at the regional/tract level from ACS since the Elmer data set is already 
 
 ### Create Visual
 ```{r map .rda}
@@ -180,32 +74,40 @@ rda <- 'h02-voter-participation-map-data.rda'
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ``` 
 
+```{r data format - map, include=FALSE}
+# This space is for any data transformations that may be needed before the final visualizations are generated. This code may or may not be necessary depending on the way the data were formatted in the data-gen script and saved in the rda.
+
+# move the decimal point for all voter participation estimates (tract, county, and region)
+data_tract <- data_tract %>%
+  mutate(variable_value = variable_value*100,
+         cnty_estimate = cnty_estimate*100,
+         reg_estimate = reg_estimate*100)
+```
+
 ```{r acs map}
-# setting map extent
-map.lat<- 47.615
-map.lon<- -122.257
-map.zoom<- 8.5
+# reference addLegend_decreasing function
+source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 
 # check maximum value of data
-# summary(data_tract$estimate) # max is 95.39, so rounding to 100 makes sense
+# summary(data_tract$variable_value) # max is 99.887, so rounding to 100 makes sense
 max_value <- 100 # this value will be the max value in the legend
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
-data_tract_plus_zero<-append(data_tract$estimate,0)
+data_tract_plus_zero<-append(data_tract$variable_value,0)
 
 # psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-#                                       domain = data_tract_plus_zero) # this is the value field
+#                                       domain = c(min(data_tract$variable_value,na.rm = TRUE),max_value, NA)) # this is the value field
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-                                      domain = c(min(data_tract$estimate,na.rm = TRUE),max_value, NA)) # this is the value field
+                                      domain = c(min(data_tract_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # setting the legend/label variables
-var_name <- "Voter Participation <br> (2020)" # the <br> could be adjusted depending on the length/spacing of the name
+var_name <- "Voter Participation <br> (2024)" # the <br> could be adjusted depending on the length/spacing of the name
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>",
   data_tract$geoid20, # the code in <> makes the geoid value bold/italic
   paste("Tract value: ",
-        prettyNum(round(data_tract$estimate, digits=0)),
+        prettyNum(round(data_tract$variable_value, digits=0)),
                   "%"),
   paste("Region value: ",
         prettyNum(round(data_tract$reg_estimate, digits=0)),
@@ -225,7 +127,7 @@ tract_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=data_tract,
-              fillColor = psrc_palette(data_tract_plus_zero),
+              fillColor = psrc_palette(data_tract$variable_value),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -234,7 +136,7 @@ tract_map <- leaflet() %>%
 
   # legend
   addLegend_decreasing(pal = psrc_palette,
-                       values = c(min(data_tract$estimate,na.rm = TRUE),max_value, NA),
+                       values = c(min(data_tract_plus_zero,na.rm = TRUE),max_value, NA),
                        position = "bottomright",
                        title = var_name,
                        group = var_name,
@@ -257,7 +159,8 @@ tract_map %<>% htmlwidgets::prependContent(html_fix) # Insert into leaflet HTML 
 # printing map
 tract_map
 ```
-Sources: U.S. Census Bureau, American Community Survey (ACS) 2021 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+Sources: Washington Office of Secretary of State 2024 general election data; U.S. Census Bureau, American Community Survey (ACS) 2023 5-Year Estimates; U.S. Census Bureau, Geography Division 2020 TIGER/Line Shapefiles
+
 ```{r generate acs map html, include=FALSE}
 # to save html visual to folder, you must create an 'webpage-html-outputs' folder within each indicator sub-folder: Y:\Equity Indicators\tracker-webpage-content\f-economy\f01-median-income\webpage-html-outputs
 
@@ -274,66 +177,31 @@ htmlwidgets::saveWidget(tract_map,
 #### Data call outs
 ```{r map calculations - pums, include=FALSE, eval=FALSE}
 # simplify data set
-data <- acs_data_tract %>%
+data <- data_tract %>%
   st_drop_geometry()
 
-# calculate call out information
-# this calculation doesn't work for median income because median is unique - need to retrieve from census
-# calc <- data %>% 
-#   dplyr::mutate(inc_wt_pop = total_pop20*estimate) %>% 
-#   dplyr::mutate(reg_medinc = sum(inc_wt_pop, na.rm=TRUE)/sum(total_pop20, na.rm=TRUE))
-# regional median income: 104322.7
-
-# x<-rep(data$estimate,times=data$total_pop20)
-# df1<-data.frame(x)
-# summary(df1$x)
-# median(df1$x, na.rm=TRUE)
-# hist(df1$x)
-# regional median life expectancy: 80.86 
-
-# getting data by region from PUMS
-pums_data <- get_psrc_pums(span = 5,
-                           dyear = 2021,
-                           level = "h",
-                           vars = "HINCP")
-reg_median <- psrc_pums_median(pums_data, stat_var = "HINCP")
-# regional median income: 96453.13
+sort <- data %>% 
+  dplyr::arrange(desc(variable_value))
+# when rounded, 19 census tracts had 93% or higher voter turnout, the 7 census tracts with the highest voting turnout are in King County
+# 53033003400 (West Woodland neighborhood, Seattle), 53033001500 (Blue Ridge neighborhood, Seattle), 53033002500 (Ravenna and Wedgewood neighborhoods, Seattle), 53033004600 (Tangletown/Meridian neighborhood, Seattle), 53033005600 (Briarcliff neighborhood, Seattle)
 
 sort <- data %>% 
-  dplyr::arrange(desc(estimate))
-# 53033004101 (Laurelhurst neighborhood), 53033023902 (Clyde Hill, Yarrow Point, Hunts Point), 53033024100 (Bellevue), 53033024601 (Mercer Island), 53033024602 (Mercer Island)
+  dplyr::arrange(variable_value)
+# 53053072907 (Joint Base Lewis-McChord), 53053072908 (Joint Base Lewis-McChord), 53053072909 (unincorporated Pierce County surrounding State Route 507)
 
-sort <- data %>% 
-  dplyr::arrange(estimate)
-# 53033005304 (Seattle UW), 53033005305 (Seattle UW), 53053061601 (Tacoma)
-# 53033030501 (Auburn, around 167)
-
-# this calculation doesn't work for median income because median is unique - need to retrieve from census 
-# by_county <- data %>% 
-#   dplyr::group_by(county_name) %>% 
-#   dplyr::summarise(income.wgt=(sum(estimate*total_pop20, na.rm =TRUE))/(sum(total_pop20, na.rm=TRUE))) %>% 
-#   dplyr::arrange(desc(income.wgt))
-
-# getting data by county from acs 
-coutny_acs_data <- get_acs_recs(geography ='county', 
-                                table.names = 'B19013', #subject table code
-                                years = c(2021),
-                                acs.type = 'acs5')
-coutny_acs_data <- coutny_acs_data %>% 
-  dplyr::arrange(desc(estimate))
+ 
 ```
 
-1. $96,500: The region's median household income
-2. $250,000: The highest median income for five tracts in Seattle, Mercer Island, Bellevue, Clyde Hill, Yarrow Point, and Hunts Point
-3. $21,000: The lowest median income census tract in the region
-
+1. 85%: The region's voter participation rate
+2. 78%: The regional voter participation rate for communities with high concentrations of households of color is 78%, 9 percentage points lower than the rate for communities with low concentrations
+3. 81%: Regionally, communities with high concentrations of people with disabilities have voter participation rates 6 percentage points lower than communities with low concentrations
 \
 
 #### Insights & Analysis
 
-* King County has the highest median income (\$106,300), followed by Snohomish (\$95,600), Kitsap (\$84,600), and Pierce (\$82,600)
-* The five census tracts tied with the highest median income (\$250,000) are in King County: Laurelhurst neighborhood in Seattle, Clyde Hill/Yarrow Point/Hunts Point, Bellevue, and two tracts on Mercer Island
-* The three census tracts with the lowest median income are Seattle's University of Washington (\$21,000), downtown Tacoma (\$26,400), and Auburn around Route 167 (\$28,400)
+* King and Snohomish counties have the highest voter participation rates (85%), followed by Kitsap (84%), and Pierce (82%)
+* There are 19 census tracts that have voter participation rates of 93%, the top five are in neighborhoods in Seattle: West Woodland, Blue Ridge, Ravenna and Wedgewood, Tangletown, and Briarcliff
+* The four census tracts that have the lowest voter participation rates in the region are in Pierce County surrounding the Joint Base Lewis-McChord and unincorporated areas around State Route 507 (46-51%)
 
 \
 \
@@ -351,10 +219,10 @@ coutny_acs_data <- coutny_acs_data %>%
 ```{r data setup, include=FALSE}
 # load visualization functions for charts
 source('C:/Users/mrichards/Documents/GitHub/equity-tracker/data-visualization/equity-tracker-chart-functions.R') # this needs to be adjusted based on your local GitHub directory - it is required if you wish to run chunks and view the visuals (without first knitting)
-source('equity-tracker-chart-functions.R') 
+# source('equity-tracker-chart-functions.R') 
 
 # set folder structure
-rda <- 'h02-voter-participation-data.rda'
+rda <- 'h02-voter-participation-chart-data.rda'
 
 load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```
@@ -362,13 +230,14 @@ load(file=file.path(base_dir,theme_dir,ind_dir,"rda-data",rda))
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year=="2020") #filter on most recent year
+  dplyr::filter(data_year=="2024") #%>% #filter on most recent year
+  # mutate(variable_value=variable_value*100)
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
-geo = "county_ord"
+geo = "county"
 x = "quintile_ord"
-y = "estimate"
+y = "variable_value"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0
@@ -379,7 +248,7 @@ color = "purples"
 num_colors = 5
 color_rev = FALSE
 title = "Voter Participation"
-subtitle = "2020 election data"
+subtitle = "2024 election data"
 source = "U.S. Census Bureau, American Community Survey (ACS) 5-Year Public Use Microdata Sample (PUMS)"
 
 column_chart <- equity_tracker_column_facet(df = df,
@@ -456,78 +325,86 @@ if (output_type == "html") {
 </p> 
 
 #### Data call outs
-```{r column facet calculations - pums, include=FALSE, eval=FALSE}
+```{r column facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
+
+# data call out #2
 filter <- data_clean_column %>% 
   filter(county=="Region",
-         focus_type=="Income_cat")
+         equity_group=="poc_quintile",
+         quintile=="Low"|
+           quintile=="High")
 
-# region low income households: 25409.57	
-# region non-low income households: 135561.35
-# 135561.35-25409.57=110151.8
+# region low quintile poc households: 0.8775952	
+# region high quintile poc households: 0.7839176
+# 0.8775952-0.7839176=0.0936776
+
+# data call out #3
+filter <- data_clean_column %>% 
+  filter(equity_group=="disability_quintile",
+         quintile=="Low"|
+           quintile=="High")
+# region dif bt low/high quintiles for disability: 0.8744172-0.8103445=0.0640727
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         county=="Region")
-# region lep households: 58284.83	
-# region non-lep households: 116673.43
-# 116673.43-58284.83=58388.6
+  filter(county!="Region",
+         equity_group=="poc_quintile",
+         quintile=="Low"|
+           quintile=="High")
+
+# king low-high quintiles for poc: 0.8970217-0.7852066=0.1118151
+# kitsap low-high quintiles for poc: 0.8824477-0.7703693=0.1120784
+# pierce low-high quintiles for poc: 0.8687831-0.7314347=0.1373484
+# snohomish low-high quintiles for poc: 0.8690456-0.8216389=0.0474067
+
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="LEP_cat",
-         vulnerability=="high vulnerability")
+  filter(equity_group=="income_quintile",
+         quintile=="High",
+         county!="Region")
 
-# region lep households: 58284.83	
-# snohomish lep households: 67832.94
-# 71.45515-63.50990=7.94525
-
-filter <- data_clean_column %>% 
-  filter(county=="Region",
-         focus_type=="Youth_cat")
-
-# region youth households: 141389.8	
-# region non-youth households: 102097.0
-# 141389.8-102097.0=39292.8
+# king high quintile low income households: 0.7815157
+# kitsap high quintile low income households: 0.7806591
+# pierce high quintile low income households: 0.7163262
+# snohomish high quintile low income households: 0.8082091
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="POC_cat")
-# snohomish poc: 108886.4
-# snohomish non-poc: 112974.4
-# 112974.4-108886.4=4088
+  filter(equity_group=="lep_quintile",
+         quintile=="Low"|
+           quintile=="High")
 
-# king poc: 111529.77
-# king non-poc: 130977.15
-# 130977.15-111529.77=19447.38
-
-filter <- data_clean_column %>% 
-  filter(focus_type=="Disability_cat")
-# kitsap dis: 84171.34
-# kitsap non-dis: 104284.10
-# 104284.10-84171.34=20112.76
-
-# king dis: 81508.16
-# king non-dis: 134637.12
-# 134637.12-81508.16=53128.96
+# region low-high quintiles for lep: 0.8641631-0.8050660=0.0590971
+# king low-high quintiles for lep: 0.8891541-0.8012073=0.0879468
+# kitsap low-high quintiles for lep: 0.8466171-0.7950815=0.0515356
+# pierce low-high quintiles for lep: 0.8485210-0.7635976=0.0849234
+# snohomish low-high quintiles for lep: 0.8610657-0.8152412=0.0458245
 
 filter <- data_clean_column %>% 
-  filter(focus_type=="Income_cat",
-         vulnerability=="high vulnerability") %>% 
-  dplyr::arrange(desc(fact_value))
+  filter(equity_group=="youth_quintile",
+         quintile=="Low"|
+           quintile=="High")
+# king high-low quintiles for youth: 0.8574988-0.8480032=0.0094956
+# kitsap high-low quintiles for youth: 0.8433094-0.8135396=0.0297698
+# pierce high-low quintiles for youth: 0.8308442-0.7905982=0.040246
+# snohomish high-low quintiles for youth: 0.8461898-0.8627143=-0.0165245
 
+filter <- data_clean_column %>% 
+  filter(equity_group=="older_quintile",
+         quintile=="Low"|
+           quintile=="High")
+# king high-low quintiles for older: 0.8480646-0.8522888=-0.0042242
+# kitsap high-low quintiles for older: 0.7615507-0.8843850=-0.1228343
+# pierce high-low quintiles for older: 0.7673896-0.8717076=-0.104318
+# snohomish high-low quintiles for older: 0.8417441-0.8648048=-0.0230607
 ```
-
-1. \$25,400: The regional household median income of those who are below 200% of the poverty level
-2. \$58,400: Non-English proficient households have median household incomes \$58,400 lower than English proficient households
-3. \$39,300: The median household income of households with children (below 18 years old) is \$39,300 higher than households without children
-
 \
 
 #### Insights & Analysis
 
-* The smallest difference in median income between people of color and white non-Hispanic is in Snohomish County (\$4,100), while the largest difference is in King County (\$19,400)
-* For households who are below 200% of the poverty level, the median income is lowest in King County (\$24,100), followed by Snohomish and Kitsap (\$26,100), and Pierce (\$27,700)
-* The largest difference in median income between people with and without a disability is in King County (\$53,100), while the smallest difference is in County (\$20,100)
-* Snohomish County is the only county where Non-English proficient households have higher median incomes (\$67,800) than the region's Non-English proficient households (\$58,300)
+* Communities with higher concentrations of people of color have lower voter participation rates than those with lower concentrations - the largest difference is in Pierce County (14 percentage points).
+* For communities with high concentrations of households who are below 200% of the poverty level, voter participation rates are highest in Snohomish County (81%), followed by King and Kitsap (78%), and Pierce County (72%).
+* Voter participation is lower in communities with higher concentrations of households with limited English proficiency compared to communities with lower concentrations. King County has the highest difference (9 percentage points), while Snohomish County has the smallest difference (5 percentage points).
+* Regionally, there is little difference in the voter participation rate between communities with high and low concentrations of households with children. The largest differences are in Pierce and Kitsap counties where higher concentrations of households with children have lower voter participation rates by four and three percentage points, respectively. Snohomish County is the only county where voter participation rates are higher in communities with higher concentrations of households with children, although the difference is one percentage point. 
 
 \
 \
@@ -542,14 +419,63 @@ filter <- data_clean_column %>%
 }
 </style>
 
+```{r insert nulls for line chart, include=FALSE}
+
+# insert null records ----
+standard_base_year <- 2012 # earliest data year
+
+## main table
+df_base <- data_clean %>% 
+  mutate(data_year_num = as.numeric(data_year))
+
+## set-up columns to identify missing years by the unique categories/geography
+d <- df_base %>% 
+  group_by(county, equity_group, quintile, equity_group_ord, quintile_ord) %>% 
+  summarise(avail_years = list(unique(as.numeric(data_year))),
+            num_unique_years = length(unique(data_year)),
+            start_year = as.numeric(min(unique(data_year))),
+            end_year = as.numeric(max(unique(data_year))),
+            .groups = "drop") %>% 
+  mutate(base_year = standard_base_year)
+
+## create list-column, a vector of missing years in a cell
+d_calc <- d %>% 
+  rowwise() %>% 
+  mutate(missing_years = ifelse(start_year == base_year, NA, list(seq(base_year, (start_year-1))))) 
+
+## create list-column, a vector of missing years in a cell
+d_calc <- d %>% 
+  rowwise() %>% 
+  mutate(missing_years = list(setdiff(seq(base_year, end_year), avail_years)))
+
+## unpack so each missing year is a row of its own
+d_unnest <- d_calc %>% 
+  unnest(missing_years) 
+
+## create table with null records for chart
+df_nulls <- d_unnest %>% 
+  dplyr::select(county, equity_group, quintile, equity_group_ord, quintile_ord, data_year_num = missing_years) %>% 
+  mutate(wt_Avg_Per = NA, estimate = NA, data_year = as.character(data_year_num))
+
+## assemble main table  
+df <- bind_rows(df_base, df_nulls) %>% 
+  arrange(county, equity_group_ord, quintile_ord, data_year_num)
+
+# filter for relevant years
+df2 <- df %>% 
+  filter(data_year_num %in% years)
+```
+
 ```{r line facet - pums, include=FALSE}
 # Create Facet Line Chart
 
 # set variables
-df = data_clean
+df = dplyr::filter(df2, data_year %in% years)
 x = "data_year" # different from variables for facet column
 fill = "quintile_ord" # different from variables for facet column
-color = "purples"
+y_min = 0
+y_max = 1
+color = "blues"
 
 line_chart <- equity_tracker_line_facet(df = df,
                                         geo = geo,
@@ -628,71 +554,86 @@ if (output_type == "html") {
 </p> 
 
 #### Data call outs
-```{r line facet calculations - pums, include=FALSE, eval=FALSE}
+```{r line facet calculations - tract, include=FALSE, eval=FALSE}
 # calculate call out information
-filter <- data_clean %>%
+filter <- data_clean %>% 
   filter(county=="Region",
-         focus_type=="Income_cat")
-# 2021 low income: 25409.57
-# 2021 non-low income: 135561.35
-# 135561.35-25409.57=110151.8
-# 2011 low income: 24829.81
-# 2011 non-low income: 106454.25
-# 106454.25-24829.81=81624.44
-# ((110151.8-81624.44)/(81624.44))*100: 34.94953% change
+         equity_group=="poc_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
 
+# 2010 region low quintile poc households: 80.54142	
+# 2010 region high quintile poc households: 76.64042
+# 80.54142-76.64042=3.901
+# 2020 region low quintile poc households: 81.19030
+# 2020 region high quintile poc households: 76.67422
+# 81.19030-76.67422=4.51608
+# ((4.51608-3.901)/(3.901))*100: 15.8% change
 
-filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="POC_cat")
-# 2021 poc: 102481.29
-# 2021 non-poc: 118053.44
-# 118053.44-102481.29=15572.15
-
-filter <- data_clean %>%
-  filter(county=="Region",
-         focus_type=="Older_cat")
-# 2021 older: 83306.58
-# 2021 non-older: 124514.77
-# 124514.77-83306.58=41208.19
-# 2011 older: 62308.22
-# 2011 non-older: 94026.28
-# 94026.28-62308.22= 31718.06
-# ((41208.19-31718.06)/(31718.06))*100: 29.92027% change
-
-filter <- data_clean %>%
-  filter(county != "Region",
-         focus_type=="Disability_cat")
-# 2016 king disability-no disability: 102202.57-62990.64=39211.93
-# 2021 king disability-no disability: 134637.12-81508.16=53128.96
-# 53128.96-39211.93=13917.03
-
-filter <- data_clean %>%
+filter <- data_clean %>% 
   filter(county=="Snohomish",
-         focus_type=="POC_cat",
-         data_year=="2011" |
-           data_year=="2021")
-# 2011 king:82987.29-66233.98=16753.31
-# 2021 king:130977.15-111529.7=19447.45
-# ((19447.45-16753.31)/(16753.31))*100: 16.08124% change
-# 2011 kitsap:101045.37-78865.29=22180.08
-# 2021 kitsap:103185.85-85187.57=17998.28
-# ((17998.28-22180.08)/(22180.08))*100: -18.85385% change
-# 2011 pierce:87650.57-77922.34=9728.23
-# 2021 pierce:103124.26-84547.06=18577.2
-# ((18577.2-9728.23)/(9728.23))*100: 90.96177% change
-# 2011 snohomish:80736.67-64959.63=15777.04
-# 2021 snohomish:112974.44-108886.37=4088.07
-# ((4088.07-15777.04)/(15777.04))*100: -74.08849% change
+         equity_group=="income_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
 
-filter <- data_clean %>%
-  filter(county=="Snohomish",
-         focus_type=="Income_cat",
-         vulnerability=="low vulnerability",
-         data_year=="2011" |
-           data_year=="2021")
-# king non-low income:150511.89-98506.82=52005.07
-# Snohomish non-low income:130900.06-97445.42=33454.64
+# 2012 king low-high quintile income: 79.07988-74.11040=4.96948	
+# 2022 king low-high quintile income: 82.30115-77.81201=4.48914
+# 4.96948-4.48914=0.48034
+# 2012 kitsap low-high quintile income: 78.34657-63.55216=14.79441
+# 2022 kitsap low-high quintile income: 83.36568-78.39460=4.97108
+# 14.79441-4.97108=9.82333
+# 2012 pierce low-high quintile income: 79.83607-68.12831=11.70776
+# 2022 pierce low-high quintile income: 81.40780-75.06289=6.34491
+# 11.70776-6.34491=5.36286
+# 2012 snohomish low-high quintile income: 79.68945-78.47776=1.21169
+# 2022 snohomish low-high quintile income: 81.37299-78.03709=3.3359
+# 1.21169-3.3359=-2.12421
+
+filter <- data_clean %>% 
+  filter(county!="Region",
+         equity_group=="lep_quintile", 
+         quintile=="High",
+         data_year=="2022")
+
+
+filter <- data_clean %>% 
+  filter(county=="Region",
+         equity_group=="poc_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
+# 2012 low-high poc: 80.25792-77.01544=3.24248
+# 2022 low-high poc: 80.75294-78.58048=2.17246
+# ((2.17246-3.24248)/3.24248)*100=-33%
+
+filter <- data_clean %>% 
+  filter(county=="Region",
+         equity_group=="income_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
+
+# 2012 low-high low income: 79.28106-72.72990=6.55116
+# 2022 low-high low income: 81.99937-77.20026=4.79911
+# ((4.79911-6.55116)/6.55116)*100=-26.74412%
+
+filter <- data_clean %>% 
+  filter(county=="Region",
+         equity_group=="disability_quintile",
+         quintile=="Low" | 
+           quintile=="High",
+         data_year=="2012" |
+           data_year=="2022")
+
+# 2012 low-high dis: 76.94577-77.51709=-0.57132
+# 2022 low-high dis: 81.42043-77.88053=3.5399
+# ((3.5399--0.57132)/0.57132)*100=719.6%
 ```
 
 1. \$110,200: In 2021, households in the region who were below 200% of the poverty line made \$110,200 less than households above the 200% poverty line, a 35% larger gap than in 2011
@@ -713,22 +654,26 @@ filter <- data_clean %>%
 
 
 # Transfer files
-## Copy files from Github > Y drive
+## Copy files from Github > Y drive/update folder
+This step will transfer all of the Rmd output files (html and docx) to the network for review. It will keep the Rmd files within GitHub so that code is kept in a central place. 
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(getwd())
-y.drive.folder <- file.path(base_dir,theme_dir,ind_dir)
+y.drive.folder.update <- file.path(file_names$base_dir,
+                                   file_names$theme_dir,
+                                   file_names$ind_dir,
+                                   'update')
 
 # isolate files in Github
 list.of.files <- list.files(current_folder, 
                             full.names = T,
                             pattern = "\\.(html|docx)$")
-# list.of.files
 
 # copy the files to the new folder
-file.copy(list.of.files,
-          y.drive.folder,
-          overwrite = T)
+file.copy(from=list.of.files,
+          to=y.drive.folder.update,
+          overwrite = TRUE,
+          recursive = TRUE)
 
 # keep only .Rmd files in Github (cleaner)
 files.in.dir <- list.files(current_folder, 
@@ -741,13 +686,102 @@ files.to.remove <- list(files.in.dir[!(files.in.dir %in% grep(paste(files.to.kee
 do.call(unlink, files.to.remove)
 ```
 
-## Copy files from Y drive > website folder
+## Copy files from Y drive/indicator folder > Y drive/indicator/archive folder
+This step will transfer the previous data and files to the archive folder. This step is meant to retain the older versions in case they are needed for reference. 
+```{r to archive, include=FALSE, eval=FALSE}
+# set folder structure
+y.drive.folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir)
+archive.folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir,'archive')
+
+# isolate old files/directories
+list.of.files <- list.files(y.drive.folder, 
+                            full.names = T,
+                            pattern = "\\.(html|docx)$|rda-data|webpage-html-outputs")
+
+# copy the files to the archive folder
+file.copy(from=list.of.files,
+          to=archive.folder,
+          overwrite = TRUE,
+          recursive = TRUE)
+```
+
+### Delete old files from indicator folder
+This step will clean the indicator folder to make room for the new versions.
+```{r clean indicator folder, include=FALSE, eval=FALSE}
+# identify html and docx files to remove
+list.of.files <- list.files(y.drive.folder,  
+                            full.names = T,
+                            pattern = "\\.(html|docx)$",
+                            recursive=F)
+# clean the files from the update folder
+files.to.remove <- list(list.of.files)
+do.call(unlink, files.to.remove)
+
+# # identify map_files sub-directory, wanted to keep the rda-data and webpage-html-outputs folders
+# map.files.dir <- list.dirs(file.path(y.drive.folder, 'webpage-html-outputs'),
+#                            full.names = T,
+#                            recursive=F)
+# 
+# # clean the files from the update folder
+# dir.to.remove <- list(map.files.dir)
+# unlink(dir.to.remove, recursive=T)
+```
+
+## Copy new files from Y drive/update folder > Y drive/indicator folder
+This step will move all of the updated data/files to the general indicator folder. They should be moved from the update (draft staging directory) to the parent folder so that the htmls can be copied to the webpage folder (outside the firewall).
+```{r update to indicator folder, include=FALSE, eval=FALSE}
+# isolate old files/directories
+list.of.files <- list.files(y.drive.folder.update, 
+                            full.names = T)
+
+# copy the files to the new folder
+file.copy(from=list.of.files,
+          to=y.drive.folder,
+          overwrite = TRUE,
+          recursive = TRUE)
+```
+
+## Clear Y drive/update folder
+This step will help keep the folders organized and ready for the next update. 
+```{r clear update, include=FALSE, eval=FALSE}
+# clean the map files from the indicator/webpage-html-outputs folders
+# identify files/data to remove
+list.of.files <- list.files(y.drive.folder.update, 
+                            full.names = T,
+                            pattern = "\\.(html|docx|rda)$",
+                            recursive=T)
+# clean the files from the update folder
+files.to.remove <- list(list.of.files)
+do.call(unlink, files.to.remove)
+
+# the webpage-html-output and rda files will get overwritten, but the map_files folder is still in the webpage-html-outputs folder
+
+# identify map_files sub-directory, wanted to keep the rda-data and webpage-html-outputs folders
+map.files.dir <- list.dirs(file.path(y.drive.folder.update, 'webpage-html-outputs'),
+                           full.names = T,
+                           recursive=F)
+
+# clean the files from the update folder
+dir.to.remove <- list(map.files.dir)
+unlink(dir.to.remove, recursive=T)
+```
+
+## Copy files from Y drive/indicator folder > website folder
+This step copies the htmls for the webpage (3 visuals) from the network to the folder outside the firewall- this 'external' folder connects directly to the webpage.
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
-current_folder <- file.path(base_dir,theme_dir,ind_dir,'webpage-html-outputs')
+current_folder <- file.path(file_names$base_dir,
+                            file_names$theme_dir,
+                            file_names$ind_dir,
+                            'webpage-html-outputs')
 
 web.base.folder <- '//WEB/website_data/equity-tracker-webpages'
-new.folder <- file.path(web.base.folder,theme_dir)
+new.folder <- file.path(web.base.folder,
+                        file_names$theme_dir)
 
 list.of.files <- list.files(current_folder, 
                             full.names = T)
