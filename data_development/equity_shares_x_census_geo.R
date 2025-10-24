@@ -34,21 +34,29 @@ return(df)
 cty_codes <- data.table( fips=c("033","035","053","061"),
                          county=c("King","Kitsap","Pierce","Snohomish"))
 
-label_quintile <- function(var){                                                                   # Unique so all-zero quintiles act as one bin
-  breakpoints <- unique(quantile(var, probs=0:5/5, na.rm=TRUE))                                    # -- labels anchor the higher quintiles for consistency
-  num_intervals <- length(breakpoints) - 1  # Number of actual intervals after unique()            # -- i.e. when 1 & 2 are combined, labels will be 2:5
-  
-  if(num_intervals <= 0) {
-    # Handle edge case where all values are NA or identical
-    return(rep(NA, length(var)))
+label_quintile <- function(var) {
+  breakpoints <- unique(quantile(var, probs = 0:5/5, na.rm = TRUE))
+  num_intervals <- length(breakpoints) - 1
+  if (num_intervals <= 0) {
+    # no variation or all NA
+    return(rep(NA_real_, length(var)))
   }
-  
-  # Create labels that match the actual number of intervals
   labels <- (6 - num_intervals):5
   
-  rv <- cut(var, breaks = breakpoints, labels = labels,
-            include.lowest = TRUE, right = TRUE)
-  return(rv)
+  cut_fac <- cut(var, breaks = breakpoints, labels = labels,
+                 include.lowest = TRUE, right = TRUE)
+  # Convert factor of labels to their numeric label values
+  q_int <- as.numeric(as.character(cut_fac))
+  
+  if (num_intervals < 5) {
+    lowest_label <- min(labels)             # e.g., 2 when k=4; 3 when k=3
+    q_num <- ifelse(q_int == lowest_label,  # only lowest reported bin
+                    q_int - 0.5,            # becomes 1.5 or 2.5, etc.
+                    q_int)                  # all others unchanged
+  } else {
+    q_num <- q_int
+  }
+  return(q_num)
 }
 
 get_psrc_equity_shares <- function(dyear, entirety){                                               # dyear - last year of 5yr ACS;
