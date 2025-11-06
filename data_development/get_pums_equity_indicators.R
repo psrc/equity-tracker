@@ -59,7 +59,7 @@ which_efa_vars <- function(dyear){
 
 # Create the EFA variables from available PUMS variables
 add_efa_vars <- function(so){
-  dyear <- so[[7]]$DATA_YEAR %>% unique
+  dyear <- so[[7]]$DATA_YEAR %>% unique()
   so %<>% mutate(
     POC_cat     = factor(case_when(PRACE=="White alone"          ~ "Non-POC",
                             !is.na(PRACE)                        ~ "POC"),
@@ -88,21 +88,24 @@ add_efa_vars <- function(so){
 # 3. Setup: Add target indicators -----------------------------------
 
 add_pp_indicators <- function(so){
+  dyear <- so[[7]]$DATA_YEAR %>% unique()
   so %<>% mutate(
     edu_simp = factor(case_when(
       AGEP<25                       ~ NA_character_,                                               # Define the educational attainment subject variable
       grepl("(Bach|Mast|Prof|Doct)", SCHL) ~ "Bachelor's degree or higher",
       !is.na(SCHL)                         ~ "Less than a Bachelor's degree")))
   if(dyear > 2011){
-    pp_df %<>% mutate(
+    so %<>% mutate(
       healthcov = factor(case_when(
         AGEP<25                      ~ NA_character_,                                              # Define the health insurance coverage subject variable
         grepl("^With ", PRIVCOV)|grepl("^With ", PUBCOV) ~ "With health insurance",
         grepl("^Without ", PRIVCOV) & grepl("^Without ", PUBCOV) ~ "Without health insurance")))
   }
+  return(so)
 }
 
 add_hh_indicators <- function(so){
+  dyear <- so[[7]]$DATA_YEAR %>% unique()
   so %<>% mutate(
     poverty=Income_cat,                                                                            # Identical to Income_cat
     housing_burden=factor(case_when(                                                               # Define the housing cost burden subject variable
@@ -133,16 +136,18 @@ add_hh_indicators <- function(so){
                "One person per room or less"))
   )
   if(dyear > 2016){
-    hh_df %<>% mutate(
+    so %<>% mutate(
       internet = factor(case_when(grepl("^Yes", ACCESSINET) ~ "With internet access",              # Define the internet access subject variable; began in 2013
                                   grepl("^No", ACCESSINET) ~ "Without internet access")))
   }
+  return(so)
 } 
 
 add_monetary_indicators <- function(so, refyear){
   so %<>% mutate(
     renter_median_hh_income = case_when(OWN_RENT=="Rented" ~ !!as.name(paste0("HINCP", refyear)),
                                         TRUE ~ NA_real_))
+  return(so)
 }
 
 
@@ -236,7 +241,7 @@ monetary_to_elmer <- function(monetary_result){
 #  -- but this could be separated into additional setup functions, if preferred
 
 # Generate all indicators for a single survey
-pums_efa_singleyear <- function(dyear){
+pums_efa_singleyear <- function(dyear, refyear){
   pums_rds <- "J:/Projects/Census/AmericanCommunitySurvey/Data/PUMS/pums_rds" # Network PUMS location
 
   if(dyear < 2012){hvars <- replace(hvars, hvars=="RMSP","RMS")}                                   # Variable changed names w/ 2012 data
@@ -303,9 +308,8 @@ pums_efa_monetary <- function(){
 }
 
 # Generate trend data, i.e. all indicators across multiple years; returns a list                   # Problematic if variables aren't present in all requested years
-pums_efa_multiyear <- function(dyears){                                                            # -- verify in PUMS data dictionaries for each survey
-  refyear <- max(dyears)
-  rs_master <- lapply(dyears, pums_efa_singleyear) #%>%
+pums_efa_multiyear <- function(dyears, refyear){                                                   # -- verify in PUMS data dictionaries for each survey
+  rs_master <- lapply(dyears, pums_efa_singleyear, refyear) #%>%
     #as.data.frame(do.call(rbind, lapply(., as.vector)))                                           # Combine matching indicator tables across years
   return(rs_master)                                                                                # Return the object
 }
@@ -320,10 +324,10 @@ write_pums_efa <- function(efa_rs_list){
 # equity_2022_5 <- pums_efa_singleyear(2022)                                                       # Returns all tables as separate items in a list
 # efa_to_elmer(equity_2022_5)                                                                      # Merge to Elmer
 # equity_monetary <- pums_efa_monetary()                                                           # Generate all monetary stats w/current dollar basis
-# monetary_to_elmer(rs_monetary)                                                               # Merge to Elmer
+# monetary_to_elmer(rs_monetary)                                                                   # Merge to Elmer
 
 # Example 2: Generate indicators for multiple years-------------
-# equity_0922 <- pums_efa_multiyear(2009:2022)                                                     # Returns a list of lists
-# lapply(equity_1222, efa_to_elmer)                                                                # Merge all to Elmer
+# equity_0911 <- pums_efa_multiyear(2009:2011, refyear=2022)                                       # Returns a list of lists
+# lapply(equity_0911, efa_to_elmer)                                                                # Merge all to Elmer
 # equity_monetary <- pums_efa_monetary()                                                           # Generate all monetary stats w/current dollar basis
 # monetary_to_elmer(equity_monetary)                                                               # Merge to Elmer
