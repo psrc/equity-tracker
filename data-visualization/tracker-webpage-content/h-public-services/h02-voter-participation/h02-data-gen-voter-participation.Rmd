@@ -634,35 +634,39 @@ lowmed_quintile <- data_tract %>%
 
 low_lowmed <- rbind(low_quintile,
                     lowmed_quintile)
-# nrow(low_lowmed) #6
+nrow(low_lowmed) #8 - 2016 for Kitsap, 2020 for Kitsap and Pierce, 2024 for Kitsap
 
 # gather counties that have low - medium categorization
 low_lowmed_counties <- unique(low_lowmed$county) #Kitsap and Pierce
-low_lowmed_years <- unique(low_lowmed$data_year) #2016 and 2020
+low_lowmed_years <- unique(low_lowmed$data_year) #2016, 2020, 2024
 low_lowmed_equity <- unique(low_lowmed$equity_group) #lep_quintile
 
 other_data <- data_tract %>% 
   filter(quintile!="Low - Low Medium") %>% 
   mutate(quintile_original=quintile)
-# nrow(other_data) #146
+# nrow(other_data) #568
 
-data_tract_comb <- rbind(low_lowmed, #6
-                         other_data) #568
+data_tract_comb <- rbind(low_lowmed, #8
+                         other_data) #567
 
-nrow(data_tract_comb) #574
+nrow(data_tract_comb) #575
 unique(data_tract_comb$quintile) #5 quintiles
 
 # remove rows where it is one of the "Low - Low Medium" quintiles AND the original quintile is "Low" or "Low Medium" - only want to keep the rows that are "Low"/"Low Medium" and they share a value
+# data_full <- data_tract_comb %>% 
+#   filter(!(county %in% low_lowmed_counties & 
+#            data_year %in% low_lowmed_years &
+#            equity_group %in% low_lowmed_equity &
+#            (quintile_original=="Low" | 
+#              quintile_original=="Low Medium"))) %>% 
+#   select(-quintile_original) # not needed for visualization, originally kept for checking
+
 data_full <- data_tract_comb %>% 
-  filter(!(county %in% low_lowmed_counties & 
-           data_year %in% low_lowmed_years &
-           equity_group %in% low_lowmed_equity &
-           (quintile_original=="Low" | 
-             quintile_original=="Low Medium"))) %>% 
   select(-quintile_original) # not needed for visualization, originally kept for checking
 
-# nrow(data_full) #572
-# table(data_full$quintile, data_full$county) #should not have extra in low and low medium quintile categories
+# nrow(data_full) #575
+table(data_full$quintile, data_full$county) #should not have extra in low and low medium quintile categories
+table(data_full$data_year, data_full$quintile)
 ```
 
 ## Rename and factor
