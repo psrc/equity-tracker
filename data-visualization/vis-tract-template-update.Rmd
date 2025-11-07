@@ -62,6 +62,9 @@ file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
 # set most recent year
 year <- "2022"
 years <- c(2012, 2017, 2022)
+
+# set past version year - this will set organize archived files in Y drive
+past_year <- "2022"
 ```
 
 # 3 visuals for webpage
@@ -728,13 +731,18 @@ do.call(unlink, files.to.remove)
 ## Copy files from Y drive/indicator folder > Y drive/indicator/archive folder
 This step will transfer the previous data and files to the archive folder. This step is meant to retain the older versions in case they are needed for reference. *Only run this chunk of code if updating visuals for indicator - if there is already existing visuals on a webpage. Don't run if this is the first time visuals are being created for indicator.*
 ```{r to archive, include=FALSE, eval=FALSE}
+# add previous year folder to archive folder - to retain and organize all archived files
+dir.create(file.path(file_names$base_dir,
+                     file_names$theme_dir,
+                     file_names$ind_dir,'archive', past_year))
+
 # set folder structure
 y.drive.folder <- file.path(file_names$base_dir,
                             file_names$theme_dir,
                             file_names$ind_dir)
 archive.folder <- file.path(file_names$base_dir,
                             file_names$theme_dir,
-                            file_names$ind_dir,'archive')
+                            file_names$ind_dir,'archive', past_year)
 
 # isolate old files/directories
 list.of.files <- list.files(y.drive.folder, 
