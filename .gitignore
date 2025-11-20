@@ -42,3 +42,7 @@ vignettes/*.pdf
 *.png
 data-visualization/tracker-webpage-content/e-housing/e01-affordable-rent-access/e01-vis-affordable-rent-access_files/figure-html/output final line chart - pums-1.png
 data-visualization/tracker-webpage-content/e-housing/e01-affordable-rent-access/e01-vis-affordable-rent-access_files/figure-html/output final line chart - pums-1.png
+data_development/1-voter-turnout-exploration.html
+data_development/2-voter-turnout-ofm-acs-dec.html
+data_development/3-voter-turnout-12-16-20-24.html
+data_development/voter_turnout/ofm_pop_sade_tract_2020_2024.xlsx

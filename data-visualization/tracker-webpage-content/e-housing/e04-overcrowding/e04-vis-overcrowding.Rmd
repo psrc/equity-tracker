@@ -61,6 +61,9 @@ file_names <- list(base_dir = 'Y:/Equity Indicators/tracker-webpage-content',
 
 # set most recent year
 year <- "2022"
+
+# set past version year - this will set organize archived files in Y drive
+past_year <- "2022"
 ```
 
 # 3 visuals for webpage
@@ -625,7 +628,7 @@ filter <- data_clean %>%
 
 # Transfer files
 ## Copy files from Github > Y drive/update folder
-This step will transfer all of the Rmd output files (html and docx) to the network for review. It will keep the Rmd files within GitHub so that code is kept in a central place. 
+This step will transfer all of the Rmd output files (html and docx) to the network for review. It will keep the Rmd files within GitHub so that code is kept in a central place. *Always run this chunk of code. If this is the first time you are generating visuals for an indicator, comment out the 'update' part of the 'y.drive.folder.update' variable because this is the first version that is being created.*
 ```{r to y drive, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(getwd())
@@ -657,15 +660,20 @@ do.call(unlink, files.to.remove)
 ```
 
 ## Copy files from Y drive/indicator folder > Y drive/indicator/archive folder
-This step will transfer the previous data and files to the archive folder. This step is meant to retain the older versions in case they are needed for reference. 
+This step will transfer the previous data and files to the archive folder. This step is meant to retain the older versions in case they are needed for reference. *Only run this chunk of code if updating visuals for indicator - if there is already existing visuals on a webpage. Don't run if this is the first time visuals are being created for indicator.*
 ```{r to archive, include=FALSE, eval=FALSE}
+# add previous year folder to archive folder - to retain and organize all archived files
+dir.create(file.path(file_names$base_dir,
+                     file_names$theme_dir,
+                     file_names$ind_dir,'archive', past_year))
+
 # set folder structure
 y.drive.folder <- file.path(file_names$base_dir,
                             file_names$theme_dir,
                             file_names$ind_dir)
 archive.folder <- file.path(file_names$base_dir,
                             file_names$theme_dir,
-                            file_names$ind_dir,'archive')
+                            file_names$ind_dir,'archive', past_year)
 
 # isolate old files/directories
 list.of.files <- list.files(y.drive.folder, 
@@ -680,7 +688,7 @@ file.copy(from=list.of.files,
 ```
 
 ### Delete old files from indicator folder
-This step will clean the indicator folder to make room for the new versions.
+This step will clean the indicator folder to make room for the new versions. *Only run this chunk of code if updating visuals for indicator - if there is already existing visuals on a webpage. Don't run if this is the first time visuals are being created for indicator.*
 ```{r clean indicator folder, include=FALSE, eval=FALSE}
 # identify html and docx files to remove
 list.of.files <- list.files(y.drive.folder,  
@@ -702,7 +710,7 @@ do.call(unlink, files.to.remove)
 ```
 
 ## Copy new files from Y drive/update folder > Y drive/indicator folder
-This step will move all of the updated data/files to the general indicator folder. They should be moved from the update (draft staging directory) to the parent folder so that the htmls can be copied to the webpage folder (outside the firewall).
+This step will move all of the updated data/files to the general indicator folder. They should be moved from the update (draft staging directory) to the parent folder so that the htmls can be copied to the webpage folder (outside the firewall). *Only run this chunk of code if updating visuals for indicator - if there is already existing visuals on a webpage. Don't run if this is the first time visuals are being created for indicator.*
 ```{r update to indicator folder, include=FALSE, eval=FALSE}
 # isolate old files/directories
 list.of.files <- list.files(y.drive.folder.update, 
@@ -716,7 +724,7 @@ file.copy(from=list.of.files,
 ```
 
 ## Clear Y drive/update folder
-This step will help keep the folders organized and ready for the next update. 
+This step will help keep the folders organized and ready for the next update. *Only run this chunk of code if updating visuals for indicator - if there is already existing visuals on a webpage. Don't run if this is the first time visuals are being created for indicator.*
 ```{r clear update, include=FALSE, eval=FALSE}
 # clean the map files from the indicator/webpage-html-outputs folders
 # identify files/data to remove
@@ -741,7 +749,7 @@ unlink(dir.to.remove, recursive=T)
 ```
 
 ## Copy files from Y drive/indicator folder > website folder
-This step copies the htmls for the webpage (3 visuals) from the network to the folder outside the firewall- this 'external' folder connects directly to the webpage.
+This step copies the htmls for the webpage (3 visuals) from the network to the folder outside the firewall- this 'external' folder connects directly to the webpage. *Always run this chunk of code.*
 ```{r to web dev folder, include=FALSE, eval=FALSE}
 # set folder structure
 current_folder <- file.path(file_names$base_dir,
