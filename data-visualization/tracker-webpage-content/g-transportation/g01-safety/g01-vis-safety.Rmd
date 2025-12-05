@@ -206,10 +206,9 @@ tract_map <- leaflet() %>%
                        opacity = 0.7,
                        bins = 4,
                        decreasing = TRUE,
-                       labFormat = labelFormat(
-                       transform = function(x) round(10^x, 0))
+                       labFormat = labelFormat(transform = function(x) round(x*350, 0))
+                       # labFormat = labelFormat(transform = function(x) round(10^x, 0))
                        ) %>%
-  
   #set view extent
   leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
   addEasyButton(easyButton(
