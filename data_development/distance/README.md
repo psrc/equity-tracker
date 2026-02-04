@@ -10,7 +10,7 @@ _As an example:_
 ![Capture](https://github.com/user-attachments/assets/a96ae4bd-e3fc-4199-9000-02125087181a)
 
 ## Virtual Environment
-From the Anaconda prompt in the equity-tracker directory root, enter the following to install a virtual environment that includes all required versions of Python libraries:
+From the Anaconda prompt in the equity-tracker directory root, enter the following to install a virtual environment that includes all required versions of Python libraries - this may take a few minutes:
  - `conda env create -f data_development\distance\environment.yml`
 
 After install is complete enter: 
@@ -18,7 +18,7 @@ After install is complete enter:
 You should see (equity_tracker_env) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
 
 ## Elmer Connections
-Most Data staff should already have access to work with Elmer databases. Check that the ODBC driver is installed on your workspace by searching for it in Windows - it should show up as ODBC Data Sources (64-bit). If not, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults. If there are problems connecting with Elmer, contact Brice or Chris Peak. 
+Most Data staff should already have access to work with Elmer databases. Check that the ODBC driver is installed on your workspace by searching for it in Windows - it should show up as ODBC Data Sources (64-bit). If not, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults. If there are problems connecting with Elmer, contact Brice Nichols or Chris Peak. 
 
 # Usage
 Configuration settings for the script are controlled by **configuration.toml**. The main setting to update here is `analysis_year_list`, which controls the years the tool should update. When running this for newly available data, it should be sufficient to create a list of this year only (e.g., [2024]). The `output_dir` specifies where results will be available and is set by default to `Y:/Equity Indicators/access`. In general, no other settings should need to be changed. 
