@@ -21,7 +21,7 @@ You should see (equity_tracker_env) in the prompt. This indicates that the promp
 Most Data staff should already have access to work with Elmer databases. Check that the ODBC driver is installed on your workspace by searching for it in Windows - it should show up as ODBC Data Sources (64-bit). If not, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults. If there are problems connecting with Elmer, contact Brice Nichols or Chris Peak. 
 
 # Usage
-Configuration settings for the script are controlled by **configuration.toml**. The main setting to update here is `analysis_year_list`, which controls the years the tool should update. When running this for newly available data, it should be sufficient to create a list of this year only (e.g., [2024]). The `output_dir` specifies where results will be available and is set by default to `Y:/Equity Indicators/access`. In general, no other settings should need to be changed. 
+Configuration settings for the script are controlled by **configuration.toml**. The main setting to update here is `analysis_year_list` (line 1), which controls the years the tool should update. When running this for newly available data, it should be sufficient to create a list of this year only (e.g., [2024]). The `output_dir` specifies where results will be available and is set by default to `Y:/Equity Indicators/access`. In general, no other settings should need to be changed. 
 
 ## Input Data
 This script will access the latest data available for a given year by searching in Elmer for the appropriate year and using the nearest year when a specific year is not available. 
