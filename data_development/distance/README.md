@@ -26,7 +26,7 @@ Configuration settings for the script are controlled by **configuration.toml**. 
 ## Input Data
 This script will access the latest data available for a given year by searching in Elmer for the appropriate year and using the nearest year when a specific year is not available. 
 
-Most inputs do not need to be updated manually, with the exception of GTFS data. PSRC staff (Craig/Grant) usually update GTFS feeds at the location used by this script (see `gtfs_path` in configuration.toml which points to `X:/DSA/GTFS/spring`), but the user should confirm the data is available. Again if the given year isn't there, the script will still run but will use the most recent year. The output file reports which year was used for all data, including GTFS.
+Most inputs do not need to be updated manually, with the exception of GTFS data. PSRC staff (Craig/Grant) usually update GTFS feeds at the location used by this script (see `gtfs_path` in configuration.toml which points to `X:/DSA/GTFS/spring`), *but the user should confirm the data is available*. Again if the given year isn't there, the script will still run but will use the most recent year. The output file reports which year was used for all data, including GTFS.
 
 In addition to ensuring GTFS data is available for the analyis year, users should also check that bus rapid transit (BRT) route definitions are updated in the **brt_routes** list in configuration.toml. Since GTFS does not separate BRT from local service, we provide a list of route IDs and names to include with HCT service. The following should include most planned service until Sound Transit's Stride service starts later in the 2020s. 
 
