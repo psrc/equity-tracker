@@ -32,15 +32,15 @@ In addition to ensuring GTFS data is available for the analyis year, users shoul
 
 Ensure that no new BRT routes should be included to the following. If so, check the routes.txt file in the GTFS data to determine the route ID and name and add to the **brt_routes** list.
 
-'kc_100512' = 'A Line'
-'kc_102548' = 'B Line'
-'kc_102576' = 'C Line'
-'kc_102581' = 'D Line'
-'kc_102615' = 'E Line'
-'kc_102619' = 'F Line'
-'kc_102736' = 'H Line'
-'ct_701' = 'Swift Blue'
-'ct_702' = 'Swift Green'
+- 'kc_100512' = 'A Line'
+- 'kc_102548' = 'B Line'
+- 'kc_102576' = 'C Line'
+- 'kc_102581' = 'D Line'
+- 'kc_102615' = 'E Line'
+- 'kc_102619' = 'F Line'
+- 'kc_102736' = 'H Line'
+- 'ct_701' = 'Swift Blue'
+- 'ct_702' = 'Swift Green'
 
 Note that this list is applicable to all years, before these were all in service. The script selects the lines from GTFS only if they're available, so the list should be as current as possible regardless of which is being processed.
 
