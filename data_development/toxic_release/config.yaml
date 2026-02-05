@@ -9,7 +9,7 @@ crs: 2285
 
 census_geog: 'tract'
 
-column_dict: {'1. YEAR' : 'year', '2. TRIFD' : 'trifd', '3. FRS ID' : 'frs_id', '4. FACILITY NAME': 'facility_name', '12. LATITUDE' : 'lat', '13. LONGITUDE' : 'long', '62. ON-SITE RELEASE TOTAL' : 'on_site_release_total'}
+column_dict: {'1. YEAR' : 'year', '2. TRIFD' : 'trifd', '3. FRS ID' : 'frs_id', '4. FACILITY NAME': 'facility_name', '12. LATITUDE' : 'lat', '13. LONGITUDE' : 'long', '62. ON-SITE RELEASE TOTAL' : 'on_site_release_total', '65. ON-SITE RELEASE TOTAL' : 'on_site_release_total' }
 
 site_id_column_name: 'trifd'  
 

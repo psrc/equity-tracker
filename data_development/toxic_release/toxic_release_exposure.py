@@ -4,12 +4,6 @@ from pathlib import Path
 from modules import configuration
 import geopandas as gpd
 import pandas as pd
-import numpy as np
-import itertools
-from shapely.ops import polygonize
-import pyodbc
-from pymssql import connect
-from pathlib import Path
 
 
 file = Path().joinpath(configuration.args.configs_dir, "config.yaml")
@@ -34,6 +28,8 @@ for file_path in file_paths:
 
     # keep only the columns specified in the config
     df = df[list(config.column_dict.values())]
+
+    # revoves duplciate columns, which happens becuase same value is used twice in config.column_dict
 
     # make sure there is one set of coords for each site
     assert len(df["lat"].unique()) <= len(df["frs_id"].unique())

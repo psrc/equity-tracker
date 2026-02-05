@@ -160,7 +160,7 @@ def aggregate_non_overlaps(
         buffered_points.to_file(Path(output_path) / "buffered_points.shp")
 
     for col in sum_fields:
-        buffered_points[col] = buffered_points[col] / buffered_points.geometry.area 
+        buffered_points[col] = buffered_points[col] / buffered_points.geometry.area
 
     # deal with overlaps. get unique polygons.
     buffers_no_overlaps = non_overlapping_buffer(buffered_points, buff_id)
