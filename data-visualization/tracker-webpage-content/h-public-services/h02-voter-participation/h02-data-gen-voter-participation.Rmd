@@ -84,7 +84,7 @@ data <- 1:4 #number of datasets in raw_data list - to iterate through
 
 # Download data 
 ## Primary data 
-These data come from the [Washington Secretary of State webpage](https://www.sos.wa.gov/elections#data_research). Separate xlxs and csv files are available for each election year with voting data by precinct. The data are available back to 2007, but we will be focusing on presidential election years, every 4 years, and going as far back as 2012 (considering 2010 and 2020 census geographies). More information about the pre-processing of these data are available in GitHub (GitHub/equity-tracker/data_development) in 1-voter-turnout-exploration.qmd, 2-voter-turnout-ofm-acs-dec.qmd, and 3-voter-turnout-12-16-20-24.qmd. The transformation between precinct-tract is done in 3-voter-turnout-12-16-20-24.qmd.
+These data come from the [Washington Secretary of State webpage](https://www.sos.wa.gov/elections#data_research). Separate xlxs and csv files are available for each election year with voting data by precinct. The data are available back to 2007, but we will be focusing on presidential election years, every 4 years, and going as far back as 2012 (considering 2010 and 2020 census geographies). More information about the pre-processing of these data are available in GitHub (GitHub/equity-tracker/data_development) in 1-voter-turnout-exploration.qmd, 2-voter-turnout-ofm-acs-dec.qmd, and 3-voter-turnout-12-16-20-24.qmd. The transformation between precinct-tract is done in 3-voter-turnout-12-16-20-24.qmd - this is where the final data set used in this analysis is generated.
 ```{r}
 df_raw_data <- read.csv('Y:/Equity Indicators/tracker-webpage-content/h-public-services/h02-voter-participation/raw-data/voter_participation.csv')
 ```

@@ -1,5 +1,5 @@
 ---
-title: "3.) Voter Turnout: 2012-2020"
+title: "3.) Voter Turnout: 2012-2024"
 subtitle: "Applying geography splits to translate precinct-level data to census tract geographies"
 author: "Mary Richards"
 date: today
@@ -183,7 +183,7 @@ precinct_12 <- st_read(file.path(folder, "2012/Statewide_Prec_2012.shp"))
 These values will be used for the denominator - dividing the ballots cast by the total population 18+ or weighting the total population (OFM SAEP) by the ratio of adult 18+/total population estimates.
 ```{r}
 # ACS 5y for 2012, 2016, and 2023
-acs_year <- c(2023, 2016, 2012)
+acs_year <- c(2024, 2016, 2012) #changed from 2023 to 2024 (Census released 5y estimates, 2/2026)
 
 base_acs_data <- get_acs_recs(geography ='tract',
                               table.names = 'S0101', #subject table code
@@ -191,10 +191,10 @@ base_acs_data <- get_acs_recs(geography ='tract',
                               acs.type = 'acs5')
 
 # calculate the proportion of 18+ adults/total population to check if there are some tracts with more/fewer adults
-age_18over_total_23 <- base_acs_data %>%
-  filter(year==2023,
+age_18over_total_24 <- base_acs_data %>%
+  filter(year==2024,
          variable=="S0101_C01_001" | #Total population
-           variable=="S0101_C01_026") %>% #2023: Total population!!SELECTED AGE CATEGORIES!!18 years and over
+           variable=="S0101_C01_026") %>% #2024: Total population!!SELECTED AGE CATEGORIES!!18 years and over
            select(GEOID, variable, estimate, year) %>%
   pivot_wider(names_from = c(variable),
               values_from = estimate) %>%
@@ -331,8 +331,8 @@ For the 2012 election data, the numerator is calculated by weighting the populat
 * According to correspondences with staff at the Washington Secretary of State office (10/9/2025), data from smaller precincts are occasionally “masked” into a larger precinct in order to protect the privacy of voters and maintain confidentiality. It is also possible for last minuet ballots to be cast (such as by UOCAVA voters, or Military and Overseas Voters, defined by https://www.eac.gov/uocava) that must be accorded to a precinct. As a result, the voter turnout results calculated at the tract level are estimates and may reflect some margin of error. 
 
 
-# I) 2024 (OFM SAEP 2024; ACS 5y 2023)
-In 2020 census geographies
+# I) 2024 (OFM SAEP 2024; ACS 5y 2024)
+In 2020 census geographies. Changing from 2023 ACS 5y to 2024 ACS 5y data (February 2026 - Census just released 5y estimates). 
 
 ## join precinct-tract to geographies to turnout data
 ```{r}
@@ -382,7 +382,7 @@ df24_calc <- join_df24_simp %>%
 ## join tract level OFM estimates to ACS adult 18+ ratio
 ```{r}
 tract_population <- ofm_psrc_20 %>% 
-  left_join(age_18over_total_23, by= c("GEOID20"="GEOID"))
+  left_join(age_18over_total_24, by= c("GEOID20"="GEOID"))
 
 tract_pop_18plus_24 <- tract_population %>% 
   mutate(population_18plus_24=round(as.numeric(population_2024)*pop18_total,0))
