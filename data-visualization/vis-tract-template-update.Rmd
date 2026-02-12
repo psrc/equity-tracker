@@ -119,7 +119,8 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(data_tract$variable_value,na.rm = TRUE),max_value, NA)) # this is the value field
 
 # set the variable
-var_name <- "Life Expectancy"
+# var_name <- "Life Expectancy"
+var_name <- "Life Expectancy<br style='line-height:0.7;'><span style='font-size: 0.7em;'>(years)</span>" #if needed, includes subtitle with units
 
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic 

@@ -118,6 +118,8 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 
 # setting the legend/label variables
 var_name <- "SNAP" # the <br> could be adjusted depending on the length/spacing of the name
+# var_name <- "SNAP<br style='line-height:0.7;'><span style='font-size: 0.7em;'>(unit)</span>" #if needed, includes subtitle with units
+
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</body><br/><body>%s</bodyD>",
   acs_data_tract$geoid20, # the code in <> makes the geoid value bold/italic
