@@ -544,14 +544,14 @@ data_equity_tracts <- merge(tract_indicator, equity_tracts,
                             by=c("geoid", "data_year"),
                             all.x=TRUE)
 
-# need to join 2024 election data to 2023 equity quintiles -----
-equity_tracts_adj <- equity_tracts %>% 
-  mutate(data_year=case_when(data_year==2023 ~ 2024,
-                             TRUE~data_year))
-
-data_equity_tracts <- merge(tract_indicator, equity_tracts_adj,
-                            by=c("geoid", "data_year"),
-                            all.x=TRUE)
+# # need to join 2024 election data to 2023 equity quintiles -----
+# equity_tracts_adj <- equity_tracts %>% 
+#   mutate(data_year=case_when(data_year==2023 ~ 2024,
+#                              TRUE~data_year))
+# 
+# data_equity_tracts <- merge(tract_indicator, equity_tracts_adj,
+#                             by=c("geoid", "data_year"),
+#                             all.x=TRUE)
 
 # check data set
 nrow(data_equity_tracts) #6764
