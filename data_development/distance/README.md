@@ -10,7 +10,7 @@ _As an example:_
 ![Capture](https://github.com/user-attachments/assets/a96ae4bd-e3fc-4199-9000-02125087181a)
 
 ## Virtual Environment
-From the Anaconda prompt in the equity-tracker directory root, enter the following to install a virtual environment that includes all required versions of Python libraries:
+From the Anaconda prompt in the equity-tracker directory root, enter the following to install a virtual environment that includes all required versions of Python libraries - this may take a few minutes:
  - `conda env create -f data_development\distance\environment.yml`
 
 After install is complete enter: 
@@ -18,29 +18,29 @@ After install is complete enter:
 You should see (equity_tracker_env) in the prompt. This indicates that the prompt is using all the libraries associated with the virtual environment. This environment will need to be activated using this command any time a new prompt is opened.
 
 ## Elmer Connections
-Most Data staff should already have access to work with Elmer databases. Check that the ODBC driver is installed on your workspace by searching for it in Windows - it should show up as ODBC Data Sources (64-bit). If not, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults. If there are problems connecting with Elmer, contact Brice or Chris Peak. 
+Most Data staff should already have access to work with Elmer databases. Check that the ODBC driver is installed on your workspace by searching for it in Windows - it should show up as ODBC Data Sources (64-bit). If not, [download the ODBC Driver 17 here](https://go.microsoft.com/fwlink/?linkid=2200732) and follow the install instructions, selecting all defaults. If there are problems connecting with Elmer, contact Brice Nichols or Chris Peak. 
 
 # Usage
-Configuration settings for the script are controlled by **configuration.toml**. The main setting to update here is `analysis_year_list`, which controls the years the tool should update. When running this for newly available data, it should be sufficient to create a list of this year only (e.g., [2024]). The `output_dir` specifies where results will be available and is set by default to `Y:/Equity Indicators/access`. In general, no other settings should need to be changed. 
+Configuration settings for the script are controlled by **configuration.toml**. The main setting to update here is `analysis_year_list` (line 1), which controls the years the tool should update. When running this for newly available data, it should be sufficient to create a list of this year only (e.g., [2024]). The `output_dir` specifies where results will be available and is set by default to `Y:/Equity Indicators/access`. In general, no other settings should need to be changed. 
 
 ## Input Data
 This script will access the latest data available for a given year by searching in Elmer for the appropriate year and using the nearest year when a specific year is not available. 
 
-Most inputs do not need to be updated manually, with the exception of GTFS data. PSRC staff (Craig/Grant) usually update GTFS feeds at the location used by this script (see `gtfs_path` in configuration.toml which points to `X:/DSA/GTFS/spring`), but the user should confirm the data is available. Again if the given year isn't there, the script will still run but will use the most recent year. The output file reports which year was used for all data, including GTFS.
+Most inputs do not need to be updated manually, with the exception of GTFS data. PSRC staff (Craig/Grant) usually update GTFS feeds at the location used by this script (see `gtfs_path` in configuration.toml which points to `X:/DSA/GTFS/spring`), *but the user should confirm the data is available*. Again if the given year isn't there, the script will still run but will use the most recent year. The output file reports which year was used for all data, including GTFS.
 
 In addition to ensuring GTFS data is available for the analyis year, users should also check that bus rapid transit (BRT) route definitions are updated in the **brt_routes** list in configuration.toml. Since GTFS does not separate BRT from local service, we provide a list of route IDs and names to include with HCT service. The following should include most planned service until Sound Transit's Stride service starts later in the 2020s. 
 
 Ensure that no new BRT routes should be included to the following. If so, check the routes.txt file in the GTFS data to determine the route ID and name and add to the **brt_routes** list.
 
-'kc_100512' = 'A Line'
-'kc_102548' = 'B Line'
-'kc_102576' = 'C Line'
-'kc_102581' = 'D Line'
-'kc_102615' = 'E Line'
-'kc_102619' = 'F Line'
-'kc_102736' = 'H Line'
-'ct_701' = 'Swift Blue'
-'ct_702' = 'Swift Green'
+- 'kc_100512' = 'A Line'
+- 'kc_102548' = 'B Line'
+- 'kc_102576' = 'C Line'
+- 'kc_102581' = 'D Line'
+- 'kc_102615' = 'E Line'
+- 'kc_102619' = 'F Line'
+- 'kc_102736' = 'H Line'
+- 'ct_701' = 'Swift Blue'
+- 'ct_702' = 'Swift Green'
 
 Note that this list is applicable to all years, before these were all in service. The script selects the lines from GTFS only if they're available, so the list should be as current as possible regardless of which is being processed.
 

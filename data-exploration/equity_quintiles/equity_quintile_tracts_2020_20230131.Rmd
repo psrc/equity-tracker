@@ -1,0 +1,389 @@
+---
+title: "Equity Quintiles by Census Tracts"
+subtitle: "Data sources: U.S. Census PUMS"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    df_print: paged
+    toc: false
+    toc_depth: 6
+    toc_float: true
+---
+
+```{r rmarkdown setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE, 
+                      warning=FALSE, 
+                      message=FALSE) # formatting
+```
+
+```{r library setup, include=FALSE}
+# devtools::install_github("psrc/psrcplot")
+# devtools::install_github("psrc/psrctrends")
+
+library(tidyverse)
+library(psrccensus)
+library(psrcplot)
+library(psrctrends)
+library(rlang) #required for psrccensus
+library(emmeans) #required for rlang
+library(magrittr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+
+library(summarytools) #freq
+library(table1)  #nice descriptive summary table
+library(scales) #number formatting
+library(ggpubr) #graphing - ggarrange fx
+library(forcats) #for factor re-leveling
+library(plotly) #for interactive charts
+
+library(odbc) #connect to ElmerGeo
+library(DBI) #connect to ElmerGeo
+library(sf)
+library(leaflet)
+library(leafem) #home button
+library(htmlwidgets) #save visuals as html
+library(raster)
+library(ggspatial)
+library(lubridate)
+library(stringr) #add leading zero's
+library(readxl)
+library(RColorBrewer)
+library(colorspace)
+library(leaflet.extras) #add search bar
+
+install_psrc_fonts()
+library(showtext) #trying to fix PSRC font issues
+library(sysfonts) #required for showtext
+library(showtextdb) #required for showtext
+```
+
+# Introduction
+This map helps to visualize the equity demographic quintiles that were calculated based on PUMs data. The six groups of interest are people of color, low income, disability, households with youth (under 18 years old), households with older adults (over 65 years old), and limited English proficiency. The data presented in this map are at the person-level (people of color, income, disability status) and at the household-level (youth, older adult, limited English proficiency).
+\
+\
+In addition to these equity groups, population, population density, and census tract information is also viewable for context. The tract ids can be searched by their geoid.
+
+# Data
+Data are from based on the 2020 reference year at the census tract geographic scale.
+
+* **Equity demographic table (Elmer)**
+\
+This dataset was compiled from PUMS data. For more information about the six equity demographic groups, please refer to our [GitHub documentation](https://github.com/psrc/equity-tracker/blob/main/get_pums_equity_indicators.R).
+```{r equity quintiles in Elmer}
+# connect to Elmer
+elmer_connection <- dbConnect(odbc::odbc(),
+  driver = "SQL Server",
+  server = "AWS-PROD-SQL\\Sockeye",
+  database = "Elmer",
+  trusted_connection = "yes"
+  )
+
+# access equity quintile data at different geographic levels
+# equity_blocks <- dbReadTable(elmer_connection, SQL("Elmer.equity.v_blockgroup_shares"))
+equity_tracts <- dbReadTable(elmer_connection, SQL("Elmer.equity.v_tract_shares"))
+
+# crosswalk between census tracts 2010-2020 because data from WTN is using 2010 census geographies while the spatial data (with population estimates) are using 2020 geographies
+# crosswalk_10_20 <- dbReadTable(elmer_connection, SQL("census.v_geo_relationships_tracts"))
+
+
+dbDisconnect(elmer_connection)
+```
+
+```{r, include=FALSE}
+head(equity_tracts)
+num_row <- nrow(equity_tracts) #919 tracts in the region with equity quintile information
+
+unique(equity_tracts$data_year) #2020
+equity_tracts_20 <- equity_tracts %>%
+  filter(data_year == 2020)
+# num_row <- label_comma()(nrow(equity_tracts_20)) #919 tracts (2020) in the region with equity quintile information
+```
+There are `r num_row` tracts (2020) in the region with equity data. 
+\
+
+* **2020 Tracts (PSRC Portal)**
+```{r census tract geographies, include=FALSE}
+# Connecting to ElmerGeo for census geographies through Portal----
+# blockgroups.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Block_Groups_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+tracts.url <- "https://services6.arcgis.com/GWxg6t7KXELn1thE/arcgis/rest/services/Census_Tracts_2020/FeatureServer/0/query?outFields=*&where=1%3D1&f=geojson"
+
+tracts.lry<-st_read(tracts.url)
+# head(tracts.lry)
+# plot(tracts.lry$geometry)
+nrow(tracts.lry) #919
+
+# join base 2020 geographic data to PUMS equity quintile data
+equity_quintile_tract20 <- merge(tracts.lry, equity_tracts_20,
+                              by.x="geoid20",
+                              by.y="geoid", 
+                              all.x=TRUE)
+
+# head(equity_quintile_tract20)
+# class(equity_quintile_tract20) #sf and data.frame
+# plot(equity_quintile_tract20$geometry)
+
+pop_2020 <- equity_quintile_tract20 %>% 
+  dplyr::distinct(geoid20, .keep_all = TRUE) %>% 
+  dplyr::mutate(totalpop20=sum(total_pop20, na.rm = T))
+
+dec_pop <- label_comma()(unique(pop_2020$totalpop20)) #4,294,373
+```
+According to the 2020 Decennial Census, the region's population is **`r dec_pop`** people.
+
+```{r, include=FALSE}
+# add pop density field
+equity_quintile_tract20 <- equity_quintile_tract20 %>% 
+  mutate(sqmi_aland20=aland20*3.58701e-8) %>% 
+  mutate(pop_den_sqmi=round((total_pop20/(land_acres*0.0015625)),0))
+
+summary(equity_quintile_tract20$pop_den_sqmi)
+boxplot(equity_quintile_tract20$pop_den_sqmi)
+
+# refactoring variables - ordering quintiles: low, low medium, medium, medium high, high
+equity_quintile_tract20$poc_quintile <- factor(equity_quintile_tract20$poc_quintile,
+                                            levels = c('Low','Low Medium','Medium', 'Medium High','High'))
+equity_quintile_tract20$income_quintile <- factor(equity_quintile_tract20$income_quintile,
+                                               levels = c('Low','Low Medium','Medium', 'Medium High','High'))
+equity_quintile_tract20$disability_quintile <- factor(equity_quintile_tract20$disability_quintile,
+                                                   levels = c('Low','Low Medium','Medium', 'Medium High','High'))
+equity_quintile_tract20$youth_quintile <- factor(equity_quintile_tract20$youth_quintile,
+                                              levels = c('Low','Low Medium','Medium', 'Medium High','High'))
+equity_quintile_tract20$older_quintile <- factor(equity_quintile_tract20$older_quintile,
+                                              levels = c('Low','Low Medium','Medium', 'Medium High','High'))
+equity_quintile_tract20$lep_quintile <- factor(equity_quintile_tract20$lep_quintile,
+                                            levels = c('Low','Low Medium','Medium', 'Medium High','High'))
+
+```
+
+# Equity Demographic Quintile Map
+```{r map set up, include=FALSE}
+# head(equity_quintile_tract20)
+
+# set map extent
+map.lat<- 47.615
+map.lon<- -122.257
+map.zoom<- 8
+
+# set up palettes
+# display.brewer.all()
+# hcl_palettes(plot = TRUE)
+population_pal <- leaflet::colorNumeric(palette = rev(colorspace::sequential_hcl(30,"YlGn")), 
+                                        domain =  equity_quintile_tract20$total_pop20)
+# popdensity_pal <- leaflet::colorNumeric(palette = "Blues", 
+#                                         domain =  equity_quintile_tract20$pop_den_sqmi)
+popdensity_pal <-  leaflet::colorQuantile(palette = colorspace::sequential_hcl(4, "Emrld"),
+                                     domain = equity_quintile_tract20$pop_den_sqmi,
+                                     n = 4, reverse = TRUE)
+POC_pal <- leaflet::colorFactor(palette="Reds",
+                                equity_quintile_tract20$poc_quintile)
+income_pal <- leaflet::colorFactor(palette="Oranges",
+                                   domain = equity_quintile_tract20$income_quintile)
+disability_pal <- leaflet::colorFactor(palette="Greens",
+                                       domain = equity_quintile_tract20$disability_quintile)
+youth_pal <- leaflet::colorFactor(palette="Blues",
+                                  domain = equity_quintile_tract20$youth_quintile)
+older_pal <- leaflet::colorFactor(palette="Purples",
+                                  domain = equity_quintile_tract20$older_quintile)
+LEP_pal <- leaflet::colorFactor(palette="PuRd",
+                                domain = equity_quintile_tract20$lep_quintile)
+
+
+label_bg <- stringr::str_c(
+  "Tract: ", as.character(equity_quintile_tract20$geoid20))
+label_popdens <- stringr::str_c(
+  "Pop. Density (per sqmile): ", formatC(equity_quintile_tract20$pop_den_sqmi, 
+                                  big.mark = ",", 
+                                  format = "d"))
+label_pop <- stringr::str_c(
+  "Population: ", formatC(equity_quintile_tract20$total_pop20, 
+                                  big.mark = ",", 
+                                  format = "d"))
+
+# label_bg_txt <- cat(str_wrap(label_bg, width = 13))
+# label_pd_txt <- cat(str_wrap(label_popdens, width = 25))
+# label_pop_txt <- cat(str_wrap(label_pop, width = 25))
+```
+
+```{r mapping health indicator risk}
+# map settings
+equity_quintile_map <- leaflet() %>%
+  addProviderTiles(providers$CartoDB.Positron) %>%
+  addLayersControl(baseGroups = c("Population",
+                                  "Population Density"),
+                   overlayGroups = c("Census Tracts",
+                                     "People of Color",
+                                     "Low Income",
+                                     "Disability",
+                                     "Youth",
+                                     "Older Adults",
+                                     "Limited English Proficiency"),
+                   options = layersControlOptions(collapsed = FALSE)) %>%
+  # polygon layers
+  addPolygons(data=equity_quintile_tract20,
+              color = population_pal(equity_quintile_tract20$total_pop20),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 1.0,
+              group = "Population",
+              label = ~label_pop,
+              highlightOptions = highlightOptions(
+                color = "red", 
+                opacity = 1,
+                stroke = TRUE, weight = 2,
+                bringToFront = TRUE, sendToBack = TRUE)) %>%
+  addPolygons(data=equity_quintile_tract20,
+              color = popdensity_pal(equity_quintile_tract20$pop_den_sqmi),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 1.0,
+              group = "Population Density",
+              label = ~label_popdens,
+              highlightOptions = highlightOptions(
+                color = "red", 
+                opacity = 1,
+                stroke = TRUE, weight = 2, 
+                # fillOpacity = 0.5,
+                bringToFront = TRUE, sendToBack = TRUE)) %>%
+  addPolygons(data=equity_quintile_tract20,
+              fillColor = "grey80",
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 0.0,
+              group = "Census Tracts",
+              label = ~label_bg,
+              highlightOptions = highlightOptions(
+                color = "red",
+                opacity = 1, 
+                stroke = TRUE, weight = 2, 
+                # fillOpacity = 0.7,
+                bringToFront = TRUE, sendToBack = TRUE)) %>% 
+  addPolygons(data=equity_quintile_tract20,
+              fillColor = POC_pal(equity_quintile_tract20$poc_quintile),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 1.0,
+              group = "People of Color",
+              label = ~poc_quintile) %>%
+  addPolygons(data=equity_quintile_tract20,
+              fillColor = income_pal(equity_quintile_tract20$income_quintile),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 1.0,
+              group = "Low Income",
+              label = ~income_quintile) %>% 
+  addPolygons(data=equity_quintile_tract20,
+              fillColor = disability_pal(equity_quintile_tract20$disability_quintile),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 1.0,
+              group = "Disability",
+              label = ~disability_quintile) %>%
+  addPolygons(data=equity_quintile_tract20,
+              fillColor = youth_pal(equity_quintile_tract20$youth_quintile),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 1.0,
+              group = "Youth",
+              label = ~youth_quintile) %>% 
+  addPolygons(data=equity_quintile_tract20,
+              fillColor = older_pal(equity_quintile_tract20$older_quintile),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 1.0,
+              group = "Older Adults",
+              label = ~older_quintile) %>%
+  addPolygons(data=equity_quintile_tract20,
+              fillColor = LEP_pal(equity_quintile_tract20$lep_quintile),
+              stroke=FALSE, 
+              smoothFactor = 0.2,
+              fillOpacity = 1.0,
+              group = "Limited English Proficiency",
+              label = ~lep_quintile) %>% 
+
+  # legends
+  leaflet::addLegend(pal = POC_pal,
+                     values = equity_quintile_tract20$poc_quintile,
+                     position = "bottomleft",
+                     title = "People of Color",
+                     group="People of Color",
+                     opacity = 0.8) %>% 
+  leaflet::addLegend(pal = income_pal,
+                     values = equity_quintile_tract20$income_quintile,
+                     position = "bottomleft",
+                     title = "Low Income",
+                     group = "Low Income",
+                     opacity = 0.8) %>%
+  leaflet::addLegend(pal = disability_pal,
+                     values = equity_quintile_tract20$disability_quintile,
+                     position = "bottomleft",
+                     title = "Disability",
+                     group = "Disability",
+                     opacity = 0.8) %>%
+  leaflet::addLegend(pal = youth_pal,
+                     values = equity_quintile_tract20$youth_quintile,
+                     position = "bottomleft",
+                     title = "Households with Youth",
+                     group = "Youth",
+                     opacity = 0.8) %>%
+  leaflet::addLegend(pal = older_pal,
+                     values = equity_quintile_tract20$older_quintile,
+                     position = "bottomleft",
+                     title = "Older Adults",
+                     group = "Older Adults",
+                     opacity = 0.8) %>%
+  leaflet::addLegend(pal = LEP_pal,
+                     values = equity_quintile_tract20$lep_quintile,
+                     position = "bottomleft",
+                     title = "Limited English Proficiency",
+                     group = "Limited English Proficiency",
+                     opacity = 0.8) %>%
+  leaflet::addLegend(pal = popdensity_pal,
+                     values = equity_quintile_tract20$pop_den_sqmi,
+                     position = "bottomright",
+                     title = "Population Density",
+                     group="Population Density",
+                     opacity = 0.9) %>%
+  
+  #default hide overlap groups
+  hideGroup("People of Color") %>% 
+  hideGroup("Low Income") %>%
+  hideGroup("Disability") %>%
+  hideGroup("Youth") %>%
+  hideGroup("Older Adults") %>%
+  hideGroup("Limited English Proficiency") %>%
+  hideGroup("Census Tracts") %>%
+  hideGroup("Population") %>%
+  
+  showGroup('Population Density') %>% 
+ 
+  #add search feature
+  addControl("<P>Search for tracts<br/>by geoid.</P>",
+             position = "topleft") %>% 
+  addSearchFeatures(
+    targetGroups = "Census Tracts",
+    options = searchFeaturesOptions(
+      zoom = 10, position = "topleft", openPopup = TRUE, 
+      firstTipSubmit = TRUE, moveToLocation = TRUE
+      )) %>%
+  
+  #set view extent
+  leaflet::setView(lng=map.lon, lat=map.lat, zoom=map.zoom) %>% 
+  addEasyButton(easyButton(
+    icon="fa-globe", title="Region",
+    onClick=JS("function(btn, map){map.setView([47.615,-122.257],8); }")))
+
+# fix the legend NA placement
+css_fix <- "div.info.legend.leaflet-control br {clear: both;}" # CSS to correct spacing
+html_fix <- htmltools::tags$style(type = "text/css", css_fix)  # Convert CSS to HTML
+equity_quintile_map %<>% htmlwidgets::prependContent(html_fix)                   # Insert into leaflet HTML code
+
+
+# print map
+equity_quintile_map
+```
+\
+\
+
+<a href="#top">Back to top of the page</a>

@@ -1,0 +1,12 @@
+[project]
+name = "toxic_release"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pandas",
+    "geopandas",
+    "pymssql",
+    "pyodbc>=5.3.0",
+    "sqlalchemy>=2.0.46",
+    "pyyaml>=6.0.3",
+]
