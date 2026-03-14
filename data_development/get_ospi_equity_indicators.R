@@ -144,7 +144,8 @@ get_k_readiness <- function(URL){
 # kready <- get_k_readiness(url)
 
 ## All years
-# urlvector <- c("https://data.wa.gov/resource/3ji8-ykgj.json",  # 2024-25 
+# urlvector <- c("https://data.wa.gov/resource/veeh-ue57.json",  # 2025-26
+#                "https://data.wa.gov/resource/3ji8-ykgj.json",  # 2024-25 
 #                "https://data.wa.gov/resource/vumg-9sgs.json",  # 2023-24
 #                "https://data.wa.gov/resource/3ji8-ykgj.json",  # 2022-23
 #                "https://data.wa.gov/resource/rzgf-vi75.json",  # 2021-22

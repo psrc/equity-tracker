@@ -124,7 +124,7 @@ write_shares_to_elmer <- function(df){
 # fwrite(equity_shares, filename)
 
 # Write to Elmer
-args <- expand.grid(years= c(2023), entirety=c("county","region"))
+args <- expand.grid(years= c(2024), entirety=c("county","region"))
 tract_shares <- list()
 tract_shares <- mapply(get_psrc_equity_shares, args$years, args$entirety, SIMPLIFY = FALSE)
 lapply(tract_shares, write_shares_to_elmer)

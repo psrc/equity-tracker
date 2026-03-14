@@ -283,8 +283,8 @@ pums_efa_singleyear <- function(dyear, refyear){
 }
 
 
-pums_efa_monetary <- function(){
-  refyear <- max(tidycensus::pums_variables$year) # Dollar year for inflation-adjusted comparisons
+pums_efa_monetary <- function(refyear = NA_integer_){
+  refyear <- coalesce(refyear, max(tidycensus::pums_variables$year)) # Dollar year for inflation-adjusted comparisons
   pums_rds <- "J:/Projects/Census/AmericanCommunitySurvey/Data/PUMS/pums_rds" # Network PUMS location
   
   monetary_singleyear <- function(dyear){
@@ -321,10 +321,10 @@ write_pums_efa <- function(efa_rs_list){
 }
 
 # Example 1: Generate indicators for a single year -------------
-# equity_2022_5 <- pums_efa_singleyear(2022)                                                       # Returns all tables as separate items in a list
-# efa_to_elmer(equity_2022_5)                                                                      # Merge to Elmer
-# equity_monetary <- pums_efa_monetary()                                                           # Generate all monetary stats w/current dollar basis
-# monetary_to_elmer(rs_monetary)                                                                   # Merge to Elmer
+# equity_2024_5 <- pums_efa_singleyear(refyear=2024)                                                 # Returns all tables as separate items in a list
+# efa_to_elmer(equity_2024_5)                                                                        # Merge to Elmer
+# equity_monetary <- pums_efa_monetary(refyear=2024)                                                             # Generate all monetary stats w/current dollar basis
+# monetary_to_elmer(equity_monetary)                                                                 # Merge to Elmer
 
 # Example 2: Generate indicators for multiple years-------------
 # equity_0911 <- pums_efa_multiyear(2009:2011, refyear=2022)                                       # Returns a list of lists
