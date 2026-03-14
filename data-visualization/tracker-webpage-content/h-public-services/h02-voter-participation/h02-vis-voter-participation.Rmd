@@ -48,8 +48,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 
 ```{r variables setup}
