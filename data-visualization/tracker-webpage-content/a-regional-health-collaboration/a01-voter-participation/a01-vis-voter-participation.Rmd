@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -48,8 +48,8 @@ library(here)
 ```
 
 ```{r, choose output type}
-output_type <- "word"
-# output_type <- "html"
+# output_type <- "word"
+output_type <- "html"
 ```
 
 ```{r variables setup}
@@ -74,10 +74,9 @@ This code will help produce the three visuals that are going to be a part of eac
 **If the indicator is available through a tract-level data set.** Getting the data to a workable version may require some data transformation. To explore, clean, transform, and generate a final data set, please use the *data-gen-tract-template*. This script will generate an .rda for the map and an .rda for the charts. These data sets will be loaded in before the data visualization code.  
 
 ## Indicator Explanation
-Voter participation provides a way to understand a community's political engagement. Differences between groups of people can highlight differing access to engagement opportunities. The ability to participate in civic processes ensures fair representation and adequate access to services and resources, all of which influence a population's connection to their community.
-\
-\
-Voter participation is calculated by dividing the number of ballots cast by the number of people over 18 within a census tract. This process uses data from the Washington Secretary of State office (ballots cast per precinct) and population data from the United States Census Bureau American Community Survey (ACS) and Washington State Office of Financial Management (OFM) Small Area Estimates Program (SAEP). The population over 18 is calculated by weighting the OFM estimates by the ratio of adults 18+/total population from ACS. There are a few data caveats: 1) Some voters may be registered in one location, but reside in another. This could cause mismatches in the way that they are accounted for in the numerator (ballots cast) and the denominator (population); 2) There is a distinction between residential addresses (which must be in Washington State and where you are considered registered for voting purposes) and mailing addresses (which can be anywhere). Therefore, the number of registered voters refers to the number of voters who have their residential address in that precinct; 3) Data from smaller precincts are occasionally “masked” into a larger precinct in order to protect the privacy of voters and maintain confidentiality. It is also possible for last minuet ballots to be cast (such as by UOCAVA voters, or Military and Overseas Voters, defined by https://www.eac.gov/uocava) that must be accorded to a precinct. As a result, the voter turnout results calculated at the tract level are estimates and may reflect some margin of error. 
+Voter participation provides a way to understand a community's political engagement. Differences between groups can highlight differing access to engagement opportunities. The ability to participate in civic processes ensures fair representation and adequate access to services and resources, all of which influence a population's connection to their community.
+
+This indicator uses voting data from the Washington Office of Secretary of State for presidential general election years, and Census population estimates of adults 18 years and older. The voter participation estimates require a transformation of the voting data from precincts to tracts, an imperfect process, and do not account for differences between the count of voters and population (e.g., college students and military members who may be registered to vote in one place but physically live elsewhere).
 
 ## 1. Map of most recent data
 
@@ -98,7 +97,7 @@ load(file=file.path(file_names$base_dir,
 
 # move the decimal point for all voter participation estimates (tract, county, and region)
 data_tract <- data_tract %>%
-  mutate(estimate = variable_value*100,
+  mutate(variable_value = variable_value*100,
          cnty_estimate = cnty_estimate*100,
          reg_estimate = reg_estimate*100)
 ```
@@ -108,15 +107,15 @@ data_tract <- data_tract %>%
 source(here::here('data-visualization/equity-tracker-supplemental-script.R'))
 
 # check maximum value of data
-# summary(data_tract$estimate) # max is 99.800, so rounding to 100 makes sense
+# summary(data_tract$variable_value) # max is 100.48, so rounding to 100 makes sense
 max_value <- 100 # this value will be the max value in the legend
 
 # setting color palette
 psrc_purple_plus<-c("#FFFFFF", "#FFFFFF", "#F6CEFC", psrc_colors$purples_inc)
-data_tract_plus_zero<-append(data_tract$estimate,0)
+data_tract_plus_zero<-append(data_tract$variable_value,0)
 
 # psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
-#                                       domain = c(min(data_tract$estimate,na.rm = TRUE),max_value, NA)) # this is the value field
+#                                       domain = c(min(data_tract$variable_value,na.rm = TRUE),max_value, NA)) # this is the value field
 psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
                                       domain = c(min(data_tract_plus_zero,na.rm = TRUE),max_value, NA)) # this is the value field
 
@@ -126,7 +125,7 @@ labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>",
   data_tract$geoid20, # the code in <> makes the geoid value bold/italic
   paste("Tract value: ",
-        prettyNum(round(data_tract$estimate, digits=0)),
+        prettyNum(round(data_tract$variable_value, digits=0)),
                   "%"),
   paste("Region value: ",
         prettyNum(round(data_tract$reg_estimate, digits=0)),
@@ -146,7 +145,7 @@ tract_map <- leaflet() %>%
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
   addPolygons(data=data_tract,
-              fillColor = psrc_palette(data_tract$estimate),
+              fillColor = psrc_palette(data_tract$variable_value),
               stroke=FALSE, 
               smoothFactor = 0.2,
               fillOpacity = 0.7,
@@ -202,32 +201,27 @@ data <- data_tract %>%
   st_drop_geometry()
 
 sort <- data %>% 
-  select(county_name, cnty_estimate) %>% 
-  group_by(county_name) %>% 
-  summarise(county_estimate = median(cnty_estimate), .groups = "drop") %>% 
-  dplyr::arrange(desc(county_estimate))
-# Kitsap (69%), Snohomish (62%), Pierce (60%), King (59%)
+  dplyr::arrange(desc(variable_value)) %>% 
+  select(county_name, geoid20, variable_value, reg_estimate, cnty_estimate)
+# when rounded, 6 census tracts had 95% or higher voter turnout, 3 of those are in King County, 1 is in Pierce, 2 are in Kitsap
+#  53033000500 (Broadiew neighborhood, King), 53035091001 (Bainbridge, Kitsap), 53053072409 (Artondale Pierce), 53035091002 (Bainbridge, Kitsap), 53033005600 (Briarcliff and Magnolia neighborhoods, King),53033012100 (Arroyo Heights and Arroyo Beach neighborhoods, King), 
 
 sort <- data %>% 
-  dplyr::arrange(desc(estimate))
-# when rounded, 6 census tracts had 95% or higher voter turnout, 3 of those are in King County and 2 are in Kitsap, and one is in Pierce
-# 53033000500 (Broadiew neighborhood, King), 53053072409 (Artondale, Pierce), 53035091001 (Bainbridge, Kitsap),53035091002 (Bainbridge, Kitsap), 53033012100 (Arroyo Heights and Arroyo Beach neighborhoods, King), 53033005600 (Briarcliff and Magnolia neighborhoods, King),
-
-sort <- data %>% 
-  dplyr::arrange(estimate)
-# 53033005303 (UW campus, King County), 53033005304 (UW campus, King County), 53053072908 (Joint Base Lewis-McChord), 53053072903 (Joint Base Lewis-McChord)
+  dplyr::arrange(variable_value) %>% 
+  select(county_name, geoid20, variable_value, reg_estimate, cnty_estimate)
+# 53033005304 (UW campus, King County), 53033005303 (UW campus, King County), 53053072903 (Joint Base Lewis-McChord)
 ```
 
-1. 61%: The region's voter participation rate
-2. 78%: The regional voter participation rate for communities with low concentrations of households of color is 78%, 34 percentage points higher than the rate for communities with high concentrations
-3. 55%: Regionally, communities with high concentrations of people with disabilities have voter participation rates 7 percentage points lower than communities with low concentrations
+1. 61%: The region's voter participation rate in 2024
+2. 78%: The regional voter participation rate for communities with low concentrations of households of color is 79%, 34 percentage points higher than the rate for communities with high concentrations
+3. 55%: Regionally, communities with high concentrations of people with disabilities have voter participation rates 6 percentage points lower than communities with low concentrations
 \
 
 #### Insights & Analysis
 
 * Kitsap County has the highest voter participation (69%), followed by Snohomish (62%), Pierce (60%), and King (59%).
-* There are six census tracts that have voter participation rates of 95% or higher - these include two neighborhoods on Bainbridge Island in Kitsap County, one neighborhood in Artondale in Pierce County, and three neighborhoods in Seattle in King County: Broadview, Briarcliff and Magnolia, and Arroyo Heights and Arroyo Beach.
-* The four census tracts that have the lowest voter participation rates in the region (below 10%) are in King and Pierce counties - around the UW campus in Seattle and surrounding Joint Base Lewis-McChord including Fort Lewis and North Fort Lewis, respectively. These areas have high concentrations of students and military members - those who are less likely to be registered as voters of Washington state.  
+* There are six census tracts that have voter participation rates of 95% or higher - these include three neighborhoods in Seattle in King County: Broadiew, the Briarcliff and Magnolia neighborhoods, and Arroyo Heights and Arroyo Beach, two neighborhoods on Bainbridge Island in Kitsap County, and one neighborhood in Artondale, Pierce County.
+* The three census tracts that have the lowest voter participation rates in the region (below 10%) are in King and Pierce counties - around the UW campus in Seattle and surrounding Joint Base Lewis-McChord including Fort Lewis and North Fort Lewis, respectively. These areas have high concentrations of students and military members - those who are less likely to be registered as voters of Washington state.  
 
 \
 \
@@ -256,28 +250,26 @@ load(file=file.path(file_names$base_dir,
                     # "update",
                     "rda-data",
                     paste0(file_names$chart,'.rda')))
-
-data_clean <- data_clean %>% 
-  rename(estimate=variable_value)
 ```
 
 ```{r column facet - pums}
 # Create Facet Column Chart
 data_clean_column <- data_clean %>% 
-  dplyr::filter(data_year==year) #filter on most recent year
+  dplyr::filter(data_year==year) #%>% #filter on most recent year
+  # mutate(variable_value=variable_value*100)
 
 # set variables - adjust as needed (esp. y_min, y_max, dec, esttype, etc.)
 df = data_clean_column
 geo = "county"
 x = "quintile_ord"
-y = "estimate"
+y = "variable_value"
 facet = "equity_group_ord"
 fill = "quintile_ord"
 y_min = 0
 y_max = 1
 dec = 0
 esttype = "percent"
-color = "purples"
+color = "oranges"
 num_colors = 5
 color_rev = FALSE
 title = "Voter Participation"
@@ -380,17 +372,17 @@ filter <- data_clean_column %>%
          quintile=="Low"|
            quintile=="High")
 
-# region low quintile poc households: 0.7803093		
-# region high quintile poc households: 0.4355056
-# 0.7803093-0.4355056=0.3448037
+# region low quintile poc households: 0.7800451		
+# region high quintile poc households: 0.4362275
+# 0.7800451-0.4362275=0.3438176, 0.34 when rounded
 
 # data call out #3
 filter <- data_clean_column %>% 
-  filter(equity_group=="disability_quintile",
-         county=="Region",
+  filter(county=="Region",
+         equity_group=="disability_quintile",
          quintile=="Low"|
            quintile=="High")
-# region dif bt low/high quintiles for disability: 0.6146134-0.5490414=0.065572
+# region dif bt low/high quintiles for disability: 0.6135849-0.5491283=0.0644566, 0.06 when rounded
 
 filter <- data_clean_column %>% 
   filter(county!="Region",
@@ -398,10 +390,10 @@ filter <- data_clean_column %>%
          quintile=="Low"|
            quintile=="High")
 
-# king low-high quintiles for poc: 0.7975265-0.4176369=0.3798896
-# kitsap low-high quintiles for poc: 0.8179095-0.4988910=0.3190185
-# pierce low-high quintiles for poc: 0.7779060-0.4073780=0.370528
-# snohomish low-high quintiles for poc: 0.7511864-0.5049841=0.2462023
+# king low-high quintiles for poc: 0.7976208-0.4176189=0.3800019, 0.38 when rounded
+# kitsap low-high quintiles for poc: 0.8149331-0.4845954=0.3303377, 0.33 when rounded
+# pierce low-high quintiles for poc: 0.7764473-0.4094535=0.3669938, 0.37 when rounded
+# snohomish low-high quintiles for poc: 0.7498939-0.5060756=0.2438183, 0.24 when rounded
 
 
 filter <- data_clean_column %>% 
@@ -409,20 +401,21 @@ filter <- data_clean_column %>%
          quintile=="High",
          county!="Region")
 
-# king high quintile low income households: 0.4198346
-# kitsap high quintile low income households: 0.5348647
-# pierce high quintile low income households: 0.3784777
-# snohomish high quintile low income households: 0.4964696
+# king high quintile low income households: 0.4202010
+# kitsap high quintile low income households: 0.5361186
+# pierce high quintile low income households: 0.3782806
+# snohomish high quintile low income households: 0.4969133
 
 filter <- data_clean_column %>% 
   filter(equity_group=="lep_quintile",
          quintile=="Low"|
-           quintile=="High",
-         county!="Region")
-# king low-high quintiles for lep: 0.7535273-0.4530926=0.3004347
-# kitsap low-high quintiles for lep: 0.7119134-0.6294120=0.0825014
-# pierce low-high quintiles for lep: 0.6809295-0.4622955=0.218634
-# snohomish low-high quintiles for lep: 0.7309391-0.4928839=0.2380552
+           quintile=="High")
+
+# region low-high quintiles for lep: 0.7200263-0.4539109=0.2661154, 0.27 when rounded
+# king low-high quintiles for lep: 0.7534495-0.4520894=0.3013601, 0.30 when rounded
+# kitsap low-high quintiles for lep: 0.7087535-0.6364957=0.0722578, 0.07 when rounded
+# pierce low-high quintiles for lep: 0.6795247-0.4639213=0.2156034, 0.22 when rounded
+# snohomish low-high quintiles for lep: 0.7314116-0.4926553=0.2387563, 0.24 when rounded 
 
 
 filter <- data_clean_column %>% 
@@ -430,19 +423,20 @@ filter <- data_clean_column %>%
          quintile=="Low"|
            quintile=="High",
          county!="Region")
-# king high-low quintiles for older: 0.6730627-0.4767794=0.1962833
-# kitsap high-low quintiles for older: 0.7856510-0.4826520=0.302999
-# pierce high-low quintiles for older: 0.7212538-0.4423456=0.2789082
-# snohomish high-low quintiles for older: 0.7251607-0.5531755=0.1719852
+# king high-low quintiles for older: 0.6728023-0.4759738=0.1968285, 0.20 when rounded
+# kitsap high-low quintiles for older: 0.7830916-0.4808821=0.3022095, 0.30 when rounded
+# pierce high-low quintiles for older: 0.7203634-0.4443613=0.2760021, 0.28 when rounded
+# snohomish high-low quintiles for older: 0.7233040-0.5549716=0.1683324, 0.17 when rounded 
 ```
 \
 
 #### Insights & Analysis
 
-* Communities with higher concentrations of people of color have lower voter participation rates than those with lower concentrations - the largest difference is in King County (38 percentage points).
-* For communities with high concentrations of households who are below 200% of the poverty level, voter participation rates are highest in Kitsap County (53%), followed by Snohomish (50%), King (42%), and Pierce County (38%).
-* Voter participation is lower in communities with higher concentrations of households with limited English proficiency compared to communities with lower concentrations. King County has the highest difference (30 percentage points), while Kitsap County has the smallest difference (8 percentage points).
+* Communities with higher concentrations of people of color have lower voter participation rates than those with lower concentrations - the largest difference is in King County (38 percentage points), followed by Pierce (37 percentage points), Kitsap (33 percentage points), and Snohomish (24 percentage points).
+* For communities with high concentrations of households who are below 200% of the poverty level, voter participation rates are highest in Kitsap County (54%), followed by Snohomish (50%), King (42%), and Pierce County (38%).
+* Voter participation is lower in communities with higher concentrations of households with limited English proficiency compared to communities with lower concentrations. King County has the highest difference (30 percentage points), while Kitsap County has the smallest difference (7 percentage points).
 * In contrast to the other equity communities, those with higher concentrations of households with older adults have consistently higher voter participation rates compared to those with lower concentrations. The largest differences are in Kitsap and Pierce counties where higher concentrations of households with older adults have higher voter participation rates by 30 and 28 percentage points, respectively. The differences are smaller in King and Snohomish counties - 20 and 17 percentage points, respectively. 
+
 \
 \
 
@@ -613,64 +607,70 @@ filter <- data_clean %>%
            quintile=="High",
          data_year=="2012" |
            data_year=="2024")
-# Region low-high poc 2012: 0.7941189-0.4905716=0.3035473
-# Region low-high poc 2024: 0.7803093-0.4355056=0.3448037
-# ((0.3448037-0.3035473)/(0.3035473))*100: 13.59142% change, 13% when rounded
-# King low-high poc 2012: 0.7987290-0.4572821=0.3414469
-# King low-high poc 2024: 0.7975265-0.4176369=0.3798896
-# ((0.3798896-0.3414469)/(0.3414469))*100: 11.25876% change, 12% when rounded
-# Kitsap low-high poc 2012: 0.8359785-0.6344333=0.2015452
-# Kitsap low-high poc 2024: 0.8179095-0.4988910=0.3190185
-# ((0.3190185-0.2015452)/(0.2015452))*100: 64.09862% change, 60% when rounded
-# Pierce low-high poc 2012: 0.8335060-0.5705603=0.2629457
-# Pierce low-high poc 2024: 0.7779060-0.4073780=0.370528
-# ((0.370528-0.2629457)/(0.2629457))*100: 40.91426% change, 42% when rounded
-# Snohomish low-high poc 2012: 0.7012653-0.4730731=0.2281922
-# Snohomish low-high poc 2024: 0.7511864-0.5049841=0.2462023
-# ((0.2462023-0.2281922)/(0.2281922))*100: 7.892513% change, 9% when rounded
+
+# 2012 region low quintile poc households: 0.7941189	
+# 2012 region high quintile poc households: 0.4905716
+# 0.7941189-0.4905716=0.3035473, 0.3 when rounded
+# 2024 region low quintile poc households: 0.7800451
+# 2024 region high quintile poc households: 0.4362275
+# 0.7800451-0.4362275=0.3438176, 0.34 when rounded
+# ((0.3448037-0.3035473)/(0.3035473))*100: 13.59142% change, 13.33333% when rounded
+# King low-high poc 2012: 0.7987290-0.4572821=0.3414469, 0.34 when rounded
+# King low-high poc 2024: 0.7976208-0.4176189=0.3800019, 0.38 when rounded
+# ((0.38-0.34)/(0.34))*100: 11.76471% change
+# Kitsap low-high poc 2012: 0.8359785-0.6344333=0.2015452, 0.21 when rounded
+# Kitsap low-high poc 2024: 0.8149331-0.4845954=0.3303377, 0.33 when rounded
+# ((0.33-0.21)/(0.21))*100: 57.14286% change
+# Pierce low-high poc 2012: 0.8335060-0.5705603=0.2629457, 0.26 when rounded
+# Pierce low-high poc 2024: 0.7764473-0.4094535=0.3669938, 0.37 when rounded
+# ((0.37-0.26)/(0.26))*100: 42.30769% change
+# Snohomish low-high poc 2012: 0.7012653-0.4730731=0.2281922, 0.23 when rounded
+# Snohomish low-high poc 2024: 0.7498939-0.5060756=0.2438183, 0.24 when rounded
+# ((0.24-0.23)/(0.23))*100: 4.347826% change
 
 filter <- data_clean %>% 
-  filter(county=="Snohomish",
+  filter(county=="King",
          equity_group=="income_quintile",
          quintile=="Low" | 
            quintile=="High",
          data_year=="2012" |
            data_year=="2024")
+
 # 2012 king low-high quintile income: 0.7729267-0.4428654=0.3300613	
-# 2024 king low-high quintile income: 0.7340734-0.4198346=0.3142388
-# 0.3300613-0.3142388=0.0158225, 0.02 when rounded
+# 2024 king low-high quintile income: 0.7335528-0.4202010=0.3133518
+# 0.33-0.31=0.02
 # 2012 kitsap low-high quintile income: 0.8426371-0.5829897=0.2596474
-# 2024 kitsap low-high quintile income: 0.8004724-0.5348647=0.2656077
-# 0.2596474-0.2656077=-0.0059603, -0.01 when rounded
-# 2012 pierce low-high quintile income: 0.8531638-0.5400349=0.3131289
-# 2024 pierce low-high quintile income: 0.7349168-0.3784777=0.3564391
-# 0.3131289-0.3564391=-0.0433102, -0.04 when rounded
-# 2012 snohomish low-high quintile income: 0.7074280-0.4330401=0.2743879
-# 2024 snohomish low-high quintile income: 0.6939640-0.4964696=0.1974944
-# 0.2743879-0.1974944=0.0768935, 0.07 when rounded
+# 2024 kitsap low-high quintile income: 0.7919757-0.5361186=0.2558571
+# 0.26-0.26=0
+# 2012 pierce low-high quintile income: 0.8531638-0.5400349=0.3131289, 0.31 when rounded
+# 2024 pierce low-high quintile income: 0.7374310-0.3782806=0.3591504, 0.36 when rounded
+# 0.31-0.36=-0.05
+# 2012 snohomish low-high quintile income: 0.7074280-0.4330401=0.2743879, 0.28 when rounded
+# 2024 snohomish low-high quintile income: 0.6940892-0.4969133=0.1971759, 0.20 when rounded
+# 0.28-0.20=0.08
 
 filter <- data_clean %>% 
-  filter(county=="Snohomish",
+  filter(county=="Region",
          equity_group=="lep_quintile",
          quintile=="Low" | 
            quintile=="High",
          data_year=="2016" |
            data_year=="2024")
-# Region low-high lep 2016: 0.6872800-0.4707189=0.2165611
-# Region low-high lep 2024: 0.7207194-0.4539303=0.2667891
-# ((0.2667891-0.2165611)/(0.2165611))*100: 23.19345% change, 21% when rounded
-# King low-high lep 2016: 0.7509314-0.4441774=0.306754
-# King low-high lep 2024: 0.7535273-0.4530926=0.3004347
-# ((0.3004347-0.306754)/(0.306754))*100: -2.060055% change, -3% when rounded
-# Kitsap low-high lep 2016: 0.6456587-0.6016229=0.0440358
-# Kitsap low-high lep 2024: 0.7119134-0.6294120=0.0825014
-# ((0.0825014-0.0440358)/(0.0440358))*100: 87.35075% change, 100% when rounded
-# Pierce low-high lep 2016: 0.6222581-0.4312146=0.1910435
-# Pierce low-high lep 2024: 0.6809295-0.4622955=0.218634
-# ((0.218634-0.1910435)/(0.1910435))*100: 14.442% change, 16% when rounded
-# Snohomish low-high lep 2016: 0.6783318-0.4909920=0.1873398
-# Snohomish low-high lep 2024: 0.7309391-0.4928839=0.2380552
-# ((0.2380552-0.1873398)/(0.1873398))*100: 27.07134% change, 26% when rounded
+# Region low-high lep 2016: 0.6872800-0.4707189=0.2165611, 0.22 when rounded
+# Region low-high lep 2024: 0.7200263-0.4539109=0.2661154, 0.27 when rounded
+# ((0.27-0.22)/(0.22))*100: 22.72727% change
+# King low-high lep 2016: 0.7509314-0.4441774=0.306754, 0.31 when rounded
+# King low-high lep 2024: 0.7534495-0.4520894=0.3013601, 0.3 when rounded
+# ((0.3-0.31)/(0.31))*100: -3.225806% change
+# Kitsap low-high lep 2016: 0.6456587-0.6016229=0.0440358, 0.05 when rounded
+# Kitsap low-high lep 2024: 0.7087535-0.6364957=0.0722578, 0.07 when rounded
+# ((0.07-0.05)/(0.05))*100: 40% change
+# Pierce low-high lep 2016: 0.6222581-0.4312146=0.1910435, 0.19 when rounded
+# Pierce low-high lep 2024: 0.6795247-0.4639213=0.2156034, 0.22 when rounded
+# ((0.22-0.19)/(0.19))*100: 15.78947% change
+# Snohomish low-high lep 2016: 0.6783318-0.4909920=0.1873398, 0.19 when rounded
+# Snohomish low-high lep 2024: 0.7314116-0.4926553=0.2387563, 0.24 when rounded
+# ((0.24-0.19)/(0.19))*100: 26.31579% change
 
 
 filter <- data_clean %>% 
@@ -681,18 +681,20 @@ filter <- data_clean %>%
          data_year=="2012" |
            data_year=="2024")
 
-# 2012 high-low older: 0.7315966-0.5881474=0.1434492
-# 2024 high-low older: 0.7131467-0.4839976=0.2291491
-# ((0.2291491-0.1434492)/0.1434492)*100=59.74233%, 64% when rounded
+# 2012 high-low older: 0.7315966-0.5881474=0.1434492, 0.14 when rounded
+# 2024 high-low older: 0.7121481-0.4839383=0.2282098, 0.23 when rounded
+# ((0.23-0.14)/0.14)*100=64.28571%
 ```
 \
 
 #### Insights & Analysis
 
-* Areas with higher concentrations of people of color have lower voter participation than areas with lower concentrations - a difference which has increased 13% between 2012 and 2024. The largest change was in Kitsap County (60%) and the smallest was in Snohomish County (9%).
-* Communities with higher concentrations of households below 200% of the poverty line consistently had lower voter participation than communities with lower concentrations. Between 2012 and 2024, the voter participation gaps decreased in Snohomish County (7 percentage points) and slightly decreased in King (2 percentage points). and Kitsap (0.9 percentage points) counties. In Kitsap and Pierce counties the gap increased four and one percentage points, respectively.
-* In 2024, communities with high concentrations of households with limited English proficiency had lower voter participation than communities with lower concentrations, a trend consistent with 2016. The difference between areas with high and low concentrations increased in Kitsap (100%), Snohomish (26%), and Pierce (16%) counties between 2016 and 2024. The difference decreased 3% in King County. 
-* Regionally, communities with higher concentrations of older households have higher voter participation than communities with lower concentrations - a difference which has increased 64%% between 2016 and 2024.
+* Areas with higher concentrations of people of color have lower voter participation than areas with lower concentrations - a difference which has increased 13% between 2012 and 2024. The largest change was in Kitsap County (57%) and the smallest was in Snohomish County (4%).
+* Communities with higher concentrations of households below 200% of the poverty line consistently had lower voter participation than communities with lower concentrations. Between 2012 and 2024, the voter participation gaps decreased in Snohomish County (8 percentage points) and slightly decreased in King (2 percentage points). In Pierce County the gap increased five percentage points and it remained the same in Kitsap County.
+* In 2024, communities with high concentrations of households with limited English proficiency had had lower voter participation than communities with lower concentrations, a trend consistent with 2016. The difference between areas with high and low concentrations increased in three counties between 2016 and 2024 - Kitsap (40%), Snohomish (26%), and Pierce (16%). The difference slightly decreased in King County (-3%). 
+* Regionally, communities with higher concentrations of older households have higher voter participation than communities with lower concentrations - a difference which has increased 64% between 2012 and 2024.
+
+
 \
 \
 
