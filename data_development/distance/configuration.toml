@@ -1,6 +1,9 @@
-analysis_year_list = [2023,2024]
+# Use the following to generate indicators for latest years (for generate_indicators.py)
+#analysis_year_list = [2023,2024]
+# Use the full list to include all years for compile_results.py
+analysis_year_list = [2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021,2022,2023,2024]
 
-output_dir = "C:/Workspace/brice"
+output_dir = "Y:/Equity Indicators/access"
 
 base_year = 2023   # used only for parcel geography and lookup definitions
 crs = 'EPSG:2285'
