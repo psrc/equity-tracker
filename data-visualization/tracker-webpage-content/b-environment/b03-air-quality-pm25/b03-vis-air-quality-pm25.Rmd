@@ -4,13 +4,13 @@ subtitle: "Visuals for Equity Tracker (tract data)"
 author: "Grant Gibson"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -75,9 +75,9 @@ This code will help produce the three visuals that are going to be a part of eac
 
 ## Indicator Explanation
 
-Fine particles (PM2.5) are tiny, microscopic pieces of pollution that can easily enter your bloodstream and cause breathing and heart problems. Fine particle pollution is especially dangerous for children, the elderly and people with sensitive immune systems. In our region, main sources of fine particle pollution come from wood stoves and fireplaces, backyard burn piles, wildfires, and transportation.
+Fine particles (PM2.5) are microscopic pieces of pollution that can easily enter people's bloodstream and cause breathing and heart problems. Fine particle pollution is especially dangerous for children, the elderly and people with sensitive immune systems. In our region, main sources of fine particle pollution come from wood stoves and fireplaces, backyard burn piles, wildfires, and transportation.
 
-The data shown below represent annual average measurements of PM2.5 particles by volume. Daily measurements from Purple Air sensors, excluding July 3-5 and days with wildfire smoke, are averaged and expanded to cover whole Census tracts. The units of measure are notated as micrograms per cubic meter ($\mu\text{g}/\text{m}^3$). For more information, see the Puget Sound Clean Air Agency's Air Quality Data webpage [https://pscleanair.gov/154/Air-Quality-Data].
+The data shown below represent annual average measurements of PM2.5 particles by volume. Daily measurements from Purple Air sensors, excluding July 3-5 (the Independence Day holiday period) and days with wildfire smoke, are averaged and expanded to cover whole Census tracts. The units of measure are notated as micrograms per cubic meter ($\mu\text{g}/\text{m}^3$). For more information, see the Puget Sound Clean Air Agency's Air Quality Data webpage (https://pscleanair.gov/154/Air-Quality-Data).
 
 ## 1. Map of most recent data
 
@@ -233,15 +233,15 @@ sort <- data %>%
 ```
 
 1.  4.9 $\mu\text{g}/\text{m}^3$: The average amount of fine particle pollution in the region in 2024
-2.  9.0 $\mu\text{g}/\text{m}^3$: The upper limit of annual average amount of fine particle pollution considered to be "good" air quality, below which every tract in the region falls
+2.  9.0 $\mu\text{g}/\text{m}^3$: The upper limit considered to be "good" air quality; every tract in the region falls below this threshold
 3.  4.3 $\mu\text{g}/\text{m}^3$: The lowest countywide average (Kitsap County) in the region
 
 \
 
 #### Insights & Analysis
 
--   The tract with the lowest average concentration of fine particle pollution (3.5 $\mu\text{g}/\text{m}^3$) is in unincorporated King County. The tract with the highest average concentration of fine particle pollution (6.5 $\mu\text{g}/\text{m}^3$) is in Puyallup, Pierce County.
--   Higher annual averages of fine partilce pollution (6.0 $\mu\text{g}/\text{m}^3$ or greater) are found in communities around Kent, Federal Way, and Tacoma.
+-   The tract with the lowest average concentration of fine particle pollution (3.5 $\mu\text{g}/\text{m}^3$) is in the eastern part of the region in unincorporated King County. The tract with the highest average concentration of fine particle pollution (6.5 $\mu\text{g}/\text{m}^3$) is in Puyallup, Pierce County.
+-   Higher annual averages of fine particle pollution (6.0 $\mu\text{g}/\text{m}^3$ or greater) are found in almost 10% of tracts in the region (90/919), including communities around Kent, Federal Way, and Tacoma.
 
 \
 \
@@ -446,8 +446,8 @@ filter <- data_clean_column %>%
 #### Insights & Analysis
 
 -   In the region, communities with high concentrations of people of color and households with limited English proficiency have higher average amounts of fine particle pollution than those with low concentrations of the same.
--   King County communities with high concentrations of lower income households have greater average yearly amounts of fine particle pollution than communities with lower concentrations of the same.
--   Pierce County communities with high concentrations of people of color, households with limited English proficiency, and households with lower income have greater average yearly amounts of fine particle pollution than communities with lower concentrations of the same groups.
+-   King County communities with high concentrations of people of color, households with limited English proficiency, households with lower income, and households have greater average yearly amounts of fine particle pollution than communities with lower concentrations of the same.
+-   Pierce County communities with high concentrations of people of color, households with limited English proficiency, households with lower income, and households with youth have greater average yearly amounts of fine particle pollution than communities with low concentrations of the same groups.
 
 \
 \
