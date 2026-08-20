@@ -1,16 +1,16 @@
 ---
 title: "Toxic Site Release"
 subtitle: "Visuals for Equity Tracker (tract data)"
-author: "Mary Richards, Grant Gibson"
+author: "Mary Richards"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output:
-  word_document:
   html_document:
     keep_md: yes
     df_print: paged
     toc: yes
     toc_depth: 6
     toc_float: yes
+  word_document:
 ---
 
 ```{r rmarkdown setup, include=FALSE}
@@ -246,7 +246,7 @@ data %>%
 ```
 
 1. 15.0 lb/acre: The highest concentration of toxic site release in the region
-2. 1/2: Nearly half (48%) of census tracts in the region have no amount of toxic site release
+2. 1/2: Nearly half (48%) of census tracts in the region have no toxic site release
 3. 74%: The toxic site release exposure decreased 74% between 2014 and 2024 for communities with high concentrations of people of color
 
 \
@@ -674,7 +674,7 @@ filter <- data_clean %>%
 
 * From 2014 to 2024, toxic site release exposure decreased for communities with the highest concentrations of low income households - the largest decreases was in Pierce County (86%), followed by King (63%), Kitsap (51%), and Snohomish (19%).
 * In Pierce County, communities with the highest concentration of people with disabilities saw significant decreases in the concentration of toxic site release, from 15.1 lb/acre in 2014 to 1.9 lb/acre in 2024.
-* Between 2019 and 2024, the difference in toxic site release exposure between communities with the highest and lowest concentrations of households with limited English proficiency decreased in all counties, except for Snohomish County, where the gap increased from 1.2 to 1.5 lb/acre.  
+* Between 2019 and 2024, the difference in toxic site release exposure between communities with the highest and lowest concentrations of households with limited English proficiency decreased in all counties, except for Snohomish County, where the gap increased from 1.2 to 1.5 lb/acre.
 * Across the region, toxic site release exposure decreased for most communities between 2014 and 2024, especially in Pierce County.
 
 \

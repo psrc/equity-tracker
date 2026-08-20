@@ -78,15 +78,15 @@ fetch_turnout <- function(zip_url, data_file){
 ::: panel-tabset
 # Data 
 ## 1.) Elmer geography splits: precinct-tract
-These data tables include the distribution of the total population based on OFM between voting precincts (2024 and 2020, from SOS) and census tracts (2020). The 2024 and 2020 geography split numbers are weighted based on the 2023 and 2020 5y ACS tract estimates for adult 18+ population, respectively.
+These data tables include the distribution of the total population based on OFM between voting precincts (2024 and 2020, from SOS) and census tracts (2020). The 2024 and 2020 geography split numbers are weighted based on the 2024 and 2020 5y ACS tract estimates for adult 18+ population, respectively.
 ```{r}
 sql24 <- "select *
     from general.get_any_geography_splits(
         'voter_precinct_2024', --@data_geog_type
         'tract20',              --@planning_geog_type
         2024,                   --@ofm_estimate_year
-        2024,                   --@ofm_vintage
-        2018)                   --@parcel_year"
+        2025,                   --@ofm_vintage
+        2023)                   --@parcel_year"
 
 sql20 <- "select *
     from general.get_any_geography_splits(
@@ -311,24 +311,25 @@ ofm_2016 <- ofm_10 %>%
 The main challenge is that the raw voting data is available at voting precincts, which are unique geographies that do not align with census geographies. This requires translation between the two geographies. 
 \
 \
-For the 2024 election data, we are calculating voter turn out based on earlier exploration (testing 4 methods). The numerator is calculated by weighting the population distribution (based on OFM) by ACS 2023 5y adult 18+ population estimates (TRACT). The denominator is calculated by using OFM Small Area Estimates Program (SAEP) 2024 total population estimates (TRACT), weighted by the ACS 2023 5y adult 18+ population/total population ratio (TRACT). Eventually we will transition to using the ACS 2024 5y estimates so that the data vintages are most closely aligned, but those data are not available at the time of this analysis (September/October 2025). These data will be calculated based on 2020 census geographies.
+For the 2024 election data, we are calculating voter turn out based on earlier exploration (testing 4 methods - 1-voter-turnout-exploration-24.qmd). The numerator is calculated by weighting (or splitting) the ballots_cast per precinct by the percent_total_population (distribution of the population distributed among the precinct-tract pairs). The percent_total_population values are based on the parcel_year, so they are weighted by the ACS 5y population values for the corresponding base year - for this election year, it is the 2023 population numbers. These values are then summed up to the tract level. The denominator is calculated by using OFM Small Area Estimates Program (SAEP) 2024 total population estimates (TRACT), weighted by the ACS 2024 5y adult 18+ population/total population ratio (TRACT). The denominator represents the population eligible to vote. These data will be calculated based on 2020 census geographies.
 \
 \
-For the 2020 election data, the numerator is calculated by weighting the population distribution (based on OFM) by ACS 2020 5y adult 18+ population estimates (TRACT). The denominator is calculated by using OFM Small Area Estimates Program (SAEP) 2020 total population estimates (TRACT), weighted by the 2020 decennial census adult 18+ population/total population ratio (TRACT). This is the same approach as used for 2024, but using decennial census instead of ACS 2023 5y estimates. These data will be calculated based on 2020 census geographies.
+For the 2020 election data, the numerator is calculated using the same process described for the 2024 data - by weighting (or splitting) the ballots_cast per precinct by the percent_total_population, then aggregating to the tract level. The percent_total_population values are based on the 2018 base year and therefore the 2018 ACS 5y population numbers. The denominator is calculated by using OFM Small Area Estimates Program (SAEP) 2020 total population estimates (TRACT), weighted by the 2020 decennial census adult 18+ population/total population ratio (TRACT). This is the same approach as used for 2024, but using decennial census instead of ACS 2024 5y estimates. These data will be calculated based on 2020 census geographies.
 \
 \
-For the 2016 election data, the numerator is calculated by weighting the population distribution (based on OFM) by ACS 2016 5y estimates (TRACT). The denominator is calculated by using OFM Small Area Estimates Program (SAEP) 2016 total population (group quarters + household population) block estimates (2020 vintage) in 2010 census geographies, aggregated to tract, and weighted by the ACS 2016 5y adult 18+ population/total population ratio (TRACT). These data will be calculated based on 2010 census geographies.
+For the 2016 election data, the numerator is calculated using the same process described for the 2024 data - by weighting (or splitting) the ballots_cast per precinct by the percent_total_population, then aggregating to the tract level. The percent_total_population values are based on the 2014 base year and therefore the 2014 ACS 5y population numbers. The denominator is calculated by using OFM Small Area Estimates Program (SAEP) 2016 total population (group quarters + household population) block estimates (2020 vintage) in 2010 census geographies, aggregated to tract, and weighted by the ACS 2016 5y adult 18+ population/total population ratio (TRACT). These data will be calculated based on 2010 census geographies.
 \
 \
-For the 2012 election data, the numerator is calculated by weighting the population distribution (based on OFM) by ACS 2012 5y estimates (TRACT). The denominator is calculated by using OFM Small Area Estimates Program (SAEP) 2012 total population (group quarters + household population) block estimates (2020 vintage) in 2010 census geographies, aggregated to tract, and weighted by the ACS 2012 5y adult 18+ population/total population ratio (TRACT). These data will be calculated based on 2010 census geographies.
+For the 2012 election data, the numerator is calculated using the same process described for the 2024 data - by weighting (or splitting) the ballots_cast per precinct by the percent_total_population, then aggregating to the tract level. The percent_total_population values are based on the 2014 base year and therefore the 2014 ACS 5y population numbers. The denominator is calculated by using OFM Small Area Estimates Program (SAEP) 2012 total population (group quarters + household population) block estimates (2020 vintage) in 2010 census geographies, aggregated to tract, and weighted by the ACS 2012 5y adult 18+ population/total population ratio (TRACT). These data will be calculated based on 2010 census geographies.
 
 
 *DATA CAVEATS:* 
 
-* For this exercise, it is assumed that the eligible population most closely aligns with the adult 18+ population. Although this may include individuals who are not able to legally vote (non-citizens), the alternative is using the number of registered voters (available at voting precincts), which is a subset of the adult 18+ population who are already engaged enough to have registered. While using the general 18+ population as a denominator may result in slightly lower voter turnout values (based on our working definition), using registered voters as the denominator would results in inflated voter turnout values.
+* For this exercise, it is assumed that the eligible population most closely aligns with the adult 18+ population. Although this may include individuals who are not able to legally vote (non-citizens), the alternative is using the number of registered voters (available at voting precincts), which is a subset of the adult 18+ population who are already engaged enough to have registered. While using the general 18+ population as a denominator may result in slightly lower voter turnout values (based on our working definition), using registered voters as the denominator would result in inflated voter turnout values.
 * Some voters may be registered in one location, but reside in another. This could cause mismatches in the way that they are accounted for in the numerator (ballots cast) and the denominator (population). 
 * There is a distinction between residential addresses (which must be in Washington State and where you are considered registered for voting purposes) and mailing addresses (which can be anywhere). Therefore, the number of registered voters refers to the number of voters who have their residential address in that precinct. This is based on correspondence with staff at the Washington Secretary of State office (8/13/2025).
 * According to correspondences with staff at the Washington Secretary of State office (10/9/2025), data from smaller precincts are occasionally “masked” into a larger precinct in order to protect the privacy of voters and maintain confidentiality. It is also possible for last minuet ballots to be cast (such as by UOCAVA voters, or Military and Overseas Voters, defined by https://www.eac.gov/uocava) that must be accorded to a precinct. As a result, the voter turnout results calculated at the tract level are estimates and may reflect some margin of error. 
+* To calculate the numerator (ballots_cast), we use 'percent_total_population' since there is no closer measure available when splitting precincts that overlap with more than one tract (other 4 options: group quarters, household population, housing units, occupied housing units). The 'percent_total_population' represents the total population, while the denominator is an estimation of the adult population.
 
 
 # I) 2024 (OFM SAEP 2024; ACS 5y 2024)
@@ -384,6 +385,7 @@ df24_calc <- join_df24_simp %>%
 tract_population <- ofm_psrc_20 %>% 
   left_join(age_18over_total_24, by= c("GEOID20"="GEOID"))
 
+# weighting the OFM population estimates by ACS 5y 18+/total proportion, 
 tract_pop_18plus_24 <- tract_population %>% 
   mutate(population_18plus_24=round(as.numeric(population_2024)*pop18_total,0))
 ```
@@ -834,7 +836,7 @@ sum(df16_calc$ballots_cast_wt, na.rm=TRUE) #1897869
 tract_population <- ofm_2016 %>% 
   left_join(age_18over_total_16_12, by= c("geoid10"="GEOID"))
 
-# weighting the OFM population estimates by decennial census 18+/total proportion, 
+# weighting the OFM population estimates by ACS 5y 18+/total proportion, 
 tract_pop_18plus_16 <- tract_population %>% 
   filter(year_census==2016) %>% 
   mutate(population_18plus_16=round(as.numeric(total_population)*pop18_total,0))
@@ -1060,7 +1062,7 @@ sum(df12_calc$ballots_cast_wt, na.rm=TRUE) #1908689
 tract_population <- ofm_2012 %>% 
   left_join(age_18over_total_16_12, by= c("geoid10"="GEOID"))
 
-# weighting the OFM population estimates by decennial census 18+/total proportion, 
+# weighting the OFM population estimates by ACS 5y census 18+/total proportion, 
 tract_pop_18plus_12 <- tract_population %>% 
   filter(year_census==2012) %>% 
   mutate(population_18plus_12=round(as.numeric(total_population)*pop18_total,0))
@@ -1304,6 +1306,11 @@ df12_tract_above1_adultpop_ofm
 df20_tract_above1_adultpop_ofm
 ```
 
+### 2024
+```{r}
+df24_tract_above1_adultpop_ofm
+```
+
 ### Map of census tracts
 Because the census tracts span two decades, the census geographies shift.
 ```{r, echo=FALSE}
@@ -1315,7 +1322,7 @@ tract_map <- leaflet() %>%
   leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
                             options = leaflet::leafletOptions(pane = "maplabels"),
                             group = "Labels") %>%
-  leaflet::addLayersControl(baseGroups = c("2012", "2020"),
+  leaflet::addLayersControl(baseGroups = c("2012", "2020", "2024"),
                    # overlayGroups = c("2012", "2012 census tracts", "2020", "2020 census tracts"),
                    options = layersControlOptions(collapsed = FALSE)) %>%
   
@@ -1346,6 +1353,15 @@ tract_map <- leaflet() %>%
               fillOpacity = 0,
               group = "2020",
               label = paste(round(df20_tract_adult_ofm_geo_100plus$pop18_turnout, digits=0),"%")) %>%
+  addPolygons(data=df24_tract_adult_ofm_geo_100plus,
+              color = "orange",
+              stroke = TRUE,
+              weight = 3,
+              smoothFactor = 0.5,
+              opacity = 0.5,
+              fillOpacity = 0,
+              group = "2024",
+              label = paste(round(df24_tract_adult_ofm_geo_100plus$pop18_turnout, digits=0),"%")) %>%
   addPolygons(data=tracts20.lyr,
               color = "gray",
               stroke = TRUE, 
@@ -1354,6 +1370,15 @@ tract_map <- leaflet() %>%
               opacity = 0.3,
               fillOpacity = 0,
               group = "2020",
+              label = paste("census tract: ", tracts20.lyr$geoid20)) %>%
+  addPolygons(data=tracts20.lyr,
+              color = "gray",
+              stroke = TRUE, 
+              weight = 1,
+              smoothFactor = 0.5,
+              opacity = 0.3,
+              fillOpacity = 0,
+              group = "2024",
               label = paste("census tract: ", tracts20.lyr$geoid20)) %>%
 
   #set view extent
