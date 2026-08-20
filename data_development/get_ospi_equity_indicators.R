@@ -101,13 +101,13 @@ get_k_readiness <- function(URL){
   reported[[2]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Puget%20Sound%20Educational%20Service%20District%20121"))
   reported[[3]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Olympic%20Educational%20Service%20District%20114"))
   reported %<>% rbindlist(use.names=TRUE) %>% .[, c("numerator","denominator"):=lapply(.SD, as.integer), .SDcols=c("numerator","denominator")]
-  if(!(county %in% colnames(reported))){
+  if(!("county" %in% colnames(reported))){
     reported[, county:=fcase(grepl("121$", esdname) & grepl(county_lookup$King, districtname),     "King",
                              grepl("114$", esdname) & grepl(county_lookup$Kitsap, districtname),   "Kitsap",
                              grepl("121$", esdname) & grepl(county_lookup$Pierce, districtname),   "Pierce",
                              grepl("189$", esdname) & grepl(county_lookup$Snohomish, districtname),"Snohomish")]
     }
-  reported[county %in% ..counties] %>% .[measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"]                             # Filter to specific 6-for-6 dimensions indicator
+  reported[county %in% (counties) & measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"]                             # Filter to specific 6-for-6 dimensions indicator
   return(reported)
 }
 
