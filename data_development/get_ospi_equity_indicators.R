@@ -100,12 +100,14 @@ get_k_readiness <- function(URL){
   reported[[1]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Northwest%20Educational%20Service%20District%20189"))
   reported[[2]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Puget%20Sound%20Educational%20Service%20District%20121"))
   reported[[3]] <- read.wa.Socrata(paste0(URL,"?organizationlevel=District&esdname=Olympic%20Educational%20Service%20District%20114"))
-  reported %<>% rbindlist(use.names=TRUE) %>% .[, c("numerator","denominator"):=lapply(.SD, as.integer), .SDcols=c("numerator","denominator")] %>%
-    .[, County:=fcase(grepl("121$", esdname) & grepl(county_lookup$King, districtname),     "King",
-                      grepl("114$", esdname) & grepl(county_lookup$Kitsap, districtname),   "Kitsap",
-                      grepl("121$", esdname) & grepl(county_lookup$Pierce, districtname),   "Pierce",
-                      grepl("189$", esdname) & grepl(county_lookup$Snohomish, districtname),"Snohomish")] %>%               # Create County field
-    .[!is.na(County)] %>% .[measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"]                             # Filter to specific 6-for-6 dimensions indicator
+  reported %<>% rbindlist(use.names=TRUE) %>% .[, c("numerator","denominator"):=lapply(.SD, as.integer), .SDcols=c("numerator","denominator")]
+  if(!(county %in% colnames(reported))){
+    reported[, county:=fcase(grepl("121$", esdname) & grepl(county_lookup$King, districtname),     "King",
+                             grepl("114$", esdname) & grepl(county_lookup$Kitsap, districtname),   "Kitsap",
+                             grepl("121$", esdname) & grepl(county_lookup$Pierce, districtname),   "Pierce",
+                             grepl("189$", esdname) & grepl(county_lookup$Snohomish, districtname),"Snohomish")]
+    }
+  reported[county %in% ..counties] %>% .[measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"]                             # Filter to specific 6-for-6 dimensions indicator
   return(reported)
 }
 
@@ -129,18 +131,18 @@ summarize_k_readiness <- function(dt){
                       denominator=as.double(i.denominator-denominator)), on=.(districtname)] %>%
     rbind(dt) %>% .[denominator!=0 & !is.na(numerator)] %>%                                                           # Combine w/ non-EFA (for comparison)
     .[, `:=`(focus_attribute=factor(focus_attribute, levels=levels_order),                                            # Factors for custom ordering
-             County=factor(County, levels=c(unlist(counties),"Region")))]
+             county=factor(county, levels=c(unlist(counties),"Region")))]
   rs <- list()
-  rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","focus_attribute","focus_type")] # EFA - County
+  rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","county","focus_attribute","focus_type")] # EFA - county
   rs[[2]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","focus_attribute","focus_type")]          # EFA - Region
-  rs[[2]][, County:="Region"]
-  rs[[3]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","focus_attribute","focus_type")] # All students - County
+  rs[[2]][, county:="Region"]
+  rs[[3]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","county","focus_attribute","focus_type")] # All students - county
   rs[[4]] <- reference[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","focus_attribute","focus_type")]          # All students - Region
-  rs[[4]][, County:="Region"]
+  rs[[4]][, county:="Region"]
   rs %<>% rbindlist(use.names=TRUE)
   rs[, `:=`(indicator_type="Kindergarten readiness", fact_value=as.double(numerator)/denominator)] %>%
     .[, c("numerator", "denominator"):=NULL] %>%                                                                            # Share as ratio of reported district totals
-    setorder(schoolyear, County, focus_attribute)
+    setorder(schoolyear, county, focus_attribute)
   rs[focus_attribute=="All Students", focus_type:="Total"]
   rs[label_lookup, focus_attribute:=to_psrc_labels, on=.(focus_attribute=chg_ospi_labels)]
   rs[, data_year:=as.integer(str_sub(schoolyear,1L,4L))]                                                                    # Schoolyear start - integer format in Elmer
