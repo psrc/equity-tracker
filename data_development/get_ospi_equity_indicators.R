@@ -6,6 +6,9 @@ library(stringr)
 library(data.table)
 library(RSocrata)
 library(rvest)
+library(psrcelmer)
+
+# Requires environment variables: DATAWAGOV_APPTOKEN, MYEMAIL, DATAWAGOV_CRED
 
 # Setup: List necessary variables and lookups -----------------------
 
@@ -102,24 +105,31 @@ get_k_readiness <- function(URL){
                       grepl("114$", esdname) & grepl(county_lookup$Kitsap, districtname),   "Kitsap",
                       grepl("121$", esdname) & grepl(county_lookup$Pierce, districtname),   "Pierce",
                       grepl("189$", esdname) & grepl(county_lookup$Snohomish, districtname),"Snohomish")] %>%               # Create County field
-    .[!is.na(County)] %>% .[measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"] %>%                         # Filter to specific 6-for-6 dimensions indicator
-    .[, c("esdname", "organizationlevel"):=NULL] %>%
+    .[!is.na(County)] %>% .[measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"]                             # Filter to specific 6-for-6 dimensions indicator
+  return(reported)
+}
+
+prep_k_readiness <- function(dt){
+  if(!is.data.table(dt)){dt %<>% setDT()}
+  dt[, c("esdname", "organizationlevel"):=NULL] %>%
   setnames(c("studentgrouptype","studentgroup"),c("focus_type","focus_attribute"))
-  reported[focus_attribute=="White", focus_attribute:="Non-POC"]
-  reported %<>% .[, focus_type:=fcase(focus_type=="FederalRaceEthnicity","POC_cat",
+  dt[focus_attribute=="White", focus_attribute:="Non-POC"]
+  dt %<>% .[, focus_type:=fcase(focus_type=="FederalRaceEthnicity","POC_cat",
                                       focus_type=="SpecialEd","Disability_cat",
                                       focus_type=="Bilingual","LEP_cat",
                                       focus_type=="FreeLunch","Income_cat")]
+  return(dt)
+}
 
-  reference <- reported[focus_attribute=="All Students"] %>% .[!is.na(numerator)]                                           # Totals into separate table
-  reported %<>% .[focus_attribute %in% swap_label$focus_attribute]
-  combined <- copy(reported) %>% .[swap_label, `:=`(focus_attribute=target_groups, focus_type=focus_type), on=.(focus_attribute)] %>%
-    .[reference, `:=`(numerator=as.double(i.numerator-numerator),                                                           # EFA as remainder to dominant groups
+summarize_k_readiness <- function(dt){
+  reference <- dt[focus_attribute=="All Students"] %>% .[!is.na(numerator)]                                           # Totals into separate table
+  dt %<>% .[focus_attribute %in% swap_label$focus_attribute]
+  combined <- copy(dt) %>% .[swap_label, `:=`(focus_attribute=target_groups, focus_type=focus_type), on=.(focus_attribute)] %>%
+    .[reference, `:=`(numerator=as.double(i.numerator-numerator),                                                     # EFA as remainder to dominant groups
                       denominator=as.double(i.denominator-denominator)), on=.(districtname)] %>%
-    rbind(reported) %>% .[denominator!=0 & !is.na(numerator)] %>%                                                           # Combine w/ non-EFA (for comparison)
-    .[, `:=`(focus_attribute=factor(focus_attribute, levels=levels_order),                                                  # Factors for custom ordering
+    rbind(dt) %>% .[denominator!=0 & !is.na(numerator)] %>%                                                           # Combine w/ non-EFA (for comparison)
+    .[, `:=`(focus_attribute=factor(focus_attribute, levels=levels_order),                                            # Factors for custom ordering
              County=factor(County, levels=c(unlist(counties),"Region")))]
-
   rs <- list()
   rs[[1]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","County","focus_attribute","focus_type")] # EFA - County
   rs[[2]] <- combined[, lapply(.SD, sum), .SDcols=c("numerator","denominator"), by=c("schoolyear","focus_attribute","focus_type")]          # EFA - Region
@@ -141,7 +151,8 @@ get_k_readiness <- function(URL){
 # Example -----------------------------------------------------------
 ## Single year
 # url <- get_wadata_ospi_url(2025)
-# kready <- get_k_readiness(url)
+# kready <- get_k_readiness(url) %>% prep_k_readiness()
+# rs_kready <- summarize_k_readiness(kready)
 
 ## All years
 # urlvector <- c("https://data.wa.gov/resource/veeh-ue57.json",  # 2025-26
@@ -160,7 +171,8 @@ get_k_readiness <- function(URL){
 #                "https://data.wa.gov/resource/sedr-qag9.json",  # 2012-13
 #                "https://data.wa.gov/resource/59cw-kpf6.json")  # 2011-12 first year available via API)
 # kready <- list()
-# kready <- lapply(urlvector, get_k_readiness) %>% rbindlist(use.names=TRUE)
+# kready <- lapply(urlvector, get_k_readiness) %>% prep_k_readiness() 
+# rs_kready <- lapply(kready, summarize_k_readiness) %>% rbindlist(use.names=TRUE)
 
 ## Merge to Elmer
-# ospi_efa_to_elmer(kready)
+# ospi_efa_to_elmer(rs_kready)
