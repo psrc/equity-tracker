@@ -107,7 +107,7 @@ get_k_readiness <- function(URL){
                              grepl("121$", esdname) & grepl(county_lookup$Pierce, districtname),   "Pierce",
                              grepl("189$", esdname) & grepl(county_lookup$Snohomish, districtname),"Snohomish")]
     }
-  reported[county %in% (counties) & measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"]                             # Filter to specific 6-for-6 dimensions indicator
+  reported %<>% .[county %in% (counties) & measure=="NumberofDomainsReadyforKindergarten" & measurevalue=="6"]                             # Filter to specific 6-for-6 dimensions indicator
   return(reported)
 }
 
