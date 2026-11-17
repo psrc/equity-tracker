@@ -121,10 +121,17 @@ labels <- sprintf(
 ospi_map <- leaflet() %>%
   leaflet::addMapPane(name = "polygons", zIndex = 410) %>%
   leaflet::addMapPane(name = "maplabels", zIndex = 500) %>% # higher zIndex rendered on top
-  leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
-  leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
-                            options = leaflet::leafletOptions(pane = "maplabels"),
-                            group = "Labels") %>%
+  leaflet::addProviderTiles("Esri.WorldGrayCanvas") %>%
+  leaflet::addTiles(urlTemplate = "https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+    attribution = "Tiles &copy; Esri",
+    options = tileOptions(
+      maxNativeZoom = 16,
+      maxZoom = 19,
+      detectRetina = FALSE)) %>%
+  # leaflet::addProviderTiles("CartoDB.VoyagerNoLabels") %>%
+  # leaflet::addProviderTiles("CartoDB.VoyagerOnlyLabels",
+  #                           options = leaflet::leafletOptions(pane = "maplabels"),
+  #                           group = "Labels") %>%
   addPolygons(data=ospi_data_tract,
               fillColor = psrc_palette(ospi_data_tract$Percent_num),
               stroke=FALSE, 
@@ -167,7 +174,8 @@ htmlwidgets::saveWidget(ospi_map,
                         file=file.path(file_names$base_dir,
                                        file_names$theme_dir,
                                        file_names$ind_dir, 
-                                       'update/webpage-html-outputs', 
+                                       'update/webpage-html-outputs',
+                                       # 'webpage-html-outputs',
                                        file_names$map_name))
 ```
 \
