@@ -91,6 +91,8 @@ load(file=file.path(file_names$base_dir,
                     "update",
                     "rda-data",
                     paste0(file_names$map,'.rda')))
+
+data_tract$estimate <- data_tract$variable_value
 ``` 
 
 ```{r tract data map}
@@ -114,7 +116,7 @@ psrc_palette <- leaflet::colorNumeric(palette = psrc_purple_plus,
 #                                       domain = data_tract$estimate)
 
 # set the variable
-var_name <- "Average Tree Canopy <br> Cover (2021)"
+var_name <- "Average Tree <br> Canopy Cover"
 labels <- sprintf(
   "Census tract: <em>%s</em><br/><strong>%s</strong><br/><body>%s</body><br/><body>%s</bodyD>", data_tract$geoid20, # the code in <> makes the geoid value italic
   paste("Tract value: ", prettyNum((round(data_tract$estimate, digits=0))), " %"),
